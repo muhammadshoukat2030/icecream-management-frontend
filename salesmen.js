@@ -8,7 +8,7 @@ const openAddBtn = document.getElementById("openAddBtn");
 
 
 
-const API = "https://ice-cream-management.vercel.app";
+const API = "https://icecream-management-backend.vercel.app";
 let adminUser;
 getLocalStorageUser=()=>{
 if (!localStorage.getItem('user')){

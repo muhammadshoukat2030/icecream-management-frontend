@@ -3,7 +3,7 @@
 // Purchase Stocks Admin Page - Script
 // Purchase stock is ADDED to inventory when invoice is created
 // ===========================================================
-const API= "https://ice-cream-management.vercel.app";
+const API= "https://icecream-management-backend.vercel.app";
 // ================= DATA =================
 
 let suppliers = [];
@@ -11,7 +11,7 @@ let currentSupplierId = null;
 let products = [];
 let purchasedItems = [];
 let arrears;
-
+let entercomission=0.2;
 let adminUser;
 getLocalStorageUser=()=>{
 if (!localStorage.getItem('user')){
@@ -1185,8 +1185,7 @@ function updateSubtotal() {
 
 function updateTotals(subTotal) {
 
-    const commission =
-        0;
+    const commission = subTotal*entercomission;
 
 
     const discount =
@@ -3211,7 +3210,8 @@ if (createInvoiceBtn) {
                             "balance"
                         )?.textContent
                             .replace(/,/g, "")
-                    ) || 0
+                    ) || 0,
+                    dynamicComission:entercomission
 
             };
 
@@ -3483,3 +3483,10 @@ document
 
         }
     );
+
+    document.getElementById('dynamicCommission').addEventListener('input',(e)=>{
+        entercomission= Number(document.getElementById("dynamicCommission").value/100)
+    console.log('dynamicCommision:',entercomission)
+    updateSubtotal();
+
+    })

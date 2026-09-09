@@ -1,12 +1,15 @@
 // ===========================================================
 //  Issue Stocks Admin Page - Script
 // ===========================================================
-const API= "https://ice-cream-management.vercel.app";
+const API= "https://icecream-management-backend.vercel.app";
 // ---- Data ----
 let salesmen = [];
 let currentSalesmanId = null;
 let arrears;
 let adminUser;
+let entercomission=0.2;
+document.getElementById("dynamicCommission").value=entercomission*100;
+
 getLocalStorageUser=()=>{
 if (!localStorage.getItem('user')){
       window.location.href = 'login.html';
@@ -631,7 +634,7 @@ function updateSubtotal() {
         Math.max(amount - nonCommissionableAmount, 0);
 
     const commission =
-        commissionableAmount * 0.20;
+        commissionableAmount * entercomission;
 
     console.log("Commission:", commission);
 
@@ -2173,7 +2176,9 @@ const invoice = {
 
     balance: Number(
         document.getElementById("balance").textContent.replace(/,/g, "")
-    )
+    ),
+    
+    dynamicComission:entercomission
     
 };
 console.log("invoice",invoice)
@@ -2408,3 +2413,9 @@ document
         renderIssueTable();
 
     });
+    document.getElementById('dynamicCommission').addEventListener('input',(e)=>{
+ 
+    entercomission= Number(document.getElementById("dynamicCommission").value/100)
+    console.log('dynamicCommision:',entercomission)
+       updateSubtotal();
+    })

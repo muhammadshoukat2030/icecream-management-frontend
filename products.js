@@ -2,7 +2,7 @@
   // ===========================================================
   //  Products Admin Page - Script
   // ===========================================================
- const API ="https://ice-cream-management.vercel.app";
+ const API ="https://icecream-management-backend.vercel.app";
   // ---- Product data ----
   let data;
   let products = [];

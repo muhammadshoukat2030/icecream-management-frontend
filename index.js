@@ -2,7 +2,7 @@
 // DASHBOARD
 // ============================================================
 
-const API_URL ="https://ice-cream-management.vercel.app";
+const API_URL ="https://icecream-management-backend.vercel.app";
 // ============================================================
 // ELEMENTS
 // ============================================================

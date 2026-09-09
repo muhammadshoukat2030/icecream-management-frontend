@@ -1,9 +1,9 @@
 // ============================================================
 // SUPPLIER DETAILS PAGE
 // ============================================================
-const API= "https://ice-cream-management.vercel.app";
+const API= "https://icecream-management-backend.vercel.app";
 
-// https://ice-cream-management.vercel.app
+
 // ============================================================
 // GLOBAL STATE
 // ============================================================
@@ -1580,6 +1580,7 @@ function updateInvoiceTotals(invoice) {
                 );
 
     }
+    document.getElementById('editingComission').textContent=invoice.dynamicComission*100;
 
 }
 
@@ -2329,7 +2330,7 @@ body {
             <tr>
 
                 <td>
-                    Commission
+                    Commission ${invoice.dynamicComission*100}%
                 </td>
 
                 <td>

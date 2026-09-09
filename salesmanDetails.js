@@ -5,7 +5,7 @@
 
 
 // -------------------- Get ID from URL --------------------
-const API="https://ice-cream-management.vercel.app";
+const API="https://icecream-management-backend.vercel.app";
 const adminUser=JSON.parse(localStorage.getItem('user'));
 console.log(adminUser.email)
 document.getElementById('admin').textContent=adminUser.email;
@@ -23,6 +23,7 @@ const salesmanId = params.get("id");
 let selectedInvoice = null;
 let currentSalesman = null;
 let editingInvoice = null;
+let finalInvoice;
 console.log(5-(5));
 
 if(!salesmanId){
@@ -392,6 +393,9 @@ function renderInvoice(invoice){
 
     document.getElementById("balance").textContent =
         invoice.balance.toLocaleString();
+        
+        
+        document.getElementById('comissionPercentage').textContent=invoice.dynamicComission*100
 }
 
 function openInvoiceEditPopup(invoice) {
@@ -525,13 +529,13 @@ function openInvoiceEditPopup(invoice) {
         Number(
             invoice.cash || 0
         );
-
+        document.getElementById('editingComission').textContent=invoice.dynamicComission*100;
 
     // =====================================
     // Calculate
     // =====================================
 
-    updateEditInvoiceTotals();
+    updateEditInvoiceTotals(invoice);
 
 
     // =====================================
@@ -543,7 +547,8 @@ function openInvoiceEditPopup(invoice) {
     ).classList.add("show");
 
 }
-function updateEditInvoiceTotals() {
+
+function updateEditInvoiceTotals(invoice) {
 
     if (!editingInvoice) return;
 
@@ -650,9 +655,9 @@ function updateEditInvoiceTotals() {
     // CHANGED: only apply 20% to commissionable amount
     const commissionableAmount =
         Math.max(subtotal - nonCommissionableAmount, 0);
-
+console.log('cinvoie:', invoice);
     const commission =
-        commissionableAmount * 0.20;
+        commissionableAmount * invoice.dynamicComission;
 
 
     const discount =
@@ -750,7 +755,7 @@ document
             )
         ) {
 
-            updateEditInvoiceTotals();
+            updateEditInvoiceTotals(finalInvoice);
 
         }
 
@@ -848,7 +853,7 @@ document
         const latestInvoice =
             await latestResponse.json();
 
-
+        finalInvoice=latestInvoice;
         console.log(
             "Latest invoice:",
             latestInvoice
@@ -1281,7 +1286,7 @@ body {
             <tr>
 
                 <td>
-                    Commission 20%
+                    Commission ${invoice.dynamicComission*100}%
                 </td>
 
                 <td>
@@ -3365,3 +3370,4 @@ document
 
     }
 );
+

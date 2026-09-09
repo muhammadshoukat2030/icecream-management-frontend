@@ -14,7 +14,7 @@
 //   { id: 7, product: "Butterscotch Cup", company: "Polka", category: "Cup", availableStock: 0, lastPurchase: "15 Jun 2026", unitPrice: 650 },
 //   { id: 8, product: "Vanilla Tub", company: "Walls", category: "Family Pack", availableStock: 95, lastPurchase: "29 Jun 2026", unitPrice: 700 }
 // ];
-const API= "https://ice-cream-management.vercel.app";
+const API= "https://icecream-management-backend.vercel.app";
 let inventory=[];
 
 let adminUser;

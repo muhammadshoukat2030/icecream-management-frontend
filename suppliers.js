@@ -1,8 +1,8 @@
 const addBtn = document.getElementById("openAddSupplierBtn");
 const addPanel = document.getElementById("addSupplierPanel");
 const supplierPanel = document.getElementById("supplierPanel");
-const API= "https://ice-cream-management.vercel.app";
-// https://ice-cream-management.vercel.app
+const API= "https://icecream-management-backend.vercel.app";
+
 let suppliers = [];
 let recentInvoices=[];
 
