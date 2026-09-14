@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Salesman Details — FrostyOps</title>
+<link rel="stylesheet" href="shared-layout.css">
 <link rel="stylesheet" href="Salesmen-details.css">
 </head>
 <body>
@@ -37,7 +38,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="cu rrentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
         Products
       </a>
-      <a class="navlink active" data-nav="salesmen" href="Salesmen.html">
+     <a class="navlink active" data-nav="salesmen" href="Salesmen.html" id="salesmenNavLink">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
         Salesmen
       </a>
@@ -87,10 +88,11 @@
           <div class="detail-name" id="detName">Ali Khan <span class="status-badge active"><span class="dot"></span>Active</span></div>
           <div class="detail-sub" id="detSub">Salesman ID: 01 &nbsp;·&nbsp; Joined 15 Jan 2025</div>
         </div>
-        <button class="btn-issue">Issue Stock</button>
+        <div><button class="btn-issue">Issue Stock</button>
         <button id="printSummaryBtn" class="btn-issue">
     Print Summary
-</button>
+</button></div>
+        
       </div>
 
       <div class="stat-row small">
@@ -360,7 +362,9 @@
     </div>
 
 </div>
-
+<script src="config.js"></script>
+<script src="shared-layout.js"></script>
+<script src="offline-db.js"></script>
 <script src="salesmanDetails.js"></script>
 </body>
 </html>

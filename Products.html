@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Products</title>
+<link rel="stylesheet" href="shared-layout.css">
 <link rel="stylesheet" href="Products.css">
 </head>
 <body>
@@ -76,10 +77,30 @@
         </button>
         <h1>Products</h1>
       </div>
-      <div class="topbar-right">
-        <div class="date-pill" id="datePill">04 July,2026</div>
-        <div class="admin-pill"  id="admin"><span class="admin-avatar"></span> Admin</div>
-      </div>
+       <div class="topbar-right">
+
+        <div class="pill">
+
+            <span class="pill-text"
+                  id="datePill">
+                Today
+            </span>
+
+        </div>
+
+
+        <div class="pill admin">
+
+            <span class="avatar-dot"></span>
+
+            <span class="pill-text"
+                  id="admin">
+                Admin
+            </span>
+
+        </div>
+
+    </div>
     </div>
  
     <div class="content">
@@ -327,7 +348,9 @@
     </div>
   </div>
 </div>
-
+<script src="config.js"></script>
+<script src="shared-layout.js"></script>
+<script src="offline-db.js"></script>
 <script src="products.js"></script>
 </body>
 </html>

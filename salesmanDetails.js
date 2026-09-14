@@ -1,452 +1,1189 @@
 // =========================================================
 // FrostyOps - Salesman Details
-// Load one salesman from backend
+// Offline-first Salesman Details
 // =========================================================
 
 
-// -------------------- Get ID from URL --------------------
-const API="https://icecream-management-backend.vercel.app";
-const adminUser=JSON.parse(localStorage.getItem('user'));
-console.log(adminUser.email)
-document.getElementById('admin').textContent=adminUser.email;
-const today = new Date().toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-});
+// =========================================================
+// GLOBAL API
+// =========================================================
 
-console.log(today);
-document.getElementById('datePill').textContent=today
-const params = new URLSearchParams(window.location.search);
+const API =
+    window.APP_CONFIG.API;
 
-const salesmanId = params.get("id");
-let selectedInvoice = null;
-let currentSalesman = null;
-let editingInvoice = null;
-let finalInvoice;
-console.log(5-(5));
 
-if(!salesmanId){
+// =========================================================
+// ADMIN USER
+// =========================================================
 
-    alert("Salesman ID not found");
+let adminUser = null;
 
-    window.location.href = "salesmen.html";
+
+try {
+
+    adminUser =
+        JSON.parse(
+            localStorage.getItem("user")
+        );
+
+}
+catch (error) {
+
+    console.error(
+        "Unable to read local user:",
+        error
+    );
 
 }
 
 
-// -------------------- API --------------------
+if (!adminUser) {
 
-const API2 =
-`${API}/oneSalesman?id=${salesmanId}`;
+    window.location.href =
+        "login.html";
 
+}
+else {
 
+    const adminElement =
+        document.getElementById("admin");
 
-// -------------------- Load Page --------------------
+    if (adminElement) {
 
-document.addEventListener("DOMContentLoaded",()=>{
+        adminElement.textContent =
+            adminUser.email;
 
-    loadSalesman();
+    }
 
-});
-
-
+}
 
 
 // =========================================================
-// Load Single Salesman
+// DATE
 // =========================================================
 
-async function loadSalesman(){
+const today =
+    new Date().toLocaleDateString(
+        "en-GB",
+        {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        }
+    );
 
-    try{
 
-        const response = await fetch(API2,
+const datePill =
+    document.getElementById("datePill");
+
+
+if (datePill) {
+
+    datePill.textContent =
+        today;
+
+}
+
+
+// =========================================================
+// URL PARAMETERS
+// =========================================================
+
+const params =
+    new URLSearchParams(
+        window.location.search
+    );
+
+
+const salesmanId =
+    params.get("id");
+
+
+if (!salesmanId) {
+
+    alert(
+        "Salesman ID not found"
+    );
+
+    window.location.href =
+        "salesmen.html";
+
+}
+
+
+// =========================================================
+// PAGE STATE
+// =========================================================
+
+let selectedInvoice = null;
+
+let currentSalesman = null;
+
+let editingInvoice = null;
+
+let currentSummary = [];
+
+
+// =========================================================
+// DOM READY
+// =========================================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    initializeSalesmanDetails
+);
+
+
+// =========================================================
+// INITIALIZE PAGE
+// =========================================================
+
+async function initializeSalesmanDetails() {
+
+    await loadSalesman();
+
+}
+
+
+// =========================================================
+// AUTHENTICATED FETCH HELPER
+// =========================================================
+
+async function authenticatedFetch(
+    url,
+    options = {}
+) {
+
+    const response =
+        await fetch(
+            url,
             {
-                credentials:'include'
+                ...options,
+                credentials: "include"
             }
         );
 
-        if(!response.ok){
-            throw new Error("Salesman not found");
+
+    if (
+        response.status === 401
+    ) {
+
+        window.location.href =
+            "login.html";
+
+        return null;
+
+    }
+
+
+    return response;
+
+}
+
+
+// =========================================================
+// GET RETURN QUANTITY
+// =========================================================
+//
+// Different invoice objects in the project have used:
+// returnQuantity
+// returnedQuantity
+//
+// Always normalize both here.
+// =========================================================
+
+function getReturnQuantity(
+    item
+) {
+
+    return Number(
+        item?.returnQuantity ??
+        item?.returnedQuantity ??
+        0
+    ) || 0;
+
+}
+
+
+// =========================================================
+// TODAY CHECK
+// =========================================================
+
+function isToday(
+    dateValue
+) {
+
+    if (!dateValue) {
+        return false;
+    }
+
+
+    const date =
+        new Date(dateValue);
+
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return false;
+
+    }
+
+
+    const now =
+        new Date();
+
+
+    return (
+        date.getFullYear() ===
+        now.getFullYear() &&
+
+        date.getMonth() ===
+        now.getMonth() &&
+
+        date.getDate() ===
+        now.getDate()
+    );
+
+}
+
+
+// =========================================================
+// LOAD SALESMAN
+// =========================================================
+//
+// Offline-first:
+//
+// 1. Load salesman from IndexedDB.
+// 2. Load invoice history from IndexedDB.
+// 3. If online, refresh salesman from backend.
+// 4. Synchronize invoices.
+// 5. Build page from local invoice store.
+//
+// =========================================================
+
+async function loadSalesman() {
+
+    try {
+
+        // =====================================================
+        // 1. LOAD SALESMAN CACHE
+        // =====================================================
+
+        let cachedSalesman =
+            null;
+
+
+        try {
+
+            const cachedSalesmen =
+                await getAllFromOfflineDB(
+                    "salesmen"
+                );
+
+
+            cachedSalesman =
+                cachedSalesmen.find(
+                    salesman =>
+                        Number(
+                            salesman.id
+                        ) ===
+                        Number(
+                            salesmanId
+                        )
+                ) || null;
+
+        }
+        catch (cacheError) {
+
+            console.error(
+                "Salesman cache load failed:",
+                cacheError
+            );
+
         }
 
 
-        const data = await response.json();
+        if (cachedSalesman) {
 
-        console.log(data);
+            currentSalesman =
+                cachedSalesman;
 
 
-        // salesman personal data
-      renderSalesman(data.salesman);
+            renderSalesman(
+                cachedSalesman
+            );
 
-renderCards(data.stats, data.salesman);
+        }
 
-renderSummary(data.summary);
 
+        // =====================================================
+        // 2. LOAD LOCAL INVOICES
+        // =====================================================
+
+        await renderFromLocalInvoices();
+
+
+        // =====================================================
+        // 3. OFFLINE
+        // =====================================================
+
+        if (
+            !navigator.onLine
+        ) {
+
+            if (!cachedSalesman) {
+
+                alert(
+                    "Salesman is not available offline."
+                );
+
+            }
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // 4. REFRESH SALESMAN FROM BACKEND
+        // =====================================================
+
+        try {
+
+            const response =
+                await authenticatedFetch(
+                    `${API}/oneSalesman?id=${salesmanId}`
+                );
+
+
+            if (!response) {
+                return;
+            }
+
+
+            if (
+                response.ok
+            ) {
+
+                const data =
+                    await response.json();
+
+
+                console.log(
+                    "Fresh salesman data:",
+                    data
+                );
+
+
+                if (
+                    data.salesman
+                ) {
+
+                    currentSalesman =
+                        data.salesman;
+
+
+                    await saveToOfflineDB(
+                        "salesmen",
+                        data.salesman
+                    );
+
+
+                    renderSalesman(
+                        data.salesman
+                    );
+
+                }
+
+            }
+
+            else {
+
+                console.error(
+                    "Salesman refresh failed:",
+                    response.status
+                );
+
+            }
+
+        }
+        catch (salesmanError) {
+
+            console.error(
+                "Salesman online refresh error:",
+                salesmanError
+            );
+
+        }
+
+
+        // =====================================================
+        // 5. SYNCHRONIZE INVOICES
+        // =====================================================
+        //
+        // First synchronization:
+        // all invoices.
+        //
+        // Later:
+        // invoices since last synchronization.
+        //
+        // =====================================================
+
+        await syncInvoicesToOfflineDB();
+
+
+        // =====================================================
+        // 6. REBUILD PAGE FROM LOCAL DATA
+        // =====================================================
+
+        await renderFromLocalInvoices();
 
     }
-    catch(error){
-
-        console.log(error);
-
-        alert("Unable to load salesman");
-
-    }
-
-}
-let data;
-getSummary=async()=>{
- const res= await fetch(`${API}/summary?id=${salesmanId}`,
-    {
-        credentials:'include'
-    }
- );
-data=await res.json();
-console.log(data);
-}
-getSummary();
-
-
-// =========================================================
-// Render Data
-// =========================================================
-
-function renderSalesman(s){
-     currentSalesman = s;
-console.log(s.outstandingBalance)
-
-document.getElementById("detName").innerHTML = `
-${s.name}
-
-<span class="status-badge ${s.status ? "active":"inactive"}">
-
-<span class="dot"></span>
-
-${s.status ? "Active":"Inactive"}
-
-</span>
-`;
-
-
-
-document.getElementById("detSub").innerHTML =
-`
-Salesman ID: ${s.id}
-&nbsp;·&nbsp;
-Joined -
-`;
-
-
-
-document.getElementById("detPhone").textContent =
-s.phone || "-";
-
-
-
-document.getElementById("detAddress").textContent =
-s.address || "-";
-
-
-
-document.getElementById("detCnic").textContent =
-s.cnic || "-";
-
-
-document.getElementById("detEmail").textContent =
-s.email || "-";
-
-
-document.getElementById("detWhatsapp").textContent =
-s.phone || "-";
-
-
-
-
-
-document.getElementById("detOutstanding").textContent =
-Number(
-    s.outstandingBalance
- ?? s.outstandingBalance ?? 0
-)
-.toLocaleString("en-PK");
-
-
-document.getElementById("detPhoto").src =
-s.photo || "images/default-user.png";
-
-
-}
-
-
-
-// =========================================================
-// Buttons
-// =========================================================
-
-
-document.querySelector(".btn-issue")
-?.addEventListener("click",()=>{
-
-
-    window.location.href =
-    `issueStocks.html?salesman=${salesmanId}`;
-
-
-});
-
-
-
-document.getElementById("fullscreenLink")
-?.addEventListener("click",(e)=>{
-
-
-    e.preventDefault();
-
-
-    window.location.href =
-    `invoice.html?salesman=${salesmanId}`;
-
-
-});
-
-
-
-
-
-// =========================================================
-// Helper
-// =========================================================
-
-
-function formatNumber(value){
-
-    return Number(value || 0)
-    .toLocaleString("en-PK");
-
-}
-
-function renderCards(stats, salesman){
-
-    // Outstanding Balance
-    document.getElementById("detOutstanding")
-    .textContent =
-    Number(
-        salesman.outstandingBalance ?? 
-        stats.outstandingBalance ?? 
-        0
-    )
-    .toLocaleString("en-PK");
-
-
-    // Today Issued
-    document.getElementById("detTodayIssued")
-    .textContent =
-    Number(data.todayInvoiceLength
- || 0)
-    .toLocaleString("en-PK");
-
-
-    // Total invoices
-    document.querySelectorAll(".stat-num")[2]
-    .textContent =
-    stats.totalInvoices || 0;
-
-
-    // Total payments
-    document.querySelectorAll(".stat-num")[3]
-    .textContent =
-    Number(stats.totalPayments || 0)
-    .toLocaleString("en-PK");
-
-}
-let currentSummary = [];
-
-function renderSummary(summary) {
-
-    currentSummary = summary;
-
-    renderFilteredSummary(summary);
-}
-
-function renderFilteredSummary(summary) {
-
-    const tbody = document.getElementById("summaryTbody");
-
-    tbody.innerHTML = "";
-
-    if (!summary || summary.length === 0) {
-
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9">
-                    No invoices found
-                </td>
-            </tr>
-        `;
-
-        return;
-    }
-
-    summary.forEach((invoice, index) => {
-
-        tbody.innerHTML += `
-
-        <tr class="invoice-row"
-            data-id="${invoice.invoiceId}">
-
-            <td>${index + 1}</td>
-
-            <td>
-                ${new Date(invoice.date).toLocaleDateString()}
-            </td>
-
-            <td>
-                ${invoice.invoiceNo}
-            </td>
-
-            <td>
-                Stock Issue
-            </td>
-
-            <td>
-                ${invoice.totalQuantity}
-            </td>
-
-            <td>
-                ${Number(invoice.amount || 0).toLocaleString()}
-            </td>
-
-            <td>
-                ${Number(invoice.commission || 0).toLocaleString()}
-            </td>
-
-            <td>
-                ${Number(invoice.cash || 0).toLocaleString()}
-            </td>
-
-            <td>
-                ${Number(invoice.balance || 0).toLocaleString()}
-            </td>
-
-        </tr>
-
-        `;
-    });
-}
-
-function renderInvoice(invoice){
-    selectedInvoice = invoice;
-    document.getElementById("invNo").textContent =
-        "Invoice No: " + invoice.id;
-
-    const tbody=document.getElementById("invoiceTbody");
-
-    tbody.innerHTML="";
-
-    invoice.items.forEach(item=>{
-
-        const net=item.quantity-item.returnQuantity;
-
-        tbody.innerHTML+=`
-
-        <tr>
-
-            <td>${item.productName}</td>
-
-            <td>Issue</td>
-
-            <td>${item.price}</td>
-
-            <td>${item.quantity}</td>
-
-            <td>${item.returnQuantity}</td>
-
-            <td>${net}</td>
-
-            <td>${(net*item.price).toLocaleString()}</td>
-
-        </tr>
-
-        `;
-
-    });
-
-    document.getElementById("subTotal").textContent =
-        invoice.subtotal.toLocaleString();
-
-    document.getElementById("commision").textContent =
-        invoice.commission.toLocaleString();
-    document.getElementById("Discount").textContent =
-        invoice.discount.toLocaleString();
-
-    document.getElementById("NetTotal").textContent =
-        invoice.netTotal.toLocaleString();
-    document.getElementById("Cash").textContent =
-        invoice.cash.toLocaleString();
-
-    document.getElementById("currentBill").textContent =
-        (invoice.netTotal-invoice.cash).toLocaleString();
-
-    document.getElementById("Arrears").textContent =
-        invoice.arrears.toLocaleString();
-
-    document.getElementById("balance").textContent =
-        invoice.balance.toLocaleString();
-        
-        
-        document.getElementById('comissionPercentage').textContent=invoice.dynamicComission*100
-}
-
-function openInvoiceEditPopup(invoice) {
-
-    editingInvoice =
-        structuredClone(invoice);
-
-
-    // =====================================
-    // Invoice information
-    // =====================================
-
-    document.getElementById(
-        "editInvoiceInfo"
-    ).innerHTML = `
-
-        <div>
-            <strong>Invoice:</strong>
-            ${invoice.id}
-        </div>
-
-        <div>
-            <strong>Salesman:</strong>
-            ${invoice.partyName}
-        </div>
-
-        <div>
-            <strong>Date:</strong>
-            ${new Date(
-                invoice.date
-            ).toLocaleDateString()}
-        </div>
-
-    `;
-
-
-    // =====================================
-    // Product rows
-    // =====================================
-
-    const tbody =
-        document.getElementById(
-            "editInvoiceTbody"
+    catch (error) {
+
+        console.error(
+            "Salesman load error:",
+            error
         );
 
 
-    tbody.innerHTML = "";
+        alert(
+            "Unable to load salesman."
+        );
+
+    }
+
+}
+
+
+// =========================================================
+// RENDER FROM LOCAL INVOICES
+// =========================================================
+
+async function renderFromLocalInvoices() {
+
+    try {
+
+        const allInvoices =
+            await getAllFromOfflineDB(
+                "invoices"
+            );
+
+
+        const salesmanInvoices =
+            allInvoices
+                .filter(
+                    invoice =>
+                        invoice.type ===
+                            "salesman" &&
+
+                        Number(
+                            invoice.partyId
+                        ) ===
+                        Number(
+                            salesmanId
+                        )
+                )
+                .sort(
+                    (a, b) => {
+
+                        const dateDifference =
+                            new Date(b.date) -
+                            new Date(a.date);
+
+
+                        if (
+                            dateDifference !== 0
+                        ) {
+
+                            return dateDifference;
+
+                        }
+
+
+                        return (
+                            Number(b.id) -
+                            Number(a.id)
+                        );
+
+                    }
+                );
+
+
+        console.log(
+            "Local salesman invoices:",
+            salesmanInvoices
+        );
+
+
+        const summary =
+            salesmanInvoices.map(
+                invoice => ({
+
+                    invoiceId:
+                        invoice.id,
+
+                    invoiceNo:
+                        "INV-" +
+                        invoice.id,
+
+                    date:
+                        invoice.date,
+
+                    totalItems:
+                        Array.isArray(
+                            invoice.items
+                        )
+                            ? invoice.items.length
+                            : 0,
+
+                    amount:
+                        Number(
+                            invoice.subtotal || 0
+                        ),
+
+                    commission:
+                        Number(
+                            invoice.commission || 0
+                        ),
+
+                    cash:
+                        Number(
+                            invoice.cash || 0
+                        ),
+
+                    balance:
+                        Number(
+                            invoice.balance || 0
+                        ),
+
+                    totalQuantity:
+                        Array.isArray(
+                            invoice.items
+                        )
+                            ? invoice.items.reduce(
+                                (
+                                    sum,
+                                    item
+                                ) =>
+                                    sum +
+                                    Number(
+                                        item.quantity || 0
+                                    ),
+                                0
+                            )
+                            : 0
+
+                })
+            );
+
+
+        renderSummary(
+            summary
+        );
+
+
+        renderLocalStats(
+            salesmanInvoices
+        );
+
+
+        // =====================================================
+        // UPDATE CURRENT SALESMAN BALANCE FROM LATEST INVOICE
+        // =====================================================
+
+        if (
+            currentSalesman &&
+            salesmanInvoices.length > 0
+        ) {
+
+            const latestInvoice =
+                salesmanInvoices[0];
+
+
+            const localBalance =
+                Number(
+                    latestInvoice.balance
+                ) || 0;
+
+
+            // Only use local invoice balance for the
+            // displayed balance if it exists.
+            //
+            // Backend remains authoritative after sync.
+
+            if (
+                Number.isFinite(
+                    localBalance
+                )
+            ) {
+
+                const outstandingElement =
+                    document.getElementById(
+                        "detOutstanding"
+                    );
+
+
+                if (
+                    outstandingElement
+                ) {
+
+                    outstandingElement.textContent =
+                        localBalance.toLocaleString(
+                            "en-PK"
+                        );
+
+                }
+
+            }
+
+        }
+
+    }
+    catch (error) {
+
+        console.error(
+            "Failed to build local invoice view:",
+            error
+        );
+
+    }
+
+}
+
+
+// =========================================================
+// RENDER SALESMAN
+// =========================================================
+
+function renderSalesman(
+    salesman
+) {
+
+    if (!salesman) {
+        return;
+    }
+
+
+    currentSalesman =
+        salesman;
+
+
+    const nameElement =
+        document.getElementById(
+            "detName"
+        );
+
+
+    if (nameElement) {
+
+        nameElement.innerHTML = `
+
+            ${salesman.name || "-"}
+
+            <span class="status-badge ${
+                salesman.status
+                    ? "active"
+                    : "inactive"
+            }">
+
+                <span class="dot"></span>
+
+                ${
+                    salesman.status
+                        ? "Active"
+                        : "Inactive"
+                }
+
+            </span>
+
+        `;
+
+    }
+
+
+    const subElement =
+        document.getElementById(
+            "detSub"
+        );
+
+
+    if (subElement) {
+
+        subElement.innerHTML = `
+
+            Salesman ID:
+            ${salesman.id || "-"}
+
+            &nbsp;·&nbsp;
+
+            Joined -
+            ${salesman.joinedDate || ""}
+
+        `;
+
+    }
+
+
+    const phoneElement =
+        document.getElementById(
+            "detPhone"
+        );
+
+
+    if (phoneElement) {
+
+        phoneElement.textContent =
+            salesman.phone || "-";
+
+    }
+
+
+    const addressElement =
+        document.getElementById(
+            "detAddress"
+        );
+
+
+    if (addressElement) {
+
+        addressElement.textContent =
+            salesman.address || "-";
+
+    }
+
+
+    const cnicElement =
+        document.getElementById(
+            "detCnic"
+        );
+
+
+    if (cnicElement) {
+
+        cnicElement.textContent =
+            salesman.cnic || "-";
+
+    }
+
+
+    const emailElement =
+        document.getElementById(
+            "detEmail"
+        );
+
+
+    if (emailElement) {
+
+        emailElement.textContent =
+            salesman.email || "-";
+
+    }
+
+
+    const whatsappElement =
+        document.getElementById(
+            "detWhatsapp"
+        );
+
+
+    if (whatsappElement) {
+
+        whatsappElement.textContent =
+            salesman.phone || "-";
+
+    }
+
+
+    const outstandingElement =
+        document.getElementById(
+            "detOutstanding"
+        );
+
+
+    if (outstandingElement) {
+
+        outstandingElement.textContent =
+            Number(
+                salesman.outstandingBalance ??
+                salesman.outStandingBalance ??
+                0
+            ).toLocaleString(
+                "en-PK"
+            );
+
+    }
+
+
+    const photoElement =
+        document.getElementById(
+            "detPhoto"
+        );
+
+
+    if (photoElement) {
+
+        photoElement.src =
+            salesman.photo ||
+            "images/default-user.png";
+
+    }
+
+}
+
+
+// =========================================================
+// RENDER LOCAL STATS
+// =========================================================
+
+function renderLocalStats(
+    invoices
+) {
+
+    const totalInvoices =
+        invoices.length;
+
+
+    const totalPayments =
+        invoices.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.cash || 0
+                ),
+            0
+        );
+
+
+    const todayInvoices =
+        invoices.filter(
+            invoice =>
+                isToday(
+                    invoice.date
+                )
+        );
+
+
+    const statElements =
+        document.querySelectorAll(
+            ".stat-num"
+        );
+
+
+    // =====================================================
+    // Today issued
+    // =====================================================
+
+    const todayIssuedElement =
+        document.getElementById(
+            "detTodayIssued"
+        );
+
+
+    if (todayIssuedElement) {
+
+        todayIssuedElement.textContent =
+            todayInvoices.length.toLocaleString(
+                "en-PK"
+            );
+
+    }
+
+
+    // =====================================================
+    // Total invoices
+    // =====================================================
+
+    if (
+        statElements[2]
+    ) {
+
+        statElements[2].textContent =
+            totalInvoices;
+
+    }
+
+
+    // =====================================================
+    // Total payments
+    // =====================================================
+
+    if (
+        statElements[3]
+    ) {
+
+        statElements[3].textContent =
+            totalPayments.toLocaleString(
+                "en-PK"
+            );
+
+    }
+
+}
+
+
+// =========================================================
+// ISSUE STOCK BUTTON
+// =========================================================
+
+document
+    .querySelector(".btn-issue")
+    ?.addEventListener(
+        "click",
+        () => {
+
+            window.location.href =
+                `issueStocks.html?salesman=${salesmanId}`;
+
+        }
+    );
+
+
+// =========================================================
+// FULLSCREEN / INVOICE PAGE
+// =========================================================
+
+document
+    .getElementById(
+        "fullscreenLink"
+    )
+    ?.addEventListener(
+        "click",
+        event => {
+
+            event.preventDefault();
+
+
+            window.location.href =
+                `invoice.html?salesman=${salesmanId}`;
+
+        }
+    );
+
+
+// =========================================================
+// NUMBER HELPER
+// =========================================================
+
+function formatNumber(
+    value
+) {
+
+    return Number(
+        value || 0
+    ).toLocaleString(
+        "en-PK"
+    );
+
+}
+
+
+// =========================================================
+// RENDER SUMMARY
+// =========================================================
+
+function renderSummary(
+    summary
+) {
+
+    currentSummary =
+        Array.isArray(
+            summary
+        )
+            ? summary
+            : [];
+
+
+    renderFilteredSummary(
+        currentSummary
+    );
+
+}
+
+
+// =========================================================
+// FILTERED SUMMARY
+// =========================================================
+
+function renderFilteredSummary(
+    summary
+) {
+
+    const tbody =
+        document.getElementById(
+            "summaryTbody"
+        );
+
+
+    if (!tbody) {
+        return;
+    }
+
+
+    tbody.innerHTML =
+        "";
+
+
+    if (
+        !summary ||
+        summary.length === 0
+    ) {
+
+        tbody.innerHTML = `
+
+            <tr>
+
+                <td colspan="9">
+                    No invoices found
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+
+    }
+
+
+    summary.forEach(
+        (
+            invoice,
+            index
+        ) => {
+
+            tbody.innerHTML += `
+
+                <tr
+                    class="invoice-row"
+                    data-id="${invoice.invoiceId}"
+                >
+
+                    <td>
+                        ${index + 1}
+                    </td>
+
+                    <td>
+                        ${
+                            new Date(
+                                invoice.date
+                            ).toLocaleDateString()
+                        }
+                    </td>
+
+                    <td>
+                        ${invoice.invoiceNo}
+                    </td>
+
+                    <td>
+                        Stock Issue
+                    </td>
+
+                    <td>
+                        ${invoice.totalQuantity}
+                    </td>
+
+                    <td>
+                        ${Number(
+                            invoice.amount || 0
+                        ).toLocaleString()}
+                    </td>
+
+                    <td>
+                        ${Number(
+                            invoice.commission || 0
+                        ).toLocaleString()}
+                    </td>
+
+                    <td>
+                        ${Number(
+                            invoice.cash || 0
+                        ).toLocaleString()}
+                    </td>
+
+                    <td>
+                        ${Number(
+                            invoice.balance || 0
+                        ).toLocaleString()}
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+    );
+
+}
+
+
+// =========================================================
+// RENDER INVOICE
+// =========================================================
+
+function renderInvoice(
+    invoice
+) {
+
+    if (!invoice) {
+        return;
+    }
+
+
+    selectedInvoice =
+        invoice;
+
+
+    const invoiceNumberElement =
+        document.getElementById(
+            "invNo"
+        );
+
+
+    if (invoiceNumberElement) {
+
+        invoiceNumberElement.textContent =
+            "Invoice No: " +
+            invoice.id;
+
+    }
+
+
+    const tbody =
+        document.getElementById(
+            "invoiceTbody"
+        );
+
+
+    if (!tbody) {
+        return;
+    }
+
+
+    tbody.innerHTML =
+        "";
+
+
+    if (
+        !Array.isArray(
+            invoice.items
+        )
+    ) {
+
+        return;
+
+    }
 
 
     invoice.items.forEach(
-        (item, index) => {
+        item => {
 
             const quantity =
                 Number(
@@ -455,14 +1192,286 @@ function openInvoiceEditPopup(invoice) {
 
 
             const returnQuantity =
-                Number(
-                    item.returnQuantity || 0
+                getReturnQuantity(
+                    item
                 );
 
 
             const net =
-                quantity -
-                returnQuantity;
+                Math.max(
+                    quantity -
+                    returnQuantity,
+                    0
+                );
+
+
+            const amount =
+                net *
+                Number(
+                    item.price || 0
+                );
+
+
+            tbody.innerHTML += `
+
+                <tr>
+
+                    <td>
+                        ${item.productName || ""}
+                    </td>
+
+                    <td>
+                        Issue
+                    </td>
+
+                    <td>
+                        ${Number(
+                            item.price || 0
+                        ).toLocaleString()}
+                    </td>
+
+                    <td>
+                        ${quantity}
+                    </td>
+
+                    <td>
+                        ${returnQuantity}
+                    </td>
+
+                    <td>
+                        ${net}
+                    </td>
+
+                    <td>
+                        ${amount.toLocaleString()}
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+    );
+
+
+    setText(
+        "subTotal",
+        Number(
+            invoice.subtotal || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "commision",
+        Number(
+            invoice.commission || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "Discount",
+        Number(
+            invoice.discount || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "NetTotal",
+        Number(
+            invoice.netTotal || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "Cash",
+        Number(
+            invoice.cash || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "currentBill",
+        (
+            Number(
+                invoice.netTotal || 0
+            ) -
+            Number(
+                invoice.cash || 0
+            )
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "Arrears",
+        Number(
+            invoice.arrears || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "balance",
+        Number(
+            invoice.balance || 0
+        ).toLocaleString()
+    );
+
+
+    setText(
+        "comissionPercentage",
+        (
+            Number(
+                invoice.dynamicComission || 0
+            ) * 100
+        )
+    );
+
+}
+
+
+// =========================================================
+// SET TEXT HELPER
+// =========================================================
+
+function setText(
+    id,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (element) {
+
+        element.textContent =
+            value;
+
+    }
+
+}
+
+
+// =========================================================
+// OPEN INVOICE EDIT POPUP
+// =========================================================
+
+function openInvoiceEditPopup(
+    invoice
+) {
+
+    editingInvoice =
+        structuredClone(
+            invoice
+        );
+
+
+    // =====================================================
+    // Invoice information
+    // =====================================================
+
+    const info =
+        document.getElementById(
+            "editInvoiceInfo"
+        );
+
+
+    if (info) {
+
+        info.innerHTML = `
+
+            <div>
+
+                <strong>
+                    Invoice:
+                </strong>
+
+                ${invoice.id}
+
+            </div>
+
+
+            <div>
+
+                <strong>
+                    Salesman:
+                </strong>
+
+                ${invoice.partyName || ""}
+
+            </div>
+
+
+            <div>
+
+                <strong>
+                    Date:
+                </strong>
+
+                ${
+                    new Date(
+                        invoice.date
+                    ).toLocaleDateString()
+                }
+
+            </div>
+
+        `;
+
+    }
+
+
+    // =====================================================
+    // Product rows
+    // =====================================================
+
+    const tbody =
+        document.getElementById(
+            "editInvoiceTbody"
+        );
+
+
+    if (!tbody) {
+        return;
+    }
+
+
+    tbody.innerHTML =
+        "";
+
+
+    invoice.items.forEach(
+        (
+            item,
+            index
+        ) => {
+
+            const quantity =
+                Number(
+                    item.quantity || 0
+                );
+
+
+            const returnQuantity =
+                getReturnQuantity(
+                    item
+                );
+
+
+            const net =
+                Math.max(
+                    quantity -
+                    returnQuantity,
+                    0
+                );
 
 
             const amount =
@@ -475,10 +1484,11 @@ function openInvoiceEditPopup(invoice) {
             tbody.innerHTML += `
 
                 <tr
-                    data-index="${index}">
+                    data-index="${index}"
+                >
 
                     <td>
-                        ${item.productName}
+                        ${item.productName || ""}
                     </td>
 
                     <td>
@@ -519,42 +1529,82 @@ function openInvoiceEditPopup(invoice) {
     );
 
 
-    // =====================================
+    // =====================================================
     // Cash
-    // =====================================
+    // =====================================================
 
-    document.getElementById(
-        "editCash"
-    ).value =
-        Number(
-            invoice.cash || 0
+    const cashElement =
+        document.getElementById(
+            "editCash"
         );
-        document.getElementById('editingComission').textContent=invoice.dynamicComission*100;
 
-    // =====================================
+
+    if (cashElement) {
+
+        cashElement.value =
+            Number(
+                invoice.cash || 0
+            );
+
+    }
+
+
+    setText(
+        "editingComission",
+        (
+            Number(
+                invoice.dynamicComission || 0
+            ) * 100
+        )
+    );
+
+
+    // =====================================================
     // Calculate
-    // =====================================
+    // =====================================================
 
-    updateEditInvoiceTotals(invoice);
+    updateEditInvoiceTotals(
+        editingInvoice
+    );
 
 
-    // =====================================
-    // Show popup
-    // =====================================
+    // =====================================================
+    // Show modal
+    // =====================================================
 
-    document.getElementById(
-        "invoiceEditModal"
-    ).classList.add("show");
+    const modal =
+        document.getElementById(
+            "invoiceEditModal"
+        );
+
+
+    if (modal) {
+
+        modal.classList.add(
+            "show"
+        );
+
+    }
 
 }
 
-function updateEditInvoiceTotals(invoice) {
 
-    if (!editingInvoice) return;
+// =========================================================
+// UPDATE EDIT INVOICE TOTALS
+// =========================================================
+
+function updateEditInvoiceTotals(
+    invoice = editingInvoice
+) {
+
+    if (!editingInvoice) {
+        return;
+    }
 
 
     let subtotal = 0;
-    let nonCommissionableAmount = 0; // NEW
+
+    let nonCommissionableAmount = 0;
 
 
     const rows =
@@ -564,10 +1614,18 @@ function updateEditInvoiceTotals(invoice) {
 
 
     rows.forEach(
-        (row, index) => {
+        (
+            row,
+            index
+        ) => {
 
             const item =
                 editingInvoice.items[index];
+
+
+            if (!item) {
+                return;
+            }
 
 
             const quantity =
@@ -580,19 +1638,20 @@ function updateEditInvoiceTotals(invoice) {
                 Number(
                     row.querySelector(
                         ".return-input"
-                    ).value || 0
+                    )?.value || 0
                 );
 
 
-            // Cannot be negative
-            if (returnQuantity < 0) {
+            if (
+                returnQuantity < 0
+            ) {
 
-                returnQuantity = 0;
+                returnQuantity =
+                    0;
 
             }
 
 
-            // Cannot return more than sold
             if (
                 returnQuantity >
                 quantity
@@ -605,8 +1664,11 @@ function updateEditInvoiceTotals(invoice) {
 
 
             const net =
-                quantity -
-                returnQuantity;
+                Math.max(
+                    quantity -
+                    returnQuantity,
+                    0
+                );
 
 
             const amount =
@@ -616,48 +1678,84 @@ function updateEditInvoiceTotals(invoice) {
                 );
 
 
-            row.querySelector(
-                ".return-input"
-            ).value =
-                returnQuantity;
+            const returnInput =
+                row.querySelector(
+                    ".return-input"
+                );
 
 
-            row.querySelector(
-                ".edit-net"
-            ).textContent =
-                net;
+            if (returnInput) {
+
+                returnInput.value =
+                    returnQuantity;
+
+            }
 
 
-            row.querySelector(
-                ".edit-amount"
-            ).textContent =
-                amount.toLocaleString();
+            const netElement =
+                row.querySelector(
+                    ".edit-net"
+                );
 
 
-            subtotal += amount;
+            if (netElement) {
 
-            // NEW: exclude products with commissionApplicable === "no"
-            if (item.commissionApplicable === "no") {
-                nonCommissionableAmount += amount;
+                netElement.textContent =
+                    net;
+
+            }
+
+
+            const amountElement =
+                row.querySelector(
+                    ".edit-amount"
+                );
+
+
+            if (amountElement) {
+
+                amountElement.textContent =
+                    amount.toLocaleString();
+
+            }
+
+
+            subtotal +=
+                amount;
+
+
+            if (
+                item.commissionApplicable ===
+                "no"
+            ) {
+
+                nonCommissionableAmount +=
+                    amount;
+
             }
 
         }
     );
 
 
-    /*
-     * Use your existing invoice
-     * commission formula here.
-     *
-     * Your current invoice uses 20%.
-     */
-
-    // CHANGED: only apply 20% to commissionable amount
     const commissionableAmount =
-        Math.max(subtotal - nonCommissionableAmount, 0);
-console.log('cinvoie:', invoice);
+        Math.max(
+            subtotal -
+            nonCommissionableAmount,
+            0
+        );
+
+
+    const dynamicCommission =
+        Number(
+            editingInvoice.dynamicComission ||
+            0
+        );
+
+
     const commission =
-        commissionableAmount * invoice.dynamicComission;
+        commissionableAmount *
+        dynamicCommission;
 
 
     const discount =
@@ -676,7 +1774,7 @@ console.log('cinvoie:', invoice);
         Number(
             document.getElementById(
                 "editCash"
-            ).value || 0
+            )?.value || 0
         );
 
 
@@ -696,239 +1794,453 @@ console.log('cinvoie:', invoice);
         arrears;
 
 
-    // =====================================
+    // =====================================================
     // Display
-    // =====================================
+    // =====================================================
 
-    document.getElementById(
-        "editSubtotal"
-    ).textContent =
-        subtotal.toLocaleString();
-
-
-    document.getElementById(
-        "editCommission"
-    ).textContent =
-        commission.toLocaleString();
+    setText(
+        "editSubtotal",
+        subtotal.toLocaleString()
+    );
 
 
-    document.getElementById(
-        "editDiscount"
-    ).textContent =
-        discount.toLocaleString();
+    setText(
+        "editCommission",
+        commission.toLocaleString()
+    );
 
 
-    document.getElementById(
-        "editNetTotal"
-    ).textContent =
-        netTotal.toLocaleString();
+    setText(
+        "editDiscount",
+        discount.toLocaleString()
+    );
 
 
-    document.getElementById(
-        "editCurrentBill"
-    ).textContent =
-        currentBill.toLocaleString();
+    setText(
+        "editNetTotal",
+        netTotal.toLocaleString()
+    );
 
 
-    document.getElementById(
-        "editArrears"
-    ).textContent =
-        arrears.toLocaleString();
+    setText(
+        "editCurrentBill",
+        currentBill.toLocaleString()
+    );
 
 
-    document.getElementById(
-        "editBalance"
-    ).textContent =
-        balance.toLocaleString();
+    setText(
+        "editArrears",
+        arrears.toLocaleString()
+    );
+
+
+    setText(
+        "editBalance",
+        balance.toLocaleString()
+    );
 
 }
 
+
+// =========================================================
+// EDIT TABLE INPUT
+// =========================================================
+
 document
-.getElementById("editInvoiceTbody")
-.addEventListener(
-    "input",
-    (e) => {
+    .getElementById(
+        "editInvoiceTbody"
+    )
+    ?.addEventListener(
+        "input",
+        event => {
 
-        if (
-            e.target.classList.contains(
-                "return-input"
-            )
-        ) {
+            if (
+                event.target.classList.contains(
+                    "return-input"
+                )
+            ) {
 
-            updateEditInvoiceTotals(finalInvoice);
+                updateEditInvoiceTotals(
+                    editingInvoice
+                );
+
+            }
 
         }
+    );
 
-    }
-);
 
-document
-.getElementById("editCash")
-.addEventListener(
-    "input",
-    () => {
-
-        updateEditInvoiceTotals();
-
-    }
-);
+// =========================================================
+// EDIT CASH INPUT
+// =========================================================
 
 document
-.getElementById("summaryTbody")
-.addEventListener("click", async (e) => {
+    .getElementById(
+        "editCash"
+    )
+    ?.addEventListener(
+        "input",
+        () => {
 
-    const row =
-        e.target.closest(".invoice-row");
+            updateEditInvoiceTotals(
+                editingInvoice
+            );
 
-    if (!row) return;
-
-
-    const invoiceId =
-        Number(row.dataset.id);
+        }
+    );
 
 
-    try {
+// =========================================================
+// SUMMARY ROW CLICK
+// =========================================================
 
-        // =====================================
-        // 1. Fetch clicked invoice
-        // =====================================
+document
+    .getElementById(
+        "summaryTbody"
+    )
+    ?.addEventListener(
+        "click",
+        async event => {
 
-        const response =
-            await fetch(
-                `${API}/invoice/${invoiceId}`,
-                {
-                    credentials:'include'
+            const row =
+                event.target.closest(
+                    ".invoice-row"
+                );
+
+
+            if (!row) {
+                return;
+            }
+
+
+            const invoiceId =
+                Number(
+                    row.dataset.id
+                );
+
+
+            try {
+
+                // =================================================
+                // READ INVOICE FROM INDEXEDDB
+                // =================================================
+
+                const allInvoices =
+                    await getAllFromOfflineDB(
+                        "invoices"
+                    );
+
+
+                const invoice =
+                    allInvoices.find(
+                        item =>
+                            Number(
+                                item.id
+                            ) ===
+                            invoiceId
+                    );
+
+
+                if (!invoice) {
+
+                    alert(
+                        "Invoice is not available locally."
+                    );
+
+                    return;
+
                 }
-            );
 
 
-        if (!response.ok) {
-
-            throw new Error(
-                "Invoice not found"
-            );
-
-        }
+                console.log(
+                    "Selected local invoice:",
+                    invoice
+                );
 
 
-        const invoice =
-            await response.json();
+                // =================================================
+                // DISPLAY
+                // =================================================
+
+                renderInvoice(
+                    invoice
+                );
 
 
-        console.log(
-            "Selected invoice:",
-            invoice
-        );
+                // =================================================
+                // DETERMINE LATEST LOCALLY
+                // =================================================
+
+                const salesmanInvoices =
+                    allInvoices
+                        .filter(
+                            item =>
+                                item.type ===
+                                    "salesman" &&
+
+                                Number(
+                                    item.partyId
+                                ) ===
+                                Number(
+                                    salesmanId
+                                )
+                        )
+                        .sort(
+                            (a, b) => {
+
+                                const dateDifference =
+                                    new Date(b.date) -
+                                    new Date(a.date);
 
 
-        // =====================================
-        // 2. Display invoice normally
-        // =====================================
+                                if (
+                                    dateDifference !==
+                                    0
+                                ) {
 
-        renderInvoice(invoice);
+                                    return dateDifference;
+
+                                }
 
 
-        // =====================================
-        // 3. Check latest invoice
-        // =====================================
+                                return (
+                                    Number(b.id) -
+                                    Number(a.id)
+                                );
 
-        const latestResponse =
-            await fetch(
-                `${API}/salesman/${salesmanId}/latest-invoice`,
-                {
-                    credentials:'include'
+                            }
+                        );
+
+
+                const latestInvoice =
+                    salesmanInvoices[0] ||
+                    null;
+
+
+                console.log(
+                    "Latest local invoice:",
+                    latestInvoice
+                );
+
+
+                // =================================================
+                // ONLY LATEST EDITABLE
+                // =================================================
+
+                if (
+                    latestInvoice &&
+                    Number(
+                        invoice.id
+                    ) ===
+                    Number(
+                        latestInvoice.id
+                    )
+                ) {
+
+                    openInvoiceEditPopup(
+                        invoice
+                    );
+
                 }
-            );
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Invoice selection error:",
+                    error
+                );
 
 
-        if (!latestResponse.ok) {
+                alert(
+                    "Unable to load invoice."
+                );
 
-            throw new Error(
-                "Could not determine latest invoice"
-            );
-
-        }
-
-
-        const latestInvoice =
-            await latestResponse.json();
-
-        finalInvoice=latestInvoice;
-        console.log(
-            "Latest invoice:",
-            latestInvoice
-        );
-
-
-        // =====================================
-        // 4. Only latest invoice is editable
-        // =====================================
-
-        if (
-            Number(invoice.id) ===
-            Number(latestInvoice.id)
-        ) {
-
-            openInvoiceEditPopup(invoice);
+            }
 
         }
+    );
 
-    }
-    catch (error) {
 
-        console.error(error);
+// =========================================================
+// PRINT REAL INVOICE
+// =========================================================
 
-        alert(
-            "Unable to load invoice."
+function printRealInvoice(
+    invoice
+) {
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=900,height=1000"
         );
 
-    }
-
-});
-function printRealInvoice(invoice) {
-
-    const printWindow = window.open("", "_blank", "width=900,height=1000");
 
     if (!printWindow) {
-        alert("Please allow popups to print the invoice.");
+
+        alert(
+            "Please allow popups to print the invoice."
+        );
+
         return;
+
     }
 
-    const invoiceDate = new Date(invoice.date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
 
-    const itemsRows = invoice.items.map((item, index) => {
+    const invoiceDate =
+        new Date(
+            invoice.date
+        ).toLocaleDateString(
+            "en-GB",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
 
-        const net = item.quantity - (item.returnedQuantity || 0);
 
-        return `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${item.productName}</td>
-                <td>${Number(item.price).toLocaleString()}</td>
-                <td>${item.quantity}</td>
-                <td>${item.returnedQuantity || 0}</td>
-                <td>${net}</td>
-                <td>${Number(item.amount).toLocaleString()}</td>
-            </tr>
-        `;
+    const itemsRows =
+        invoice.items
+            .map(
+                (
+                    item,
+                    index
+                ) => {
 
-    }).join("");
+                    const quantity =
+                        Number(
+                            item.quantity || 0
+                        );
+
+
+                    const returned =
+                        getReturnQuantity(
+                            item
+                        );
+
+
+                    const net =
+                        Math.max(
+                            quantity -
+                            returned,
+                            0
+                        );
+
+
+                    const amount =
+                        net *
+                        Number(
+                            item.price || 0
+                        );
+
+
+                    return `
+
+                        <tr>
+
+                            <td>
+                                ${index + 1}
+                            </td>
+
+                            <td>
+                                ${item.productName || ""}
+                            </td>
+
+                            <td>
+                                ${Number(
+                                    item.price || 0
+                                ).toLocaleString()}
+                            </td>
+
+                            <td>
+                                ${quantity}
+                            </td>
+
+                            <td>
+                                ${returned}
+                            </td>
+
+                            <td>
+                                ${net}
+                            </td>
+
+                            <td>
+                                ${amount.toLocaleString()}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
+
+
+    const totalQuantity =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Number(
+                    item.quantity || 0
+                ),
+            0
+        );
+
+
+    const totalReturn =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                getReturnQuantity(
+                    item
+                ),
+            0
+        );
+
+
+    const totalNet =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Math.max(
+                    Number(
+                        item.quantity || 0
+                    ) -
+                    getReturnQuantity(
+                        item
+                    ),
+                    0
+                ),
+            0
+        );
 
 
     printWindow.document.write(`
 
 <!DOCTYPE html>
+
 <html>
 
 <head>
 
 <meta charset="UTF-8">
 
-<title>Invoice ${invoice.id}</title>
+<title>
+    Invoice ${invoice.id}
+</title>
 
 <style>
 
@@ -956,8 +2268,6 @@ body {
     margin: auto;
 }
 
-/* ================= HEADER ================= */
-
 .header {
     text-align: center;
     margin-bottom: 10px;
@@ -981,8 +2291,6 @@ body {
     margin-top: 10px;
 }
 
-/* ================= CUSTOMER INFO ================= */
-
 .info-table {
     width: 100%;
     border-collapse: collapse;
@@ -1003,8 +2311,6 @@ body {
 .info-value {
     width: 32%;
 }
-
-/* ================= ITEMS ================= */
 
 .items-table {
     width: 100%;
@@ -1028,13 +2334,9 @@ body {
     text-align: left;
 }
 
-/* ================= SUBTOTAL ================= */
-
 .subtotal-row td {
     font-weight: bold;
 }
-
-/* ================= TOTALS ================= */
 
 .totals-container {
     display: flex;
@@ -1068,8 +2370,6 @@ body {
     border-top: 2px solid #000;
 }
 
-/* ================= SIGNATURES ================= */
-
 .signatures {
     display: flex;
     justify-content: space-between;
@@ -1096,8 +2396,6 @@ body {
     font-size: 10px;
 }
 
-/* ================= PRINT ================= */
-
 @media print {
 
     body {
@@ -1114,12 +2412,9 @@ body {
 
 </head>
 
-
 <body>
 
 <div class="invoice">
-
-    <!-- ================= HEADER ================= -->
 
     <div class="header">
 
@@ -1128,12 +2423,21 @@ body {
         </div>
 
         <div class="company-address">
+
             Head Office: New Ring Road Near Madni Colony Back side Zantara Town Peshawar
+
             <br>
-            Tel # 091-2601784 &nbsp;&nbsp;
+
+            Tel # 091-2601784
+
+            &nbsp;&nbsp;
+
             Mobile # 0345-9101300 / 0317-1234570
+
             <br>
+
             Peshawar Pakistan
+
         </div>
 
         <div class="invoice-title">
@@ -1142,8 +2446,6 @@ body {
 
     </div>
 
-
-    <!-- ================= SALESMAN INFO ================= -->
 
     <table class="info-table">
 
@@ -1154,7 +2456,7 @@ body {
             </td>
 
             <td class="info-value">
-                ${invoice.partyName}
+                ${invoice.partyName || ""}
             </td>
 
             <td class="info-label">
@@ -1190,8 +2492,6 @@ body {
 
     </table>
 
-
-    <!-- ================= ITEMS ================= -->
 
     <table class="items-table">
 
@@ -1230,31 +2530,21 @@ body {
                 </td>
 
                 <td>
-                    ${invoice.items.reduce(
-                        (total, item) => total + Number(item.quantity || 0),
-                        0
-                    )}
+                    ${totalQuantity}
                 </td>
 
                 <td>
-                    ${invoice.items.reduce(
-                        (total, item) => total + Number(item.returnedQuantity || 0),
-                        0
-                    )}
+                    ${totalReturn}
                 </td>
 
                 <td>
-                    ${invoice.items.reduce(
-                        (total, item) =>
-                            total +
-                            Number(item.quantity || 0) -
-                            Number(item.returnedQuantity || 0),
-                        0
-                    )}
+                    ${totalNet}
                 </td>
 
                 <td>
-                    ${Number(invoice.subtotal).toLocaleString()}
+                    ${Number(
+                        invoice.subtotal || 0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1264,100 +2554,107 @@ body {
     </table>
 
 
-    <!-- ================= TOTALS ================= -->
-
     <div class="totals-container">
 
         <table class="totals-table">
 
             <tr>
-
                 <td>
                     Sub Total
                 </td>
 
                 <td>
-                    ${Number(invoice.subtotal).toLocaleString()}
+                    ${Number(
+                        invoice.subtotal || 0
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
             <tr>
-
                 <td>
-                    Commission ${invoice.dynamicComission*100}%
+                    Commission ${
+                        Number(
+                            invoice.dynamicComission || 0
+                        ) * 100
+                    }%
                 </td>
 
                 <td>
-                    ${Number(invoice.commission).toLocaleString()}
+                    ${Number(
+                        invoice.commission || 0
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
             <tr>
-
                 <td>
                     Discount
                 </td>
 
                 <td>
-                    ${Number(invoice.discount).toLocaleString()}
+                    ${Number(
+                        invoice.discount || 0
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
             <tr>
-
                 <td>
                     Net Total
                 </td>
 
                 <td>
-                    ${Number(invoice.netTotal).toLocaleString()}
+                    ${Number(
+                        invoice.netTotal || 0
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
             <tr>
-
                 <td>
                     Cash
                 </td>
 
                 <td>
-                    ${Number(invoice.cash).toLocaleString()}
+                    ${Number(
+                        invoice.cash || 0
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
             <tr>
-
                 <td>
                     Current Bill
                 </td>
 
                 <td>
-                    ${Number(invoice.netTotal-invoice.cash).toLocaleString()}
+                    ${(
+                        Number(
+                            invoice.netTotal || 0
+                        ) -
+                        Number(
+                            invoice.cash || 0
+                        )
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
             <tr>
-
                 <td>
                     Arrears
                 </td>
 
                 <td>
-                    ${Number(invoice.arrears).toLocaleString()}
+                    ${Number(
+                        invoice.arrears || 0
+                    ).toLocaleString()}
                 </td>
-
             </tr>
 
 
@@ -1368,7 +2665,9 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.balance).toLocaleString()}
+                    ${Number(
+                        invoice.balance || 0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1377,8 +2676,6 @@ body {
 
     </div>
 
-
-    <!-- ================= SIGNATURES ================= -->
 
     <div class="signatures">
 
@@ -1439,19 +2736,14 @@ body {
 <script>
 
 window.onload = function() {
-
     window.print();
-
 };
 
 window.onafterprint = function() {
-
     window.close();
-
 };
 
 <\/script>
-
 
 </body>
 
@@ -1464,77 +2756,194 @@ window.onafterprint = function() {
 
 }
 
-function printThermalInvoice(invoice) {
 
-    const printWindow = window.open(
-        "",
-        "_blank",
-        "width=400,height=800"
+// =========================================================
+// PRINT INVOICE BUTTON
+// =========================================================
+
+document
+    .getElementById(
+        "printInvoiceBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            if (!selectedInvoice) {
+
+                alert(
+                    "Please select an invoice first."
+                );
+
+                return;
+
+            }
+
+
+            printRealInvoice(
+                selectedInvoice
+            );
+
+        }
     );
+
+
+// =========================================================
+// PRINT THERMAL INVOICE
+// =========================================================
+
+function printThermalInvoice(
+    invoice
+) {
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=400,height=800"
+        );
+
 
     if (!printWindow) {
-        alert("Please allow popups to print the invoice.");
+
+        alert(
+            "Please allow popups to print the invoice."
+        );
+
         return;
+
     }
 
-    const invoiceDate = new Date(invoice.date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
 
-    const totalQty = invoice.items.reduce(
-        (total, item) => total + Number(item.quantity || 0),
-        0
-    );
+    const invoiceDate =
+        new Date(
+            invoice.date
+        ).toLocaleDateString(
+            "en-GB",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
 
-    const totalReturn = invoice.items.reduce(
-        (total, item) => total + Number(item.returnedQuantity || 0),
-        0
-    );
 
-    const totalNet = invoice.items.reduce(
-        (total, item) =>
-            total +
-            Number(item.quantity || 0) -
-            Number(item.returnedQuantity || 0),
-        0
-    );
+    const totalQty =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Number(
+                    item.quantity || 0
+                ),
+            0
+        );
 
-    const itemsRows = invoice.items.map((item, index) => {
 
-        const quantity =
-            Number(item.quantity || 0);
+    const totalReturn =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                getReturnQuantity(
+                    item
+                ),
+            0
+        );
 
-        const returned =
-            Number(item.returnedQuantity || 0);
 
-        const net =
-            Math.max(quantity - returned, 0);
+    const totalNet =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Math.max(
+                    Number(
+                        item.quantity || 0
+                    ) -
+                    getReturnQuantity(
+                        item
+                    ),
+                    0
+                ),
+            0
+        );
 
-        return `
-            <tr>
-                <td class="no">${index + 1}</td>
 
-                <td class="product">
-                    ${item.productName}
-                </td>
+    const itemsRows =
+        invoice.items
+            .map(
+                (
+                    item,
+                    index
+                ) => {
 
-                <td class="qty">
-                    ${quantity}
-                </td>
+                    const quantity =
+                        Number(
+                            item.quantity || 0
+                        );
 
-                <td class="price">
-                    ${Number(item.price).toLocaleString()}
-                </td>
 
-                <td class="amount">
-                    ${Number(item.amount).toLocaleString()}
-                </td>
-            </tr>
-        `;
+                    const returned =
+                        getReturnQuantity(
+                            item
+                        );
 
-    }).join("");
+
+                    const net =
+                        Math.max(
+                            quantity -
+                            returned,
+                            0
+                        );
+
+
+                    const amount =
+                        net *
+                        Number(
+                            item.price || 0
+                        );
+
+
+                    return `
+
+                        <tr>
+
+                            <td class="no">
+                                ${index + 1}
+                            </td>
+
+                            <td class="product">
+                                ${item.productName || ""}
+                            </td>
+
+                            <td class="qty">
+                                ${quantity}
+                            </td>
+
+                            <td class="price">
+                                ${Number(
+                                    item.price || 0
+                                ).toLocaleString()}
+                            </td>
+
+                            <td class="amount">
+                                ${amount.toLocaleString()}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
 
 
     printWindow.document.write(`
@@ -1547,7 +2956,9 @@ function printThermalInvoice(invoice) {
 
 <meta charset="UTF-8">
 
-<title>Thermal Invoice ${invoice.id}</title>
+<title>
+    Thermal Invoice ${invoice.id}
+</title>
 
 <style>
 
@@ -1594,9 +3005,6 @@ body {
 
 }
 
-
-/* ================= HEADER ================= */
-
 .header {
 
     text-align: center;
@@ -1639,9 +3047,6 @@ body {
 
 }
 
-
-/* ================= INFO ================= */
-
 .info {
 
     margin-top: 7px;
@@ -1667,9 +3072,6 @@ body {
     font-weight: bold;
 
 }
-
-
-/* ================= ITEMS ================= */
 
 .items-table {
 
@@ -1745,9 +3147,6 @@ body {
 
 }
 
-
-/* ================= SUBTOTAL ================= */
-
 .subtotal {
 
     border-top: 1px dashed #000;
@@ -1769,9 +3168,6 @@ body {
     margin-bottom: 2px;
 
 }
-
-
-/* ================= TOTALS ================= */
 
 .totals {
 
@@ -1817,9 +3213,6 @@ body {
 
 }
 
-
-/* ================= FOOTER ================= */
-
 .footer {
 
     text-align: center;
@@ -1844,21 +3237,14 @@ body {
 
 }
 
-
-/* ================= PRINT ================= */
-
 @media print {
 
     body {
-
         width: 80mm;
-
     }
 
     .receipt {
-
         width: 72mm;
-
     }
 
 }
@@ -1867,13 +3253,9 @@ body {
 
 </head>
 
-
 <body>
 
 <div class="receipt">
-
-
-    <!-- HEADER -->
 
     <div class="header">
 
@@ -1902,8 +3284,6 @@ body {
 
     </div>
 
-
-    <!-- SALESMAN INFO -->
 
     <div class="info">
 
@@ -1940,7 +3320,7 @@ body {
             </span>
 
             <span>
-                ${invoice.partyName}
+                ${invoice.partyName || ""}
             </span>
 
         </div>
@@ -1960,8 +3340,6 @@ body {
 
     </div>
 
-
-    <!-- ITEMS -->
 
     <table class="items-table">
 
@@ -2002,8 +3380,6 @@ body {
 
     </table>
 
-
-    <!-- SUBTOTAL -->
 
     <div class="subtotal">
 
@@ -2048,10 +3424,7 @@ body {
     </div>
 
 
-    <!-- TOTALS -->
-
     <div class="totals">
-
 
         <div class="total-row">
 
@@ -2060,7 +3433,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.subtotal).toLocaleString()}
+                Rs. ${Number(
+                    invoice.subtotal || 0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2069,11 +3444,17 @@ body {
         <div class="total-row">
 
             <span class="total-label">
-                Commission 20%
+                Commission ${
+                    Number(
+                        invoice.dynamicComission || 0
+                    ) * 100
+                }%
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.commission).toLocaleString()}
+                Rs. ${Number(
+                    invoice.commission || 0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2086,7 +3467,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.discount).toLocaleString()}
+                Rs. ${Number(
+                    invoice.discount || 0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2099,7 +3482,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.netTotal).toLocaleString()}
+                Rs. ${Number(
+                    invoice.netTotal || 0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2112,7 +3497,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.cash).toLocaleString()}
+                Rs. ${Number(
+                    invoice.cash || 0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2125,7 +3512,14 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.currentBill).toLocaleString()}
+                Rs. ${(
+                    Number(
+                        invoice.netTotal || 0
+                    ) -
+                    Number(
+                        invoice.cash || 0
+                    )
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2138,7 +3532,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.arrears).toLocaleString()}
+                Rs. ${Number(
+                    invoice.arrears || 0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2151,15 +3547,15 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.balance).toLocaleString()}
+                Rs. ${Number(
+                    invoice.balance || 0
+                ).toLocaleString()}
             </span>
 
         </div>
 
     </div>
 
-
-    <!-- FOOTER -->
 
     <div class="footer">
 
@@ -2175,306 +3571,334 @@ body {
 
     </div>
 
-
 </div>
 
 
 <script>
 
 window.onload = function() {
-
     window.print();
-
 };
 
 window.onafterprint = function() {
-
     window.close();
-
 };
 
 <\/script>
-
 
 </body>
 
 </html>
 
     `);
-    }
-    
-    document
-    .getElementById("printInvoiceBtn")
-    .addEventListener("click", () => {
-
-        if (!selectedInvoice) {
-            alert("Please select an invoice first.");
-            return;
-        }
-
-        printRealInvoice(selectedInvoice);
-
-    });
-    document
-    .getElementById("summaryDateSearch")
-    .addEventListener("change", filterSummary);
-
-    document
-    .getElementById("summaryInvoiceSearch")
-    .addEventListener("input", filterSummary);
-    function filterSummary() {
-
-    const dateValue =
-        document.getElementById("summaryDateSearch").value;
-
-    const invoiceValue =
-        document
-            .getElementById("summaryInvoiceSearch")
-            .value
-            .trim()
-            .toLowerCase();
 
 
-    const filtered = currentSummary.filter(invoice => {
+    printWindow.document.close();
 
-        // =========================
-        // DATE FILTER
-        // =========================
-
-        let dateMatch = true;
-
-        if (dateValue) {
-
-            const invoiceDate =
-                new Date(invoice.date);
-
-            const year =
-                invoiceDate.getFullYear();
-
-            const month =
-                String(invoiceDate.getMonth() + 1)
-                    .padStart(2, "0");
-
-            const day =
-                String(invoiceDate.getDate())
-                    .padStart(2, "0");
-
-            const formattedDate =
-                `${year}-${month}-${day}`;
-
-            dateMatch =
-                formattedDate === dateValue;
-        }
-
-
-        // =========================
-        // INVOICE NUMBER FILTER
-        // =========================
-
-        let invoiceMatch = true;
-
-        if (invoiceValue) {
-
-            invoiceMatch =
-                String(invoice.invoiceNo)
-                    .toLowerCase()
-                    .includes(invoiceValue);
-        }
-
-
-        // BOTH CONDITIONS MUST MATCH
-
-        return dateMatch && invoiceMatch;
-
-    });
-
-
-    renderFilteredSummary(filtered);
 }
+
+
+// =========================================================
+// PRINT SUMMARY
+// =========================================================
 
 function printSalesmanSummary() {
 
     if (!currentSalesman) {
-        alert("Salesman information is not loaded.");
+
+        alert(
+            "Salesman information is not loaded."
+        );
+
         return;
+
     }
 
-    if (!currentSummary || currentSummary.length === 0) {
-        alert("No summary records found.");
+
+    if (
+        !currentSummary ||
+        currentSummary.length === 0
+    ) {
+
+        alert(
+            "No summary records found."
+        );
+
         return;
+
     }
 
-    const printWindow = window.open(
-        "",
-        "_blank",
-        "width=1200,height=900"
-    );
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=1200,height=900"
+        );
+
 
     if (!printWindow) {
-        alert("Please allow popups to print the summary.");
+
+        alert(
+            "Please allow popups to print the summary."
+        );
+
         return;
+
     }
 
+
     const salesmanName =
-        currentSalesman.name || "-";
+        currentSalesman.name ||
+        "-";
 
-    const salesmanId =
-        currentSalesman.id || "-";
 
-    /*
-     * Opening balance.
-     *
-     * If your backend sends openingBalance, it will be used.
-     * Otherwise we calculate it from the first transaction.
-     */
+    const currentSalesmanId =
+        currentSalesman.id ||
+        "-";
+
+
+    // =====================================================
+    // OPENING BALANCE
+    // =====================================================
+
     let openingBalance =
-        Number(currentSalesman.openingBalance ?? 0);
+        Number(
+            currentSalesman.openingBalance ??
+            0
+        );
+
 
     if (
         !currentSalesman.openingBalance &&
         currentSummary.length > 0
     ) {
 
-        const first = currentSummary[0];
+        const first =
+            [...currentSummary]
+                .sort(
+                    (a, b) =>
+                        new Date(a.date) -
+                        new Date(b.date)
+                )[0];
+
 
         openingBalance =
-            Number(first.balance || 0)
-            - Number(first.amount || 0)
-            + Number(first.commission || 0)
-            + Number(first.cash || 0);
+            Number(
+                first.balance || 0
+            ) -
+            Number(
+                first.amount || 0
+            ) +
+            Number(
+                first.commission || 0
+            ) +
+            Number(
+                first.cash || 0
+            );
+
     }
 
 
-    /*
-     * Create table rows
-     */
-  const sortedSummary = [...currentSummary].sort((a, b) => {
-    return new Date(a.date) - new Date(b.date);
-});
+    // =====================================================
+    // SORT
+    // =====================================================
 
-const rows = sortedSummary.map((invoice, index) => {
+    const sortedSummary =
+        [...currentSummary]
+            .sort(
+                (a, b) =>
+                    new Date(a.date) -
+                    new Date(b.date)
+            );
 
-        const date = invoice.date
-            ? new Date(invoice.date).toLocaleDateString(
-                "en-GB",
-                {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric"
+
+    // =====================================================
+    // ROWS
+    // =====================================================
+
+    const rows =
+        sortedSummary
+            .map(
+                (
+                    invoice,
+                    index
+                ) => {
+
+                    const date =
+                        invoice.date
+                            ? new Date(
+                                invoice.date
+                            ).toLocaleDateString(
+                                "en-GB",
+                                {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                }
+                            )
+                            : "-";
+
+
+                    const amount =
+                        Number(
+                            invoice.amount || 0
+                        );
+
+
+                    const commission =
+                        Number(
+                            invoice.commission || 0
+                        );
+
+
+                    const advance =
+                        Number(
+                            invoice.cash || 0
+                        );
+
+
+                    const balance =
+                        Number(
+                            invoice.balance || 0
+                        );
+
+
+                    return `
+
+                        <tr>
+
+                            <td class="center">
+                                ${index + 1}
+                            </td>
+
+                            <td class="center">
+                                ${date}
+                            </td>
+
+                            <td class="center">
+                                ${invoice.invoiceNo || "-"}
+                            </td>
+
+                            <td>
+                                Sales of Ice Cream
+                            </td>
+
+                            <td class="number">
+                                ${Number(
+                                    invoice.totalQuantity || 0
+                                ).toLocaleString("en-PK")}
+                            </td>
+
+                            <td class="number">
+                                ${
+                                    amount
+                                        ? amount.toLocaleString("en-PK")
+                                        : "-"
+                                }
+                            </td>
+
+                            <td class="number">
+                                ${
+                                    commission
+                                        ? commission.toLocaleString("en-PK")
+                                        : "-"
+                                }
+                            </td>
+
+                            <td class="number">
+                                ${
+                                    advance
+                                        ? advance.toLocaleString("en-PK")
+                                        : "-"
+                                }
+                            </td>
+
+                            <td class="number balance-cell">
+                                ${balance.toLocaleString("en-PK")}
+                            </td>
+
+                        </tr>
+
+                    `;
+
                 }
             )
-            : "-";
+            .join("");
 
 
-        const amount =
-            Number(invoice.amount || 0);
+    // =====================================================
+    // TOTALS
+    // =====================================================
 
-        const commission =
-            Number(invoice.commission || 0);
-
-        const advance =
-            Number(invoice.cash || 0);
-
-        const balance =
-            Number(invoice.balance || 0);
-
-
-        return `
-            <tr>
-
-                <td class="center">
-                    ${index + 1}
-                </td>
-
-                <td class="center">
-                    ${date}
-                </td>
-
-                <td class="center">
-                    ${invoice.invoiceNo || "-"}
-                </td>
-
-                <td>
-                    Sales of Ice Cream
-                </td>
-
-                <td class="number">
-                    ${Number(
-                        invoice.totalQuantity || 0
-                    ).toLocaleString("en-PK")}
-                </td>
-
-                <td class="number">
-                    ${amount
-                        ? amount.toLocaleString("en-PK")
-                        : "-"
-                    }
-                </td>
-
-                <td class="number">
-                    ${commission
-                        ? commission.toLocaleString("en-PK")
-                        : "-"
-                    }
-                </td>
-
-                <td class="number">
-                    ${advance
-                        ? advance.toLocaleString("en-PK")
-                        : "-"
-                    }
-                </td>
-
-                <td class="number balance-cell">
-                    ${balance.toLocaleString("en-PK")}
-                </td>
-
-            </tr>
-        `;
-
-    }).join("");
-
-
-    /*
-     * Total values
-     */
-   const totalItems =
-    sortedSummary.reduce(
-            (sum, invoice) =>
-                sum + Number(invoice.totalQuantity || 0),
+    const totalItems =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.totalQuantity || 0
+                ),
             0
         );
-const totalAmount =
-    sortedSummary.reduce(
-        (sum, invoice) =>
-            sum + Number(invoice.amount || 0),
-        0
-    );
-
-const totalCommission =
-    sortedSummary.reduce(
-        (sum, invoice) =>
-            sum + Number(invoice.commission || 0),
-        0
-    );
-
-const totalAdvance =
-    sortedSummary.reduce(
-        (sum, invoice) =>
-            sum + Number(invoice.cash || 0),
-        0
-    );
-
-const finalBalance =
-    Number(
-        sortedSummary[sortedSummary.length - 1]
-            ?.balance || 0
-    );
 
 
-    /*
-     * Print document
-     */
+    const totalAmount =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.amount || 0
+                ),
+            0
+        );
+
+
+    const totalCommission =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.commission || 0
+                ),
+            0
+        );
+
+
+    const totalAdvance =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.cash || 0
+                ),
+            0
+        );
+
+
+    const finalBalance =
+        Number(
+            sortedSummary[
+                sortedSummary.length - 1
+            ]?.balance || 0
+        );
+
+
+    // =====================================================
+    // PRINT
+    // =====================================================
+
     printWindow.document.write(`
 
 <!DOCTYPE html>
@@ -2489,7 +3913,6 @@ const finalBalance =
     Salesman Statement - ${salesmanName}
 </title>
 
-
 <style>
 
 @page {
@@ -2500,13 +3923,11 @@ const finalBalance =
 
 }
 
-
 * {
 
     box-sizing: border-box;
 
 }
-
 
 body {
 
@@ -2527,13 +3948,11 @@ body {
 
 }
 
-
 .statement {
 
     width: 100%;
 
 }
-
 
 .header {
 
@@ -2542,7 +3961,6 @@ body {
     margin-bottom: 12px;
 
 }
-
 
 .company-name {
 
@@ -2554,7 +3972,6 @@ body {
 
 }
 
-
 .company-address {
 
     font-size: 9px;
@@ -2562,7 +3979,6 @@ body {
     line-height: 1.4;
 
 }
-
 
 .statement-title {
 
@@ -2576,7 +3992,6 @@ body {
 
 }
 
-
 .salesman-name {
 
     font-size: 14px;
@@ -2586,7 +4001,6 @@ body {
     margin-top: 4px;
 
 }
-
 
 .info {
 
@@ -2600,13 +4014,11 @@ body {
 
 }
 
-
 .info-left {
 
     font-weight: bold;
 
 }
-
 
 .opening-balance {
 
@@ -2620,7 +4032,6 @@ body {
 
 }
 
-
 table {
 
     width: 100%;
@@ -2630,7 +4041,6 @@ table {
     table-layout: fixed;
 
 }
-
 
 th,
 td {
@@ -2643,7 +4053,6 @@ td {
 
 }
 
-
 th {
 
     text-align: center;
@@ -2654,13 +4063,11 @@ th {
 
 }
 
-
 .center {
 
     text-align: center;
 
 }
-
 
 .number {
 
@@ -2670,13 +4077,11 @@ th {
 
 }
 
-
 .balance-cell {
 
     font-weight: bold;
 
 }
-
 
 .total-row td {
 
@@ -2685,7 +4090,6 @@ th {
     border-top: 2px solid #000;
 
 }
-
 
 .footer {
 
@@ -2697,7 +4101,6 @@ th {
 
 }
 
-
 .signature {
 
     width: 180px;
@@ -2706,7 +4109,6 @@ th {
 
 }
 
-
 .signature-line {
 
     border-top: 1px solid #000;
@@ -2714,7 +4116,6 @@ th {
     margin-bottom: 5px;
 
 }
-
 
 .page-number {
 
@@ -2726,17 +4127,11 @@ th {
 
 }
 
-
-/*
- * Column widths
- */
-
 .col-no {
 
     width: 4%;
 
 }
-
 
 .col-date {
 
@@ -2744,13 +4139,11 @@ th {
 
 }
 
-
 .col-invoice {
 
     width: 8%;
 
 }
-
 
 .col-particular {
 
@@ -2758,13 +4151,11 @@ th {
 
 }
 
-
 .col-items {
 
     width: 8%;
 
 }
-
 
 .col-amount {
 
@@ -2772,13 +4163,11 @@ th {
 
 }
 
-
 .col-commission {
 
     width: 12%;
 
 }
-
 
 .col-advance {
 
@@ -2786,13 +4175,11 @@ th {
 
 }
 
-
 .col-balance {
 
     width: 14%;
 
 }
-
 
 @media print {
 
@@ -2818,19 +4205,14 @@ th {
 
 }
 
-
 </style>
 
 </head>
 
-
 <body>
-
 
 <div class="statement">
 
-
-    <!-- HEADER -->
 
     <div class="header">
 
@@ -2857,11 +4239,9 @@ th {
 
         </div>
 
-
         <div class="statement-title">
             SALESMAN STATEMENT / HISTORY
         </div>
-
 
         <div class="salesman-name">
             ${salesmanName}
@@ -2870,15 +4250,12 @@ th {
     </div>
 
 
-
-    <!-- SALESMAN INFORMATION -->
-
     <div class="info">
 
         <div class="info-left">
 
             Salesman ID:
-            ${salesmanId}
+            ${currentSalesmanId}
 
             &nbsp;&nbsp;&nbsp;
 
@@ -2897,9 +4274,6 @@ th {
 
     </div>
 
-
-
-    <!-- SUMMARY TABLE -->
 
     <table>
 
@@ -2974,9 +4348,6 @@ th {
 
         <tbody>
 
-
-            <!-- OPENING BALANCE -->
-
             <tr>
 
                 <td class="center">
@@ -3017,8 +4388,6 @@ th {
             ${rows}
 
 
-            <!-- TOTAL -->
-
             <tr class="total-row">
 
                 <td colspan="4" class="number">
@@ -3047,17 +4416,12 @@ th {
 
             </tr>
 
-
         </tbody>
 
     </table>
 
 
-
-    <!-- FOOTER -->
-
     <div class="footer">
-
 
         <div class="signature">
 
@@ -3097,14 +4461,11 @@ th {
 
         </div>
 
-
     </div>
 
 
     <div class="page-number">
-
         Page 1 of 1
-
     </div>
 
 
@@ -3118,7 +4479,6 @@ window.onload = function() {
     window.print();
 
 };
-
 
 window.onafterprint = function() {
 
@@ -3140,234 +4500,1276 @@ window.onafterprint = function() {
 
 }
 
+
+// =========================================================
+// PRINT SUMMARY BUTTON
+// =========================================================
+
 document
-    .getElementById("clearSummarySearch")
-    .addEventListener("click", () => {
+    .getElementById(
+        "printSummaryBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
 
-        document.getElementById("summaryDateSearch").value = "";
-
-        document.getElementById("summaryInvoiceSearch").value = "";
-
-        renderFilteredSummary(currentSummary);
-
-    });
-    document
-    .getElementById("printSummaryBtn")
-    ?.addEventListener("click", () => {
-
-        printSalesmanSummary();
-
-    });
-    document
-.getElementById("saveInvoiceEdit")
-.addEventListener(
-    "click",
-    async () => {
-
-        if (!editingInvoice) {
-
-            alert(
-                "No invoice selected."
-            );
-
-            return;
+            printSalesmanSummary();
 
         }
+    );
 
 
-        // =====================================
-        // Collect return quantities
-        // =====================================
+// =========================================================
+// SUMMARY SEARCH
+// =========================================================
 
-        const rows =
-            document.querySelectorAll(
-                "#editInvoiceTbody tr"
-            );
-
-
-        const items =
-            Array.from(rows).map(
-                (row, index) => {
-
-                    const item =
-                        editingInvoice
-                            .items[index];
+document
+    .getElementById(
+        "summaryDateSearch"
+    )
+    ?.addEventListener(
+        "change",
+        filterSummary
+    );
 
 
-                    const returnQuantity =
-                        Number(
-                            row.querySelector(
-                                ".return-input"
-                            ).value || 0
+document
+    .getElementById(
+        "summaryInvoiceSearch"
+    )
+    ?.addEventListener(
+        "input",
+        filterSummary
+    );
+
+
+// =========================================================
+// FILTER SUMMARY
+// =========================================================
+
+function filterSummary() {
+
+    const dateValue =
+        document.getElementById(
+            "summaryDateSearch"
+        )?.value || "";
+
+
+    const invoiceValue =
+        (
+            document.getElementById(
+                "summaryInvoiceSearch"
+            )?.value || ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    const filtered =
+        currentSummary.filter(
+            invoice => {
+
+                // =============================================
+                // DATE
+                // =============================================
+
+                let dateMatch =
+                    true;
+
+
+                if (
+                    dateValue
+                ) {
+
+                    const invoiceDate =
+                        new Date(
+                            invoice.date
                         );
 
 
-                    return {
+                    const year =
+                        invoiceDate.getFullYear();
+
+
+                    const month =
+                        String(
+                            invoiceDate.getMonth() + 1
+                        )
+                        .padStart(
+                            2,
+                            "0"
+                        );
+
+
+                    const day =
+                        String(
+                            invoiceDate.getDate()
+                        )
+                        .padStart(
+                            2,
+                            "0"
+                        );
+
+
+                    const formattedDate =
+                        `${year}-${month}-${day}`;
+
+
+                    dateMatch =
+                        formattedDate ===
+                        dateValue;
+
+                }
+
+
+                // =============================================
+                // INVOICE
+                // =============================================
+
+                let invoiceMatch =
+                    true;
+
+
+                if (
+                    invoiceValue
+                ) {
+
+                    invoiceMatch =
+                        String(
+                            invoice.invoiceNo
+                        )
+                        .toLowerCase()
+                        .includes(
+                            invoiceValue
+                        );
+
+                }
+
+
+                return (
+                    dateMatch &&
+                    invoiceMatch
+                );
+
+            }
+        );
+
+
+    renderFilteredSummary(
+        filtered
+    );
+
+}
+
+
+// =========================================================
+// CLEAR SUMMARY SEARCH
+// =========================================================
+
+document
+    .getElementById(
+        "clearSummarySearch"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            const dateInput =
+                document.getElementById(
+                    "summaryDateSearch"
+                );
+
+
+            const invoiceInput =
+                document.getElementById(
+                    "summaryInvoiceSearch"
+                );
+
+
+            if (dateInput) {
+
+                dateInput.value =
+                    "";
+
+            }
+
+
+            if (invoiceInput) {
+
+                invoiceInput.value =
+                    "";
+
+            }
+
+
+            renderFilteredSummary(
+                currentSummary
+            );
+
+        }
+    );
+
+
+// =========================================================
+// APPLY LOCAL EDIT TO PRODUCT STOCK
+// =========================================================
+//
+// Backend rule for salesman invoices:
+// stockDifference = newReturn - oldReturn
+//
+// Example:
+// old return 2
+// new return 5
+// stock +3
+//
+// Example:
+// old return 5
+// new return 2
+// stock -3
+//
+// =========================================================
+
+async function applySalesmanReturnLocally(
+    oldInvoice,
+    updatedInvoice
+) {
+
+    const localProducts =
+        await getAllFromOfflineDB(
+            "products"
+        );
+
+
+    const oldItems =
+        oldInvoice.items || [];
+
+
+    const newItems =
+        updatedInvoice.items || [];
+
+
+    const updatedProducts =
+        localProducts.map(
+            product => {
+
+                const productId =
+                    Number(
+                        product.id
+                    );
+
+
+                const oldItem =
+                    oldItems.find(
+                        item =>
+                            Number(
+                                item.productId
+                            ) ===
+                            productId
+                    );
+
+
+                const newItem =
+                    newItems.find(
+                        item =>
+                            Number(
+                                item.productId
+                            ) ===
+                            productId
+                    );
+
+
+                if (
+                    !oldItem &&
+                    !newItem
+                ) {
+
+                    return product;
+
+                }
+
+
+                const oldReturn =
+                    getReturnQuantity(
+                        oldItem
+                    );
+
+
+                const newReturn =
+                    getReturnQuantity(
+                        newItem
+                    );
+
+
+                const stockDifference =
+                    newReturn -
+                    oldReturn;
+
+
+                if (
+                    stockDifference ===
+                    0
+                ) {
+
+                    return product;
+
+                }
+
+
+                return {
+
+                    ...product,
+
+                    stock:
+                        (
+                            Number(
+                                product.stock
+                            ) || 0
+                        ) +
+                        stockDifference
+
+                };
+
+            }
+        );
+
+
+    await saveManyToOfflineDB(
+        "products",
+        updatedProducts
+    );
+
+
+    // =====================================================
+    // UPDATE SALESMAN BALANCE
+    // =====================================================
+
+    const localSalesmen =
+        await getAllFromOfflineDB(
+            "salesmen"
+        );
+
+
+    const updatedSalesmen =
+        localSalesmen.map(
+            salesman => {
+
+                if (
+                    Number(
+                        salesman.id
+                    ) !==
+                    Number(
+                        updatedInvoice.partyId
+                    )
+                ) {
+
+                    return salesman;
+
+                }
+
+
+                return {
+
+                    ...salesman,
+
+                    outstandingBalance:
+                        Number(
+                            updatedInvoice.balance
+                        ) || 0,
+
+                    outStandingBalance:
+                        Number(
+                            updatedInvoice.balance
+                        ) || 0
+
+                };
+
+            }
+        );
+
+
+    await saveManyToOfflineDB(
+        "salesmen",
+        updatedSalesmen
+    );
+
+}
+
+
+// =========================================================
+// BUILD UPDATED LOCAL INVOICE
+// =========================================================
+
+function buildUpdatedLocalInvoice(
+    originalInvoice
+) {
+
+    const invoice =
+        structuredClone(
+            originalInvoice
+        );
+
+
+    const rows =
+        document.querySelectorAll(
+            "#editInvoiceTbody tr"
+        );
+
+
+    invoice.items =
+        invoice.items.map(
+            (
+                item,
+                index
+            ) => {
+
+                const row =
+                    rows[index];
+
+
+                if (!row) {
+
+                    return item;
+
+                }
+
+
+                const returnInput =
+                    row.querySelector(
+                        ".return-input"
+                    );
+
+
+                const returnQuantity =
+                    Number(
+                        returnInput?.value || 0
+                    );
+
+
+                const quantity =
+                    Number(
+                        item.quantity || 0
+                    );
+
+
+                const net =
+                    Math.max(
+                        quantity -
+                        returnQuantity,
+                        0
+                    );
+
+
+                const amount =
+                    net *
+                    Number(
+                        item.price || 0
+                    );
+
+
+                return {
+
+                    ...item,
+
+                    returnQuantity:
+                        returnQuantity,
+
+                    // Keep compatibility with old
+                    // invoice objects.
+                    returnedQuantity:
+                        returnQuantity,
+
+                    amount:
+                        amount
+
+                };
+
+            }
+        );
+
+
+    let subtotal = 0;
+
+    let nonCommissionableAmount = 0;
+
+
+    invoice.items.forEach(
+        item => {
+
+            const amount =
+                Number(
+                    item.amount || 0
+                );
+
+
+            subtotal +=
+                amount;
+
+
+            if (
+                item.commissionApplicable ===
+                "no"
+            ) {
+
+                nonCommissionableAmount +=
+                    amount;
+
+            }
+
+        }
+    );
+
+
+    const commissionableAmount =
+        Math.max(
+            subtotal -
+            nonCommissionableAmount,
+            0
+        );
+
+
+    const commission =
+        commissionableAmount *
+        Number(
+            invoice.dynamicComission || 0
+        );
+
+
+    const discount =
+        Number(
+            invoice.discount || 0
+        );
+
+
+    const netTotal =
+        subtotal -
+        commission -
+        discount;
+
+
+    const cash =
+        Number(
+            document.getElementById(
+                "editCash"
+            )?.value || 0
+        );
+
+
+    const currentBill =
+        netTotal -
+        cash;
+
+
+    const arrears =
+        Number(
+            invoice.arrears || 0
+        );
+
+
+    const balance =
+        currentBill +
+        arrears;
+
+
+    invoice.subtotal =
+        subtotal;
+
+
+    invoice.commission =
+        commission;
+
+
+    invoice.netTotal =
+        netTotal;
+
+
+    invoice.cash =
+        cash;
+
+
+    invoice.currentBill =
+        currentBill;
+
+
+    invoice.balance =
+        balance;
+
+
+    return invoice;
+
+}
+
+
+// =========================================================
+// SAVE INVOICE EDIT
+// =========================================================
+
+document
+    .getElementById(
+        "saveInvoiceEdit"
+    )
+    ?.addEventListener(
+        "click",
+        async () => {
+
+            if (!editingInvoice) {
+
+                alert(
+                    "No invoice selected."
+                );
+
+                return;
+
+            }
+
+
+            const oldInvoice =
+                structuredClone(
+                    editingInvoice
+                );
+
+
+            // =================================================
+            // BUILD LOCAL UPDATED INVOICE
+            // =================================================
+
+            const updatedInvoice =
+                buildUpdatedLocalInvoice(
+                    editingInvoice
+                );
+
+
+            const payloadItems =
+                updatedInvoice.items.map(
+                    item => ({
 
                         productId:
                             item.productId,
 
                         returnQuantity:
-                            returnQuantity
+                            getReturnQuantity(
+                                item
+                            )
 
-                    };
+                    })
+                );
+
+
+            const cash =
+                Number(
+                    updatedInvoice.cash || 0
+                );
+
+
+            const saveButton =
+                document.getElementById(
+                    "saveInvoiceEdit"
+                );
+
+
+            try {
+
+                if (saveButton) {
+
+                    saveButton.disabled =
+                        true;
 
                 }
-            );
 
 
-        // =====================================
-        // Cash
-        // =====================================
+                // =================================================
+                // OFFLINE
+                // =================================================
 
-        const cash =
-            Number(
-                document.getElementById(
-                    "editCash"
-                ).value || 0
-            );
+                if (
+                    !navigator.onLine
+                ) {
+
+                    await applySalesmanReturnLocally(
+                        oldInvoice,
+                        updatedInvoice
+                    );
 
 
-        // =====================================
-        // Save
-        // =====================================
+                    await saveToOfflineDB(
+                        "invoices",
+                        updatedInvoice
+                    );
 
-        try {
 
-            const response =
-                await fetch(
-                    `${API}/invoice/${editingInvoice.id}/update-last`,
-                    {
+                    await addToSyncQueue({
 
-                        method: "PUT",
-                        credentials:'include',
-                        headers: {
+                        endpoint:
+                            `/invoice/${updatedInvoice.id}/update-last`,
 
-                            "Content-Type":
-                                "application/json"
+                        method:
+                            "PUT",
 
-                        },
+                        body: {
 
-                        body:
-                            JSON.stringify({
+                            items:
+                                payloadItems,
+
+                            cash:
+                                cash
+
+                        }
+
+                    });
+
+
+                    selectedInvoice =
+                        updatedInvoice;
+
+
+                    editingInvoice =
+                        null;
+
+
+                    const modal =
+                        document.getElementById(
+                            "invoiceEditModal"
+                        );
+
+
+                    if (modal) {
+
+                        modal.classList.remove(
+                            "show"
+                        );
+
+                    }
+
+
+                    await renderFromLocalInvoices();
+
+
+                    renderInvoice(
+                        updatedInvoice
+                    );
+
+
+                    alert(
+                        "Invoice updated offline. The changes were saved locally and will synchronize when internet returns."
+                    );
+
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // ONLINE
+                // =================================================
+
+                const response =
+                    await authenticatedFetch(
+                        `${API}/invoice/${updatedInvoice.id}/update-last`,
+                        {
+
+                            method:
+                                "PUT",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify({
+
+                                    items:
+                                        payloadItems,
+
+                                    cash:
+                                        cash
+
+                                })
+
+                        }
+                    );
+
+
+                if (!response) {
+                    return;
+                }
+
+
+                const result =
+                    await response.json();
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    throw new Error(
+                        result.message ||
+                        "Unable to update invoice"
+                    );
+
+                }
+
+
+                console.log(
+                    "Updated invoice:",
+                    result.invoice
+                );
+
+
+                const serverInvoice =
+                    result.invoice;
+
+
+                // =================================================
+                // CACHE SERVER INVOICE
+                // =================================================
+
+                if (
+                    serverInvoice
+                ) {
+
+                    await saveToOfflineDB(
+                        "invoices",
+                        serverInvoice
+                    );
+
+
+                    selectedInvoice =
+                        serverInvoice;
+
+                }
+
+
+                // =================================================
+                // REFRESH SALESMAN CACHE
+                // =================================================
+
+                const salesmanResponse =
+                    await authenticatedFetch(
+                        `${API}/oneSalesman?id=${salesmanId}`
+                    );
+
+
+                if (
+                    salesmanResponse &&
+                    salesmanResponse.ok
+                ) {
+
+                    const salesmanData =
+                        await salesmanResponse.json();
+
+
+                    if (
+                        salesmanData.salesman
+                    ) {
+
+                        currentSalesman =
+                            salesmanData.salesman;
+
+
+                        await saveToOfflineDB(
+                            "salesmen",
+                            salesmanData.salesman
+                        );
+
+                    }
+
+                }
+
+
+                // =================================================
+                // REFRESH PRODUCT CACHE
+                // =================================================
+                //
+                // Backend already performed the stock update.
+                // Therefore use the authoritative product state
+                // rather than applying the stock change a second time.
+                //
+                // =================================================
+
+                try {
+
+                    const productsResponse =
+                        await authenticatedFetch(
+                            `${API}/products`
+                        );
+
+
+                    if (
+                        productsResponse &&
+                        productsResponse.ok
+                    ) {
+
+                        const productData =
+                            await productsResponse.json();
+
+
+                        const freshProducts =
+                            productData.products ||
+                            [];
+
+
+                        if (
+                            Array.isArray(
+                                freshProducts
+                            )
+                        ) {
+
+                            await clearOfflineStore(
+                                "products"
+                            );
+
+
+                            await saveManyToOfflineDB(
+                                "products",
+                                freshProducts.map(
+                                    product => ({
+
+                                        id:
+                                            Number(
+                                                product.id
+                                            ),
+
+                                        productName:
+                                            product.name ??
+                                            product.productName ??
+                                            "",
+
+                                        brand:
+                                            product.brand ??
+                                            product.company ??
+                                            "",
+
+                                        company:
+                                            product.company ??
+                                            "",
+
+                                        purchasePrice:
+                                            Number(
+                                                product.purchasePrice ||
+                                                product.price ||
+                                                0
+                                            ),
+
+                                        salePrice:
+                                            Number(
+                                                product.salePrice ||
+                                                0
+                                            ),
+
+                                        category:
+                                            product.category ??
+                                            "Other",
+
+                                        description:
+                                            product.description ??
+                                            "",
+
+                                        stock:
+                                            Number(
+                                                product.qunatity ??
+                                                product.stock ??
+                                                product.quantity ??
+                                                0
+                                            ),
+
+                                        commissionApplicable:
+                                            product.commissionApplicable
+
+                                    })
+                                )
+                            );
+
+                        }
+
+                    }
+
+                }
+                catch (productRefreshError) {
+
+                    console.error(
+                        "Product refresh after invoice update failed:",
+                        productRefreshError
+                    );
+
+                }
+
+
+                // =================================================
+                // CLOSE MODAL
+                // =================================================
+
+                const modal =
+                    document.getElementById(
+                        "invoiceEditModal"
+                    );
+
+
+                if (modal) {
+
+                    modal.classList.remove(
+                        "show"
+                    );
+
+                }
+
+
+                editingInvoice =
+                    null;
+
+
+                // =================================================
+                // REBUILD LOCAL PAGE
+                // =================================================
+
+                await renderFromLocalInvoices();
+
+
+                if (
+                    selectedInvoice
+                ) {
+
+                    renderInvoice(
+                        selectedInvoice
+                    );
+
+                }
+
+
+                alert(
+                    "Invoice updated successfully."
+                );
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Invoice update error:",
+                    error
+                );
+
+
+                // =================================================
+                // NETWORK LOST DURING REQUEST
+                // =================================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
+                    try {
+
+                        await applySalesmanReturnLocally(
+                            oldInvoice,
+                            updatedInvoice
+                        );
+
+
+                        await saveToOfflineDB(
+                            "invoices",
+                            updatedInvoice
+                        );
+
+
+                        await addToSyncQueue({
+
+                            endpoint:
+                                `/invoice/${updatedInvoice.id}/update-last`,
+
+                            method:
+                                "PUT",
+
+                            body: {
 
                                 items:
-                                    items,
+                                    payloadItems,
 
                                 cash:
                                     cash
 
-                            })
+                            }
+
+                        });
+
+
+                        selectedInvoice =
+                            updatedInvoice;
+
+
+                        editingInvoice =
+                            null;
+
+
+                        const modal =
+                            document.getElementById(
+                                "invoiceEditModal"
+                            );
+
+
+                        if (modal) {
+
+                            modal.classList.remove(
+                                "show"
+                            );
+
+                        }
+
+
+                        await renderFromLocalInvoices();
+
+
+                        renderInvoice(
+                            updatedInvoice
+                        );
+
+
+                        alert(
+                            "Internet connection was lost. Invoice changes were saved offline and will synchronize when internet returns."
+                        );
 
                     }
+                    catch (offlineError) {
+
+                        console.error(
+                            "Offline invoice update fallback failed:",
+                            offlineError
+                        );
+
+
+                        alert(
+                            "Failed to save invoice changes offline."
+                        );
+
+                    }
+
+                }
+
+                else {
+
+                    alert(
+                        error.message ||
+                        "Unable to update invoice."
+                    );
+
+                }
+
+            }
+            finally {
+
+                if (saveButton) {
+
+                    saveButton.disabled =
+                        false;
+
+                }
+
+            }
+
+        }
+    );
+
+
+// =========================================================
+// CLOSE EDIT MODAL
+// =========================================================
+
+document
+    .getElementById(
+        "closeInvoiceModal"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            const modal =
+                document.getElementById(
+                    "invoiceEditModal"
                 );
 
 
-            const result =
-                await response.json();
+            if (modal) {
 
-
-            if (!response.ok) {
-
-                throw new Error(
-                    result.message ||
-                    "Unable to update invoice"
+                modal.classList.remove(
+                    "show"
                 );
 
             }
 
 
-            console.log(
-                "Updated invoice:",
-                result.invoice
-            );
+            editingInvoice =
+                null;
+
+        }
+    );
 
 
-            alert(
-                "Invoice updated successfully."
-            );
+// =========================================================
+// CANCEL EDIT
+// =========================================================
 
+document
+    .getElementById(
+        "cancelInvoiceEdit"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
 
-            // =================================
-            // Close popup
-            // =================================
-
-            document
-                .getElementById(
+            const modal =
+                document.getElementById(
                     "invoiceEditModal"
-                )
-                .classList.remove(
-                    "show"
                 );
 
 
-            editingInvoice = null;
+            if (modal) {
+
+                modal.classList.remove(
+                    "show"
+                );
+
+            }
 
 
-            // =================================
-            // Reload salesman information
-            // =================================
-
-            await loadSalesman();
-
-
-            // =================================
-            // Reload summary
-            // =================================
-
-            await getSummary();
-
+            editingInvoice =
+                null;
 
         }
-        catch (error) {
+    );
 
-            console.error(error);
 
-            alert(
-                error.message
+// =========================================================
+// PRINT THERMAL BUTTON
+// =========================================================
+//
+// Keeps compatibility if the page has a separate
+// thermal print button.
+// =========================================================
+
+document
+    .getElementById(
+        "printThermalBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            if (!selectedInvoice) {
+
+                alert(
+                    "Please select an invoice first."
+                );
+
+                return;
+
+            }
+
+
+            printThermalInvoice(
+                selectedInvoice
             );
 
         }
-
-    }
-);
-
-document
-.getElementById("closeInvoiceModal")
-.addEventListener(
-    "click",
-    () => {
-
-        document
-            .getElementById(
-                "invoiceEditModal"
-            )
-            .classList.remove(
-                "show"
-            );
-
-        editingInvoice = null;
-
-    }
-);
-
-
-document
-.getElementById("cancelInvoiceEdit")
-.addEventListener(
-    "click",
-    () => {
-
-        document
-            .getElementById(
-                "invoiceEditModal"
-            )
-            .classList.remove(
-                "show"
-            );
-
-        editingInvoice = null;
-
-    }
-);
-
+    );

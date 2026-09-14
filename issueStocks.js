@@ -1,300 +1,1486 @@
 // ===========================================================
-//  Issue Stocks Admin Page - Script
+// FrostyOps - Issue Stocks Admin Page
+// Offline-first invoice creation
 // ===========================================================
-const API= "https://icecream-management-backend.vercel.app";
-// ---- Data ----
+
+
+// ===========================================================
+// GLOBAL API
+// ===========================================================
+
+const API =
+    window.APP_CONFIG?.API ||
+    "https://ice-cream-management.vercel.app";
+
+
+// ===========================================================
+// DATA
+// ===========================================================
+
 let salesmen = [];
+
 let currentSalesmanId = null;
-let arrears;
-let adminUser;
-let entercomission=0.2;
-document.getElementById("dynamicCommission").value=entercomission*100;
 
-getLocalStorageUser=()=>{
-if (!localStorage.getItem('user')){
-      window.location.href = 'login.html';
-        return;
+let arrears = 0;
+
+let adminUser = null;
+
+let entercomission = 0.2;
+
+let products = [];
+
+let issuedItems = [];
+
+
+// ===========================================================
+// INITIAL COMMISSION
+// ===========================================================
+
+const dynamicCommissionInput =
+    document.getElementById(
+        "dynamicCommission"
+    );
+
+if (dynamicCommissionInput) {
+
+    dynamicCommissionInput.value =
+        entercomission * 100;
 
 }
 
- adminUser=JSON.parse(localStorage.getItem('user'));
-console.log(adminUser.email)
+
+// ===========================================================
+// AUTH / ADMIN DISPLAY
+// ===========================================================
+
+function setupAdmin() {
+
+    /*
+     * JWT is stored in the HTTP-only cookie.
+     * We do not read the JWT from localStorage.
+     *
+     * shared-layout.js may expose currentUser/adminUser.
+     */
+
+    if (
+        window.currentUser?.email
+    ) {
+
+        adminUser =
+            window.currentUser;
+
+    } else if (
+        window.adminUser?.email
+    ) {
+
+        adminUser =
+            window.adminUser;
+
+    }
+
+
+    const adminElement =
+        document.getElementById(
+            "admin"
+        );
+
+
+    if (adminElement) {
+
+        adminElement.textContent =
+            adminUser?.email ||
+            "Admin";
+
+    }
 
 }
 
-getLocalStorageUser();
-document.getElementById('admin').textContent=adminUser.email;
-const today = new Date().toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-});
+setupAdmin();
 
-console.log(today);
-document.getElementById('datePill').textContent=today
+
+// ===========================================================
+// DATE
+// ===========================================================
+
+const datePill =
+    document.getElementById(
+        "datePill"
+    );
+
+if (datePill) {
+
+    datePill.textContent =
+        new Date().toLocaleDateString(
+            "en-GB",
+            {
+                day:
+                    "numeric",
+
+                month:
+                    "long",
+
+                year:
+                    "numeric"
+            }
+        );
+
+}
+
+
+// ===========================================================
+// SALESMEN
+// ===========================================================
+
 async function fetchSalesmen() {
+
+    // =======================================================
+    // LOAD INDEXEDDB CACHE FIRST
+    // =======================================================
 
     try {
 
-        const res = await fetch(
-            `${API}/Allsalesmen`,
-            {
-        credentials: 'include'
-    }
+        const cachedSalesmen =
+            await getAllFromOfflineDB(
+                "salesmen"
+            );
+
+
+        salesmen =
+            cachedSalesmen.map(
+                (s, index) => ({
+
+                    id:
+                        Number(
+                            s.id ??
+                            s.salesman_id ??
+                            index + 1
+                        ),
+
+                    name:
+                        s.name ??
+                        s.salesman_name ??
+                        "Unknown",
+
+                    status:
+                        s.status ??
+                        "Active",
+
+                    phone:
+                        s.phone ??
+                        "",
+
+                    route:
+                        s.route ??
+                        "",
+
+                    address:
+                        s.address ??
+                        s.Adress ??
+                        "",
+
+                    outstandingBalance:
+                        Number(
+                            s.outstandingBalance ??
+                            s.outStandingBalance ??
+                            0
+                        )
+
+                })
+            );
+
+
+        console.log(
+            "Salesmen from IndexedDB:",
+            salesmen
         );
-         if (res.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        const data = await res.json();
-
-        console.log("Updated salesmen:", data);
-
-        const list =
-            Array.isArray(data)
-                ? data
-                : data.data || data.salesmen || [];
-
-
-        salesmen = list.map((s, index) => ({
-
-            id: s.id ?? s.salesman_id ?? index + 1,
-
-            name: s.name ?? s.salesman_name ?? "Unknown",
-
-            status: s.status ?? "Active",
-
-            phone: s.phone ?? "",
-
-            route: s.route ?? "",
-
-            outstandingBalance:
-                Number(s.outstandingBalance) || 0
-
-        }));
 
 
         renderSalesmanDropdown();
 
 
-        // Keep currently selected salesman
-        if (currentSalesmanId !== null) {
+        // ===================================================
+        // CHECK SALESMAN FROM URL
+        // ===================================================
+
+        const urlParams =
+            new URLSearchParams(
+                window.location.search
+            );
+
+
+        const urlSalesman =
+            Number(
+                urlParams.get(
+                    "salesman"
+                )
+            );
+
+
+        if (
+            urlSalesman &&
+            salesmen.some(
+                s =>
+                    Number(s.id) ===
+                    urlSalesman
+            )
+        ) {
+
+            setSalesman(
+                urlSalesman
+            );
+
+        } else if (
+            currentSalesmanId !== null
+        ) {
 
             const currentSalesman =
                 salesmen.find(
-                    s => s.id === currentSalesmanId
+                    s =>
+                        Number(s.id) ===
+                        Number(
+                            currentSalesmanId
+                        )
                 );
 
-            if (currentSalesman) {
 
-                setSalesman(currentSalesmanId);
+            if (
+                currentSalesman
+            ) {
+
+                setSalesman(
+                    currentSalesman.id
+                );
+
+            } else if (
+                salesmen.length > 0
+            ) {
+
+                setSalesman(
+                    salesmen[0].id
+                );
 
             }
-            else if (salesmen.length > 0) {
 
-                setSalesman(salesmen[0].id);
+        } else if (
+            salesmen.length > 0
+        ) {
 
-            }
-
-        }
-        else if (salesmen.length > 0) {
-
-            setSalesman(salesmen[0].id);
+            setSalesman(
+                salesmen[0].id
+            );
 
         }
+
+
+    } catch (error) {
+
+        console.error(
+            "Salesmen cache load error:",
+            error
+        );
 
     }
-    catch (err) {
+
+
+    // =======================================================
+    // OFFLINE
+    // =======================================================
+
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Using cached salesmen."
+        );
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // FETCH FRESH SALESMEN
+    // =======================================================
+
+    try {
+
+        const res =
+            await fetch(
+                `${API}/Allsalesmen`,
+                {
+                    credentials:
+                        "include"
+                }
+            );
+
+
+        if (
+            res.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (
+            !res.ok
+        ) {
+
+            throw new Error(
+                "Failed to load salesmen"
+            );
+
+        }
+
+
+        const data =
+            await res.json();
+
+
+        const list =
+            Array.isArray(data)
+                ? data
+                : data.data ||
+                  data.salesmen ||
+                  [];
+
+
+        console.log(
+            "Updated salesmen:",
+            list
+        );
+
+
+        // ===================================================
+        // SAVE FRESH SALESMEN TO INDEXEDDB
+        // ===================================================
+
+        await clearOfflineStore(
+            "salesmen"
+        );
+
+
+        await saveManyToOfflineDB(
+            "salesmen",
+            list
+        );
+
+
+        // ===================================================
+        // NORMALIZE FOR PAGE
+        // ===================================================
+
+        salesmen =
+            list.map(
+                (s, index) => ({
+
+                    id:
+                        Number(
+                            s.id ??
+                            s.salesman_id ??
+                            index + 1
+                        ),
+
+                    name:
+                        s.name ??
+                        s.salesman_name ??
+                        "Unknown",
+
+                    status:
+                        s.status ??
+                        "Active",
+
+                    phone:
+                        s.phone ??
+                        "",
+
+                    route:
+                        s.route ??
+                        "",
+
+                    address:
+                        s.address ??
+                        s.Adress ??
+                        "",
+
+                    outstandingBalance:
+                        Number(
+                            s.outstandingBalance ??
+                            s.outStandingBalance ??
+                            0
+                        )
+
+                })
+            );
+
+
+        renderSalesmanDropdown();
+
+
+        // ===================================================
+        // RESTORE URL SALESMAN
+        // ===================================================
+
+        const urlParams =
+            new URLSearchParams(
+                window.location.search
+            );
+
+
+        const urlSalesman =
+            Number(
+                urlParams.get(
+                    "salesman"
+                )
+            );
+
+
+        if (
+            urlSalesman &&
+            salesmen.some(
+                s =>
+                    Number(s.id) ===
+                    urlSalesman
+            )
+        ) {
+
+            setSalesman(
+                urlSalesman
+            );
+
+        } else if (
+            currentSalesmanId !== null
+        ) {
+
+            const currentSalesman =
+                salesmen.find(
+                    s =>
+                        Number(s.id) ===
+                        Number(
+                            currentSalesmanId
+                        )
+                );
+
+
+            if (
+                currentSalesman
+            ) {
+
+                setSalesman(
+                    currentSalesman.id
+                );
+
+            } else if (
+                salesmen.length > 0
+            ) {
+
+                setSalesman(
+                    salesmen[0].id
+                );
+
+            }
+
+        } else if (
+            salesmen.length > 0
+        ) {
+
+            setSalesman(
+                salesmen[0].id
+            );
+
+        }
+
+
+    } catch (error) {
 
         console.error(
             "Failed to refresh salesmen:",
-            err
+            error
         );
 
     }
 
 }
 
-fetchSalesmen();
 
-
-
-let products = [];
+// ===========================================================
+// PRODUCTS
+// ===========================================================
 
 async function fetchProducts() {
 
+    // =======================================================
+    // LOAD INDEXEDDB CACHE FIRST
+    // =======================================================
+
     try {
 
-        const res = await fetch(`${API}/products`,
-            {
-        credentials: 'include'
-    }
-                );
-         if (res.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        const data = await res.json();
-        console.log(data)
-        products = data.products.map((p, index) => ({
+        const cachedProducts =
+            await getAllFromOfflineDB(
+                "products"
+            );
 
-            id: p.id ?? p.product_id ?? index + 1,
 
-            name: p.name,
+        products =
+            cachedProducts.map(
+                (p, index) => ({
 
-            size: p.size,
+                    id:
+                        Number(
+                            p.id ??
+                            p.product_id ??
+                            index + 1
+                        ),
 
-            category: p.category,
+                    name:
+                        p.productName ??
+                        p.name ??
+                        "Unknown",
 
-            price: Number(p.salePrice),
+                    size:
+                        p.size ??
+                        "",
 
-            stock: Number(p.qunatity),
-            commissionApplicable:p.commissionApplicable
+                    category:
+                        p.category ??
+                        "Other",
 
-        }));
+                    price:
+                        Number(
+                            p.salePrice ??
+                            p.price ??
+                            0
+                        ),
+
+                    stock:
+                        Number(
+                            p.stock ??
+                            p.qunatity ??
+                            p.quantity ??
+                            0
+                        ),
+
+                    commissionApplicable:
+                        p.commissionApplicable
+
+                })
+            );
+
+
+        console.log(
+            "Products from IndexedDB:",
+            products
+        );
+
 
         renderProductGrid();
-console.log(products)
-    }
-    catch (err) {
 
-        console.error(err);
+
+    } catch (error) {
+
+        console.error(
+            "Product cache load error:",
+            error
+        );
+
+    }
+
+
+    // =======================================================
+    // OFFLINE
+    // =======================================================
+
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Using cached products."
+        );
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // FETCH FRESH PRODUCTS
+    // =======================================================
+
+    try {
+
+        const res =
+            await fetch(
+                `${API}/products`,
+                {
+                    credentials:
+                        "include"
+                }
+            );
+
+
+        if (
+            res.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (
+            !res.ok
+        ) {
+
+            throw new Error(
+                "Failed to load products"
+            );
+
+        }
+
+
+        const data =
+            await res.json();
+
+
+        const freshProducts =
+            data.products ||
+            [];
+
+
+        products =
+            freshProducts.map(
+                p => ({
+
+                    id:
+                        Number(
+                            p.id
+                        ),
+
+                    name:
+                        p.name ??
+                        "Unknown",
+
+                    size:
+                        p.size ??
+                        "",
+
+                    category:
+                        p.category ??
+                        "Other",
+
+                    price:
+                        Number(
+                            p.salePrice ??
+                            p.price ??
+                            0
+                        ),
+
+                    stock:
+                        Number(
+                            p.qunatity ??
+                            p.stock ??
+                            p.quantity ??
+                            0
+                        ),
+
+                    commissionApplicable:
+                        p.commissionApplicable
+
+                })
+            );
+
+
+        // ===================================================
+        // CACHE PRODUCT SHAPE
+        // ===================================================
+
+        const productsForCache =
+            freshProducts.map(
+                p => ({
+
+                    id:
+                        Number(
+                            p.id
+                        ),
+
+                    productName:
+                        p.name,
+
+                    brand:
+                        p.company,
+
+                    company:
+                        p.company,
+
+                    purchasePrice:
+                        p.purchasePrice,
+
+                    salePrice:
+                        p.salePrice,
+
+                    category:
+                        p.category,
+
+                    description:
+                        p.description ||
+                        "",
+
+                    stock:
+                        Number(
+                            p.qunatity ??
+                            p.stock ??
+                            p.quantity ??
+                            0
+                        ),
+
+                    commissionApplicable:
+                        p.commissionApplicable,
+
+                    lastPurchase:
+                        p.lastPurchase ||
+                        ""
+
+                })
+            );
+
+
+        await clearOfflineStore(
+            "products"
+        );
+
+
+        await saveManyToOfflineDB(
+            "products",
+            productsForCache
+        );
+
+
+        renderProductGrid();
+
+
+        console.log(
+            "Products refreshed from backend:",
+            products
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Product loading failed:",
+            error
+        );
 
     }
 
 }
 
-fetchProducts();
 
-// row.qty = Sales(Quantity), row.ret = Return (fixed per row here)
-let issuedItems = [];
+// ===========================================================
+// SYNC EXISTING INVOICES
+//
+// Uses the centralized function from offline-db.js.
+//
+// First time:
+//     GET /invoices
+//
+// Later:
+//     GET /invoices?limit=10
+//
+// Older invoices remain in IndexedDB.
+// ===========================================================
 
-// ---- Salesman selector ----
+async function syncInitialInvoices() {
+
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Invoice cache sync skipped."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        if (
+            typeof syncInvoicesToOfflineDB !==
+            "function"
+        ) {
+
+            console.error(
+                "syncInvoicesToOfflineDB() is not available. Make sure offline-db.js loads before issue-stock.js."
+            );
+
+            return;
+
+        }
+
+
+        const syncedInvoices =
+            await syncInvoicesToOfflineDB();
+
+
+        console.log(
+            "Invoice cache synchronized:",
+            syncedInvoices
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Initial invoice sync failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ===========================================================
+// INITIAL DATA LOAD
+// ===========================================================
+
+async function initializeIssueStockPage() {
+
+    /*
+     * Load entity caches first.
+     */
+
+    await fetchSalesmen();
+
+    await fetchProducts();
+
+
+    /*
+     * Then synchronize invoices.
+     */
+
+    await syncInitialInvoices();
+
+}
+
+
+initializeIssueStockPage();
+
+
+// ===========================================================
+// SALESMAN SELECTOR
+// ===========================================================
+
 function renderSalesmanDropdown() {
-  const dd = document.getElementById("salesmanDropdown");
-  dd.innerHTML = "";
-  salesmen.forEach((s) => {
-    const opt = document.createElement("div");
-    opt.className = "salesman-option";
-    opt.dataset.id = s.id;
-    opt.innerHTML = `
-      <div class="salesman-avatar">${s.name.charAt(0)}</div>
-      <div class="salesman-info">
-        <p class="salesman-name-row"><span>${s.name}</span><span class="active-pill">${s.status}</span></p>
-        <p class="salesman-sub">${s.phone} . ${s.route}</p>
-      </div>
-    `;
-    dd.appendChild(opt);
-  });
+
+    const dd =
+        document.getElementById(
+            "salesmanDropdown"
+        );
+
+
+    if (!dd) {
+        return;
+    }
+
+
+    dd.innerHTML =
+        "";
+
+
+    salesmen.forEach(
+        salesman => {
+
+            const opt =
+                document.createElement(
+                    "div"
+                );
+
+
+            opt.className =
+                "salesman-option";
+
+
+            opt.dataset.id =
+                salesman.id;
+
+
+            opt.innerHTML = `
+
+                <div class="salesman-avatar">
+                    ${escapeHTML(
+                        salesman.name?.charAt(0) ||
+                        "?"
+                    )}
+                </div>
+
+                <div class="salesman-info">
+
+                    <p class="salesman-name-row">
+
+                        <span>
+                            ${escapeHTML(
+                                salesman.name ||
+                                "Unknown"
+                            )}
+                        </span>
+
+                        <span class="active-pill">
+                            ${escapeHTML(
+                                String(
+                                    salesman.status ??
+                                    "Active"
+                                )
+                            )}
+                        </span>
+
+                    </p>
+
+                    <p class="salesman-sub">
+                        ${escapeHTML(
+                            salesman.phone ||
+                            ""
+                        )}
+                        .
+                        ${escapeHTML(
+                            salesman.route ||
+                            ""
+                        )}
+                    </p>
+
+                </div>
+
+            `;
+
+
+            dd.appendChild(
+                opt
+            );
+
+        }
+    );
+
 }
+
+
+// ===========================================================
+// SET SALESMAN
+// ===========================================================
 
 function setSalesman(id) {
-  const s = salesmen.find((x) => x.id === id);
-  if (!s) return;
-  currentSalesmanId = id;
-  document.getElementById("salesmanAvatar").textContent = s.name.charAt(0);
-  document.getElementById("salesmanName").textContent = s.name;
-  document.getElementById("salesmanSub").textContent = `${s.phone} . ${s.route}`;
-arrears = Number(s.outstandingBalance) || 0;
- updateSubtotal();
+
+    const salesman =
+        salesmen.find(
+            item =>
+                Number(item.id) ===
+                Number(id)
+        );
+
+
+    if (!salesman) {
+        return;
+    }
+
+
+    currentSalesmanId =
+        Number(
+            salesman.id
+        );
+
+
+    const avatar =
+        document.getElementById(
+            "salesmanAvatar"
+        );
+
+
+    const name =
+        document.getElementById(
+            "salesmanName"
+        );
+
+
+    const sub =
+        document.getElementById(
+            "salesmanSub"
+        );
+
+
+    if (avatar) {
+
+        avatar.textContent =
+            salesman.name?.charAt(0) ||
+            "?";
+
+    }
+
+
+    if (name) {
+
+        name.textContent =
+            salesman.name ||
+            "Unknown";
+
+    }
+
+
+    if (sub) {
+
+        sub.textContent =
+            `${salesman.phone || ""} . ${
+                salesman.route || ""
+            }`;
+
+    }
+
+
+    arrears =
+        Number(
+            salesman.outstandingBalance ??
+            salesman.outStandingBalance ??
+            0
+        ) || 0;
+
+
+    updateSubtotal();
+
 }
 
-const salesmanSelect = document.getElementById("salesmanSelect");
-const salesmanDropdown = document.getElementById("salesmanDropdown");
 
-salesmanSelect.addEventListener("click", (e) => {
-  salesmanDropdown.classList.toggle("show");
-});
+// ===========================================================
+// SALESMAN DROPDOWN EVENTS
+// ===========================================================
 
-salesmanDropdown.addEventListener("click", (e) => {
-  const opt = e.target.closest(".salesman-option");
-  if (!opt) return;
-  setSalesman(Number(opt.dataset.id));
-  salesmanDropdown.classList.remove("show");
-});
+const salesmanSelect =
+    document.getElementById(
+        "salesmanSelect"
+    );
 
-document.addEventListener("click", (e) => {
-  if (!salesmanSelect.contains(e.target)) {
-    salesmanDropdown.classList.remove("show");
-  }
-});
 
-renderSalesmanDropdown();
-setSalesman(currentSalesmanId);
+const salesmanDropdown =
+    document.getElementById(
+        "salesmanDropdown"
+    );
 
-// ---- Product cards ----
+
+if (
+    salesmanSelect &&
+    salesmanDropdown
+) {
+
+    salesmanSelect.addEventListener(
+        "click",
+        () => {
+
+            salesmanDropdown.classList.toggle(
+                "show"
+            );
+
+        }
+    );
+
+
+    salesmanDropdown.addEventListener(
+        "click",
+        event => {
+
+            const option =
+                event.target.closest(
+                    ".salesman-option"
+                );
+
+
+            if (!option) {
+                return;
+            }
+
+
+            setSalesman(
+                Number(
+                    option.dataset.id
+                )
+            );
+
+
+            salesmanDropdown.classList.remove(
+                "show"
+            );
+
+        }
+    );
+
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            if (
+                !salesmanSelect.contains(
+                    event.target
+                )
+            ) {
+
+                salesmanDropdown.classList.remove(
+                    "show"
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+// ===========================================================
+// PRODUCT SVG
+// ===========================================================
+
 function iceCreamThumbSvg() {
-  return `<svg viewBox="0 0 64 64"><g fill="none" stroke="#7a5230" stroke-width="2" stroke-linejoin="round">
-    <path d="M22 26h20l-8 30a2 2 0 0 1-4 0l-8-30z" fill="#f4dcb8"/>
-    <path d="M20 26a12 8 0 0 1 24 0" fill="#7a4a2b" stroke="#5c3820"/>
-    <circle cx="26" cy="17" r="4" fill="#e9c9a3" stroke="#5c3820"/>
-    <circle cx="32" cy="13" r="4.5" fill="#e9c9a3" stroke="#5c3820"/>
-    <circle cx="38" cy="17" r="4" fill="#e9c9a3" stroke="#5c3820"/>
-  </g></svg>`;
+
+    return `
+
+        <svg viewBox="0 0 64 64">
+
+            <g
+                fill="none"
+                stroke="#7a5230"
+                stroke-width="2"
+                stroke-linejoin="round">
+
+                <path
+                    d="M22 26h20l-8 30a2 2 0 0 1-4 0l-8-30z"
+                    fill="#f4dcb8"/>
+
+                <path
+                    d="M20 26a12 8 0 0 1 24 0"
+                    fill="#7a4a2b"
+                    stroke="#5c3820"/>
+
+                <circle
+                    cx="26"
+                    cy="17"
+                    r="4"
+                    fill="#e9c9a3"
+                    stroke="#5c3820"/>
+
+                <circle
+                    cx="32"
+                    cy="13"
+                    r="4.5"
+                    fill="#e9c9a3"
+                    stroke="#5c3820"/>
+
+                <circle
+                    cx="38"
+                    cy="17"
+                    r="4"
+                    fill="#e9c9a3"
+                    stroke="#5c3820"/>
+
+            </g>
+
+        </svg>
+
+    `;
+
 }
+
+
+// ===========================================================
+// PRODUCT GRID
+// ===========================================================
 
 function renderProductGrid() {
-  const grid = document.getElementById("productGrid");
-  const query = (document.getElementById("productSearch").value || "").trim().toLowerCase();
-  const cat = document.getElementById("categoryFilter").value;
-  grid.innerHTML = "";
 
-  products.forEach((p) => {
-    if (query && !p.name.toLowerCase().includes(query) && !String(p.id).includes(query)) return;
-    if (cat !== "All Categories" && p.category !== cat) return;
+    const grid =
+        document.getElementById(
+            "productGrid"
+        );
 
-    const card = document.createElement("div");
-    card.className = "product-card";
-    card.innerHTML = `
-      <div class="product-thumb-wrap">
-        <div class="product-thumb">${iceCreamThumbSvg()}<span class="live-dot"></span></div>
-        <div class="product-title">
-          <p>${p.name}</p>
-        </div>
-      </div>
-      <div class="product-meta"><span>Price</span><span>Rs. ${p.price}</span></div>
-      <div class="product-meta"><span>Stock(Quantity)</span><span>${p.stock}</span></div>
-      <button 
-    class="product-add-btn"
-    data-id="${p.id}"
-    ${p.stock <= 0 ? "disabled" : ""}
->
-    ${p.stock <= 0 ? "Out of Stock" : "+ Add"}
-</button>
-    `;
-    grid.appendChild(card);
-  });
+
+    if (!grid) {
+        return;
+    }
+
+
+    const searchInput =
+        document.getElementById(
+            "productSearch"
+        );
+
+
+    const categoryInput =
+        document.getElementById(
+            "categoryFilter"
+        );
+
+
+    const query =
+        (
+            searchInput?.value ||
+            ""
+        )
+            .trim()
+            .toLowerCase();
+
+
+    const category =
+        categoryInput?.value ||
+        "All Categories";
+
+
+    grid.innerHTML =
+        "";
+
+
+    products.forEach(
+        product => {
+
+            if (
+                query &&
+                !String(
+                    product.name ||
+                    ""
+                )
+                    .toLowerCase()
+                    .includes(
+                        query
+                    ) &&
+                !String(
+                    product.id
+                )
+                    .includes(
+                        query
+                    )
+            ) {
+
+                return;
+
+            }
+
+
+            if (
+                category !==
+                    "All Categories" &&
+                product.category !==
+                    category
+            ) {
+
+                return;
+
+            }
+
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+
+            card.className =
+                "product-card";
+
+
+            card.innerHTML = `
+
+                <div class="product-thumb-wrap">
+
+                    <div class="product-thumb">
+
+                        ${iceCreamThumbSvg()}
+
+                        <span class="live-dot"></span>
+
+                    </div>
+
+
+                    <div class="product-title">
+
+                        <p>
+                            ${escapeHTML(
+                                product.name ||
+                                "Unknown"
+                            )}
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="product-meta">
+
+                    <span>
+                        Price
+                    </span>
+
+                    <span>
+                        Rs.
+                        ${Number(
+                            product.price ||
+                            0
+                        ).toLocaleString(
+                            "en-PK"
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="product-meta">
+
+                    <span>
+                        Stock(Quantity)
+                    </span>
+
+                    <span>
+                        ${Number(
+                            product.stock ||
+                            0
+                        )}
+                    </span>
+
+                </div>
+
+
+                <button
+                    class="product-add-btn"
+                    data-id="${product.id}"
+                    ${
+                        Number(
+                            product.stock
+                        ) <= 0
+                            ? "disabled"
+                            : ""
+                    }
+                >
+
+                    ${
+                        Number(
+                            product.stock
+                        ) <= 0
+                            ? "Out of Stock"
+                            : "+ Add"
+                    }
+
+                </button>
+
+            `;
+
+
+            grid.appendChild(
+                card
+            );
+
+        }
+    );
+
 }
 
-document.getElementById("productGrid").addEventListener("click", (e) => {
-  const btn = e.target.closest(".product-add-btn");
-  if (!btn) return;
-  const id = Number(btn.dataset.id);
-  addProductToIssueList(id);
-});
 
-document.getElementById("productSearch").addEventListener("input", renderProductGrid);
-document.getElementById("categoryFilter").addEventListener("change", renderProductGrid);
+// ===========================================================
+// PRODUCT GRID EVENTS
+// ===========================================================
 
-renderProductGrid();
-
-// ---- Issue table ----
-function addProductToIssueList(productId) {
-
-    const product = products.find(
-        p => p.id === productId
+const productGrid =
+    document.getElementById(
+        "productGrid"
     );
 
-    if (!product) return;
+
+if (productGrid) {
+
+    productGrid.addEventListener(
+        "click",
+        event => {
+
+            const button =
+                event.target.closest(
+                    ".product-add-btn"
+                );
 
 
-    // =========================================
-    // PREVENT DUPLICATE PRODUCT ROW
-    // =========================================
+            if (!button) {
+                return;
+            }
 
-    const alreadyAdded = issuedItems.some(
-        item => item.productId === productId
+
+            addProductToIssueList(
+                Number(
+                    button.dataset.id
+                )
+            );
+
+        }
     );
+
+}
+
+
+document
+    .getElementById(
+        "productSearch"
+    )
+    ?.addEventListener(
+        "input",
+        renderProductGrid
+    );
+
+
+document
+    .getElementById(
+        "categoryFilter"
+    )
+    ?.addEventListener(
+        "change",
+        renderProductGrid
+    );
+
+
+// ===========================================================
+// ADD PRODUCT TO ISSUE LIST
+// ===========================================================
+
+function addProductToIssueList(
+    productId
+) {
+
+    const product =
+        products.find(
+            item =>
+                Number(item.id) ===
+                Number(productId)
+        );
+
+
+    if (!product) {
+        return;
+    }
+
+
+    const alreadyAdded =
+        issuedItems.some(
+            item =>
+                Number(
+                    item.productId
+                ) ===
+                Number(
+                    productId
+                )
+        );
 
 
     if (alreadyAdded) {
@@ -304,24 +1490,30 @@ function addProductToIssueList(productId) {
         );
 
         return;
+
     }
 
 
-    // =========================================
-    // ADD PRODUCT
-    // =========================================
-
     issuedItems.push({
 
-        productId: product.id,
+        productId:
+            Number(
+                product.id
+            ),
 
-        price: product.price,
+        price:
+            Number(
+                product.price
+            ),
 
-        qty: "",
+        qty:
+            "",
 
-        ret: "",
+        ret:
+            "",
 
-        commissionApplicable:product.commissionApplicable
+        commissionApplicable:
+            product.commissionApplicable
 
     });
 
@@ -330,398 +1522,2123 @@ function addProductToIssueList(productId) {
 
 }
 
-function renderIssueTable(){
 
-const tbody =
-document.getElementById("issueTableBody");
+// ===========================================================
+// ISSUE TABLE
+// ===========================================================
 
+function renderIssueTable() {
 
-tbody.innerHTML="";
-
-
-issuedItems.forEach((item,index)=>{
-
-
-const product =
-products.find(
-p=>p.id===item.productId
-);
+    const tbody =
+        document.getElementById(
+            "issueTableBody"
+        );
 
 
-const qty = Number(item.qty) || 0;
-const ret = Number(item.ret) || 0;
-
-const net = Math.max(qty - ret, 0);
-
-const amount =
-net * item.price;
-
-
-
-const row =
-document.createElement("tr");
-
-
-row.innerHTML = `
-
-<td>${index + 1}</td>
-
-<td>
-    ${product.name}
-</td>
-
-<td>
-    ${item.price}
-</td>
-<td
-    class="available-stock ${getStockClass(product.stock - qty)}"
-    id="available-stock-${index}"
->
-    ${Math.max(product.stock - qty, 0)}
-</td>
-<td>
-
-    <input 
-        type="number"
-        class="qty-input"
-        data-index="${index}"
-        value="${item.qty}"
-        min="1"
-        max="${product.stock}"
-       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-        >
-
-</td>
-
-<td>
-
-    <input
-        type="number"
-        class="return-input"
-        data-index="${index}"
-        value="${item.ret}"
-        min="0">
-
-</td>
-
-<td id="net-${index}">
-    ${net}
-</td>
-
-<td id="amount-${index}">
-    ${amount.toLocaleString()}
-</td>
-
-<td>
-
-    <button
-        type="button"
-        class="delete-issue-row-btn"
-        data-index="${index}"
-        title="Remove product">
-
-        <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2">
-
-            <polyline points="3 6 5 6 21 6"></polyline>
-
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-
-            <line x1="14" y1="11" x2="14" y2="17"></line>
-
-        </svg>
-
-    </button>
-
-</td>
-
-`;
-
-
-tbody.appendChild(row);
-
-
-});
-
-
-updateSubtotal();
-
-}
-
-function getStockClass(stock) {
-
-    if (stock <= 10) {
-        return "stock-critical";
+    if (!tbody) {
+        return;
     }
 
-    if (stock <= 30) {
-        return "stock-low";
-    }
 
-    return "stock-good";
-}
-
-document
-.getElementById("issueTableBody")
-.addEventListener(
-"input",
-(e)=>{
+    tbody.innerHTML =
+        "";
 
 
-const index =
-Number(e.target.dataset.index);
+    issuedItems.forEach(
+        (
+            item,
+            index
+        ) => {
+
+            const product =
+                products.find(
+                    p =>
+                        Number(p.id) ===
+                        Number(
+                            item.productId
+                        )
+                );
 
 
-if(isNaN(index))
-return;
+            if (!product) {
+                return;
+            }
 
 
-const item =
-issuedItems[index];
+            const qty =
+                Number(
+                    item.qty
+                ) || 0;
 
 
+            const ret =
+                Number(
+                    item.ret
+                ) || 0;
 
-if (e.target.classList.contains("qty-input")) {
 
-    const product = products.find(
-        p => p.id === item.productId
+            const net =
+                Math.max(
+                    qty -
+                    ret,
+                    0
+                );
+
+
+            const amount =
+                net *
+                Number(
+                    item.price ||
+                    0
+                );
+
+
+            const availableStock =
+                Math.max(
+                    Number(
+                        product.stock ||
+                        0
+                    ) -
+                    qty,
+                    0
+                );
+
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            row.innerHTML = `
+
+                <td>
+                    ${index + 1}
+                </td>
+
+
+                <td>
+                    ${escapeHTML(
+                        product.name ||
+                        "Unknown"
+                    )}
+                </td>
+
+
+                <td>
+                    ${Number(
+                        item.price ||
+                        0
+                    ).toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+
+                <td
+                    class="available-stock ${getStockClass(
+                        availableStock
+                    )}"
+                    id="available-stock-${index}"
+                >
+
+                    ${availableStock}
+
+                </td>
+
+
+                <td>
+
+                    <input
+                        type="number"
+                        class="qty-input"
+                        data-index="${index}"
+                        value="${item.qty}"
+                        min="1"
+                        max="${product.stock}"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                    >
+
+                </td>
+
+
+                <td>
+
+                    <input
+                        type="number"
+                        class="return-input"
+                        data-index="${index}"
+                        value="${item.ret}"
+                        min="0"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                    >
+
+                </td>
+
+
+                <td id="net-${index}">
+                    ${net}
+                </td>
+
+
+                <td id="amount-${index}">
+                    ${amount.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+
+                <td>
+
+                    <button
+                        type="button"
+                        class="delete-issue-row-btn"
+                        data-index="${index}"
+                        title="Remove product"
+                    >
+
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+
+                            <polyline
+                                points="3 6 5 6 21 6">
+                            </polyline>
+
+
+                            <path
+                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6">
+                            </path>
+
+
+                            <line
+                                x1="10"
+                                y1="11"
+                                x2="10"
+                                y2="17">
+                            </line>
+
+
+                            <line
+                                x1="14"
+                                y1="11"
+                                x2="14"
+                                y2="17">
+                            </line>
+
+                        </svg>
+
+                    </button>
+
+                </td>
+
+            `;
+
+
+            tbody.appendChild(
+                row
+            );
+
+        }
     );
 
-    if (!product) return;
 
-    const value = e.target.value;
+    updateSubtotal();
 
-    // Allow the user to completely clear the input
-    if (value === "") {
-        item.qty = "";
-        updateIssueRow(index);
-        return;
-    }
-
-    let qty = Number(value);
-
-    // Invalid number
-    if (isNaN(qty)) {
-        item.qty = "";
-        updateIssueRow(index);
-        return;
-    }
-
-    // Quantity cannot exceed available stock
-    if (qty > product.stock) {
-
-        alert(
-            `Only ${product.stock} units are available for ${product.name}.`
-        );
-
-        qty = product.stock;
-        e.target.value = qty;
-    }
-
-    // Quantity must be at least 1 when entered
-    if (qty < 1) {
-        qty = 1;
-        e.target.value = qty;
-    }
-
-    item.qty = qty;
-
-    updateIssueRow(index);
-     getStockClass(value)
-     
-}
-
-// =========================
-// RETURN QUANTITY
-// =========================
-
-if (e.target.classList.contains("return-input")) {
-
-    let ret = Number(e.target.value) || 0;
-
-    // Return cannot be negative
-    if (ret < 0) {
-        ret = 0;
-    }
-
-    // Return cannot be greater than issued quantity
-    if (ret > item.qty) {
-
-        alert(
-            "Return quantity cannot be greater than issued quantity."
-        );
-
-        ret = item.qty;
-    }
-
-    item.ret = ret;
-
-    e.target.value = ret;
 }
 
 
+// ===========================================================
+// STOCK CLASS
+// ===========================================================
 
-updateIssueRow(index);
+function getStockClass(
+    stock
+) {
+
+    if (
+        stock <= 10
+    ) {
+
+        return "stock-critical";
+
+    }
 
 
-});
+    if (
+        stock <= 30
+    ) {
 
-document.getElementById("issueTableBody").addEventListener("click", (e) => {
-  const stepPart = e.target.closest("[data-dir]");
-  if (!stepPart) return;
-  const stepper = stepPart.closest(".qty-stepper");
-  const idx = Number(stepper.dataset.idx);
-  const item = issuedItems[idx];
-  if (!item) return;
+        return "stock-low";
 
-  if (stepPart.dataset.dir === "up") {
-    item.qty += 1;
-  } else {
-    item.qty = Math.max(item.qty - 1, 0);
-  }
-  renderIssueTable();
-});
+    }
 
-function updateSubtotal() {
 
-    let qty = 0;
-    let returns = 0;
-    let net = 0;
-    let amount = 0;
+    return "stock-good";
 
-    let nonCommissionableAmount = 0;
+}
 
-    issuedItems.forEach(item => {
 
-        const sales = Math.max(
-            Number(item.qty || 0) - Number(item.ret || 0),
+// ===========================================================
+// ISSUE TABLE INPUT EVENTS
+// ===========================================================
+
+document
+    .getElementById(
+        "issueTableBody"
+    )
+    ?.addEventListener(
+        "input",
+        event => {
+
+            const index =
+                Number(
+                    event.target.dataset.index
+                );
+
+
+            if (
+                Number.isNaN(index)
+            ) {
+
+                return;
+
+            }
+
+
+            const item =
+                issuedItems[
+                    index
+                ];
+
+
+            if (!item) {
+                return;
+            }
+
+
+            // =================================================
+            // QUANTITY
+            // =================================================
+
+            if (
+                event.target.classList.contains(
+                    "qty-input"
+                )
+            ) {
+
+                const product =
+                    products.find(
+                        p =>
+                            Number(p.id) ===
+                            Number(
+                                item.productId
+                            )
+                    );
+
+
+                if (!product) {
+                    return;
+                }
+
+
+                const value =
+                    event.target.value;
+
+
+                if (
+                    value === ""
+                ) {
+
+                    item.qty =
+                        "";
+
+                    updateIssueRow(
+                        index
+                    );
+
+                    return;
+
+                }
+
+
+                let qty =
+                    Number(
+                        value
+                    );
+
+
+                if (
+                    Number.isNaN(
+                        qty
+                    )
+                ) {
+
+                    item.qty =
+                        "";
+
+                    updateIssueRow(
+                        index
+                    );
+
+                    return;
+
+                }
+
+
+                if (
+                    qty >
+                    Number(
+                        product.stock
+                    )
+                ) {
+
+                    alert(
+                        `Only ${product.stock} units are available for ${product.name}.`
+                    );
+
+
+                    qty =
+                        Number(
+                            product.stock
+                        );
+
+
+                    event.target.value =
+                        qty;
+
+                }
+
+
+                if (
+                    qty < 1
+                ) {
+
+                    qty =
+                        1;
+
+
+                    event.target.value =
+                        qty;
+
+                }
+
+
+                item.qty =
+                    qty;
+
+
+                if (
+                    Number(
+                        item.ret
+                    ) >
+                    qty
+                ) {
+
+                    item.ret =
+                        qty;
+
+                }
+
+
+                updateIssueRow(
+                    index
+                );
+
+            }
+
+
+            // =================================================
+            // RETURN
+            // =================================================
+
+            if (
+                event.target.classList.contains(
+                    "return-input"
+                )
+            ) {
+
+                const qty =
+                    Number(
+                        item.qty
+                    ) || 0;
+
+
+                let ret =
+                    Number(
+                        event.target.value
+                    ) || 0;
+
+
+                if (
+                    ret < 0
+                ) {
+
+                    ret =
+                        0;
+
+                }
+
+
+                if (
+                    ret >
+                    qty
+                ) {
+
+                    alert(
+                        "Return quantity cannot be greater than issued quantity."
+                    );
+
+
+                    ret =
+                        qty;
+
+                }
+
+
+                item.ret =
+                    ret;
+
+
+                event.target.value =
+                    ret;
+
+
+                updateIssueRow(
+                    index
+                );
+
+            }
+
+        }
+    );
+
+
+// ===========================================================
+// ISSUE ROW DELETE
+// ===========================================================
+
+document
+    .getElementById(
+        "issueTableBody"
+    )
+    ?.addEventListener(
+        "click",
+        event => {
+
+            const deleteButton =
+                event.target.closest(
+                    ".delete-issue-row-btn"
+                );
+
+
+            if (!deleteButton) {
+                return;
+            }
+
+
+            const index =
+                Number(
+                    deleteButton.dataset.index
+                );
+
+
+            if (
+                Number.isNaN(index)
+            ) {
+
+                return;
+
+            }
+
+
+            issuedItems.splice(
+                index,
+                1
+            );
+
+
+            renderIssueTable();
+
+        }
+    );
+
+
+// ===========================================================
+// STEPPER
+// ===========================================================
+
+document
+    .getElementById(
+        "issueTableBody"
+    )
+    ?.addEventListener(
+        "click",
+        event => {
+
+            const stepPart =
+                event.target.closest(
+                    "[data-dir]"
+                );
+
+
+            if (!stepPart) {
+                return;
+            }
+
+
+            const stepper =
+                stepPart.closest(
+                    ".qty-stepper"
+                );
+
+
+            if (!stepper) {
+                return;
+            }
+
+
+            const index =
+                Number(
+                    stepper.dataset.idx
+                );
+
+
+            const item =
+                issuedItems[
+                    index
+                ];
+
+
+            if (!item) {
+                return;
+            }
+
+
+            const product =
+                products.find(
+                    p =>
+                        Number(p.id) ===
+                        Number(
+                            item.productId
+                        )
+                );
+
+
+            if (!product) {
+                return;
+            }
+
+
+            const currentQty =
+                Number(
+                    item.qty
+                ) || 0;
+
+
+            if (
+                stepPart.dataset.dir ===
+                "up"
+            ) {
+
+                item.qty =
+                    Math.min(
+                        currentQty + 1,
+                        Number(
+                            product.stock
+                        )
+                    );
+
+            } else {
+
+                item.qty =
+                    Math.max(
+                        currentQty - 1,
+                        0
+                    );
+
+            }
+
+
+            if (
+                Number(
+                    item.ret
+                ) >
+                Number(
+                    item.qty
+                )
+            ) {
+
+                item.ret =
+                    Number(
+                        item.qty
+                    );
+
+            }
+
+
+            renderIssueTable();
+
+        }
+    );
+
+
+// ===========================================================
+// UPDATE ISSUE ROW
+// ===========================================================
+
+function updateIssueRow(
+    index
+) {
+
+    const item =
+        issuedItems[
+            index
+        ];
+
+
+    if (!item) {
+        return;
+    }
+
+
+    const product =
+        products.find(
+            p =>
+                Number(p.id) ===
+                Number(
+                    item.productId
+                )
+        );
+
+
+    if (!product) {
+        return;
+    }
+
+
+    const qty =
+        Number(
+            item.qty
+        ) || 0;
+
+
+    const ret =
+        Number(
+            item.ret
+        ) || 0;
+
+
+    const availableStock =
+        Math.max(
+            Number(
+                product.stock ||
+                0
+            ) -
+            qty,
             0
         );
 
-        qty += Number(item.qty || 0);
-        returns += Number(item.ret || 0);
-        net += sales;
 
-        const itemAmount = sales * Number(item.price || 0);
+    const net =
+        Math.max(
+            qty -
+            ret,
+            0
+        );
 
-        amount += itemAmount;
 
-        // Products with commissionApplicable = "no"
-        if (item.commissionApplicable === "no") {
-            nonCommissionableAmount += itemAmount;
-        }
+    const amount =
+        net *
+        Number(
+            item.price ||
+            0
+        );
 
-    });
 
-    document.getElementById("subtotalQty").textContent = qty;
-    document.getElementById("subtotalReturn").textContent = returns;
-    document.getElementById("subtotalNet").textContent = net;
-    document.getElementById("subtotalAmount").textContent =
-        amount.toLocaleString();
+    const stockElement =
+        document.getElementById(
+            `available-stock-${index}`
+        );
 
-    console.log("Subtotal:", amount);
-    console.log("Non commissionable:", nonCommissionableAmount);
 
-    // 20% commission only on commissionable products
-    const commissionableAmount =
-        Math.max(amount - nonCommissionableAmount, 0);
+    if (stockElement) {
 
-    const commission =
-        commissionableAmount * entercomission;
+        stockElement.textContent =
+            availableStock;
 
-    console.log("Commission:", commission);
 
-    updateTotals(amount, commission);
-}
-function updateTotals(subTotal, commission) {
+        stockElement.classList.remove(
+            "stock-good",
+            "stock-low",
+            "stock-critical"
+        );
 
-    const discount =
-        Number(document.getElementById("Discount").value) || 0;
 
-    const cash =
-        Number(document.getElementById("Cash").value) || 0;
+        stockElement.classList.add(
+            getStockClass(
+                availableStock
+            )
+        );
 
-    const netTotal =
-        subTotal - commission - discount;
-
-    const currentBill =
-        netTotal - cash;
-
-    const arrearsValue =
-        Number(arrears) || 0;
-
-    const balance =
-        currentBill + arrearsValue;
-
-    document.getElementById("subTotal").textContent =
-        subTotal.toLocaleString();
-
-    document.getElementById("commision").textContent =
-        commission.toLocaleString();
-
-    document.getElementById("NetTotal").textContent =
-        netTotal.toLocaleString();
-
-    document.getElementById("currentBill").textContent =
-        currentBill.toLocaleString();
-
-    document.getElementById("Arrears").textContent =
-        arrearsValue.toLocaleString();
-
-    document.getElementById("balance").textContent =
-        balance.toLocaleString();
-}
-function printRealInvoice(invoice) {
-
-    const printWindow = window.open("", "_blank", "width=900,height=1000");
-
-    if (!printWindow) {
-        alert("Please allow popups to print the invoice.");
-        return;
     }
 
-    const invoiceDate = new Date(invoice.date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
 
-    const itemsRows = invoice.items.map((item, index) => {
+    const netElement =
+        document.getElementById(
+            `net-${index}`
+        );
 
-        const net = item.quantity - (item.returnedQuantity || 0);
 
-        return `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${item.productName}</td>
-                <td>${Number(item.price).toLocaleString()}</td>
-                <td>${item.quantity}</td>
-                <td>${item.returnedQuantity || 0}</td>
-                <td>${net}</td>
-                <td>${Number(item.amount).toLocaleString()}</td>
-            </tr>
-        `;
+    if (netElement) {
 
-    }).join("");
+        netElement.textContent =
+            net;
+
+    }
+
+
+    const amountElement =
+        document.getElementById(
+            `amount-${index}`
+        );
+
+
+    if (amountElement) {
+
+        amountElement.textContent =
+            amount.toLocaleString(
+                "en-PK"
+            );
+
+    }
+
+
+    updateSubtotal();
+
+}
+
+
+// ===========================================================
+// TOTALS
+// ===========================================================
+
+function updateSubtotal() {
+
+    let qty =
+        0;
+
+    let returns =
+        0;
+
+    let net =
+        0;
+
+    let amount =
+        0;
+
+    let nonCommissionableAmount =
+        0;
+
+
+    issuedItems.forEach(
+        item => {
+
+            const quantity =
+                Number(
+                    item.qty
+                ) || 0;
+
+
+            const returned =
+                Number(
+                    item.ret
+                ) || 0;
+
+
+            /*
+             * Correct calculation:
+             * quantity - return
+             */
+            const sales =
+                Math.max(
+                    quantity -
+                    returned,
+                    0
+                );
+
+
+            qty +=
+                quantity;
+
+
+            returns +=
+                returned;
+
+
+            net +=
+                sales;
+
+
+            const itemAmount =
+                sales *
+                Number(
+                    item.price ||
+                    0
+                );
+
+
+            amount +=
+                itemAmount;
+
+
+            if (
+                item.commissionApplicable ===
+                "no"
+            ) {
+
+                nonCommissionableAmount +=
+                    itemAmount;
+
+            }
+
+        }
+    );
+
+
+    setText(
+        "subtotalQty",
+        qty
+    );
+
+
+    setText(
+        "subtotalReturn",
+        returns
+    );
+
+
+    setText(
+        "subtotalNet",
+        net
+    );
+
+
+    setText(
+        "subtotalAmount",
+        amount.toLocaleString(
+            "en-PK"
+        )
+    );
+
+
+    const commissionableAmount =
+        Math.max(
+            amount -
+            nonCommissionableAmount,
+            0
+        );
+
+
+    const commission =
+        commissionableAmount *
+        entercomission;
+
+
+    updateTotals(
+        amount,
+        commission
+    );
+
+}
+
+
+// ===========================================================
+// UPDATE TOTALS
+// ===========================================================
+
+function updateTotals(
+    subTotal,
+    commission
+) {
+
+    const discount =
+        Number(
+            document.getElementById(
+                "Discount"
+            )?.value
+        ) || 0;
+
+
+    const cash =
+        Number(
+            document.getElementById(
+                "Cash"
+            )?.value
+        ) || 0;
+
+
+    const netTotal =
+        subTotal -
+        commission -
+        discount;
+
+
+    const currentBill =
+        netTotal -
+        cash;
+
+
+    const arrearsValue =
+        Number(
+            arrears
+        ) || 0;
+
+
+    const balance =
+        currentBill +
+        arrearsValue;
+
+
+    setText(
+        "subTotal",
+        subTotal.toLocaleString(
+            "en-PK"
+        )
+    );
+
+
+    setText(
+        "commision",
+        commission.toLocaleString(
+            "en-PK"
+        )
+    );
+
+
+    setText(
+        "NetTotal",
+        netTotal.toLocaleString(
+            "en-PK"
+        )
+    );
+
+
+    setText(
+        "currentBill",
+        currentBill.toLocaleString(
+            "en-PK"
+        )
+    );
+
+
+    setText(
+        "Arrears",
+        arrearsValue.toLocaleString(
+            "en-PK"
+        )
+    );
+
+
+    setText(
+        "balance",
+        balance.toLocaleString(
+            "en-PK"
+        )
+    );
+
+}
+
+
+// ===========================================================
+// APPLY SALESMAN ISSUE LOCALLY
+//
+// Local effects:
+// 1. Product stock decreases.
+// 2. Salesman balance updates.
+// 3. Invoice is saved into invoices store.
+//
+// Only POST /invoices goes into syncQueue.
+// ===========================================================
+
+async function applyIssueLocally(
+    invoice
+) {
+
+    // =======================================================
+    // UPDATE PRODUCTS
+    // =======================================================
+
+    const localProducts =
+        await getAllFromOfflineDB(
+            "products"
+        );
+
+
+    const updatedProducts =
+        localProducts.map(
+            product => {
+
+                const invoiceItem =
+                    invoice.items.find(
+                        item =>
+                            Number(
+                                item.productId
+                            ) ===
+                            Number(
+                                product.id
+                            )
+                    );
+
+
+                if (!invoiceItem) {
+
+                    return product;
+
+                }
+
+
+                const quantity =
+                    Number(
+                        invoiceItem.quantity
+                    ) || 0;
+
+
+                const returnedQuantity =
+                    Number(
+                        invoiceItem.returnedQuantity ??
+                        invoiceItem.returnQuantity ??
+                        0
+                    ) || 0;
+
+
+                const netQuantity =
+                    Math.max(
+                        quantity -
+                        returnedQuantity,
+                        0
+                    );
+
+
+                const currentStock =
+                    Number(
+                        product.stock ??
+                        product.qunatity ??
+                        product.quantity ??
+                        0
+                    );
+
+
+                return {
+
+                    ...product,
+
+                    stock:
+                        Math.max(
+                            currentStock -
+                            netQuantity,
+                            0
+                        )
+
+                };
+
+            }
+        );
+
+
+    await saveManyToOfflineDB(
+        "products",
+        updatedProducts
+    );
+
+
+    // =======================================================
+    // UPDATE SALESMAN BALANCE
+    // =======================================================
+
+    const localSalesmen =
+        await getAllFromOfflineDB(
+            "salesmen"
+        );
+
+
+    const salesmanId =
+        Number(
+            invoice.partyId
+        );
+
+
+    const updatedSalesmen =
+        localSalesmen.map(
+            salesman => {
+
+                if (
+                    Number(
+                        salesman.id
+                    ) !==
+                    salesmanId
+                ) {
+
+                    return salesman;
+
+                }
+
+
+                return {
+
+                    ...salesman,
+
+                    outstandingBalance:
+                        Number(
+                            invoice.balance
+                        ) || 0
+
+                };
+
+            }
+        );
+
+
+    await saveManyToOfflineDB(
+        "salesmen",
+        updatedSalesmen
+    );
+
+
+    // =======================================================
+    // SAVE INVOICE IN INDEXEDDB
+    // =======================================================
+
+    await saveToOfflineDB(
+        "invoices",
+        invoice
+    );
+
+
+    // =======================================================
+    // UPDATE PAGE STATE
+    // =======================================================
+
+    products =
+        updatedProducts.map(
+            product => ({
+
+                id:
+                    Number(
+                        product.id
+                    ),
+
+                name:
+                    product.productName ??
+                    product.name ??
+                    "Unknown",
+
+                size:
+                    product.size ??
+                    "",
+
+                category:
+                    product.category ??
+                    "Other",
+
+                price:
+                    Number(
+                        product.salePrice ??
+                        product.price ??
+                        0
+                    ),
+
+                stock:
+                    Number(
+                        product.stock ??
+                        product.qunatity ??
+                        product.quantity ??
+                        0
+                    ),
+
+                commissionApplicable:
+                    product.commissionApplicable
+
+            })
+        );
+
+
+    salesmen =
+        updatedSalesmen.map(
+            salesman => ({
+
+                id:
+                    Number(
+                        salesman.id
+                    ),
+
+                name:
+                    salesman.name ??
+                    salesman.salesman_name ??
+                    "Unknown",
+
+                status:
+                    salesman.status ??
+                    "Active",
+
+                phone:
+                    salesman.phone ??
+                    "",
+
+                route:
+                    salesman.route ??
+                    "",
+
+                address:
+                    salesman.address ??
+                    salesman.Adress ??
+                    "",
+
+                outstandingBalance:
+                    Number(
+                        salesman.outstandingBalance ??
+                        salesman.outStandingBalance ??
+                        0
+                    )
+
+            })
+        );
+
+
+    const selectedSalesman =
+        salesmen.find(
+            salesman =>
+                Number(
+                    salesman.id
+                ) ===
+                salesmanId
+        );
+
+
+    if (
+        selectedSalesman
+    ) {
+
+        arrears =
+            Number(
+                selectedSalesman.outstandingBalance
+            ) || 0;
+
+    }
+
+
+    renderProductGrid();
+
+    renderIssueTable();
+
+}
+
+
+// ===========================================================
+// CREATE INVOICE
+// ===========================================================
+
+document
+    .getElementById(
+        "createInvoiceBtn"
+    )
+    ?.addEventListener(
+        "click",
+        async () => {
+
+            if (
+                issuedItems.length ===
+                0
+            ) {
+
+                alert(
+                    "Please add products first."
+                );
+
+                return;
+
+            }
+
+
+            if (
+                !currentSalesmanId
+            ) {
+
+                alert(
+                    "Please select a salesman."
+                );
+
+                return;
+
+            }
+
+
+            // =================================================
+            // VALIDATE ITEMS
+            // =================================================
+
+            for (
+                const item
+                of issuedItems
+            ) {
+
+                const product =
+                    products.find(
+                        p =>
+                            Number(p.id) ===
+                            Number(
+                                item.productId
+                            )
+                    );
+
+
+                if (!product) {
+
+                    alert(
+                        "Product not found."
+                    );
+
+                    return;
+
+                }
+
+
+                const qty =
+                    Number(
+                        item.qty
+                    ) || 0;
+
+
+                const ret =
+                    Number(
+                        item.ret
+                    ) || 0;
+
+
+                if (
+                    qty < 1
+                ) {
+
+                    alert(
+                        `${product.name}: quantity must be at least 1.`
+                    );
+
+                    return;
+
+                }
+
+
+                if (
+                    ret < 0
+                ) {
+
+                    alert(
+                        `${product.name}: return quantity cannot be negative.`
+                    );
+
+                    return;
+
+                }
+
+
+                if (
+                    ret > qty
+                ) {
+
+                    alert(
+                        `${product.name}: return quantity cannot be greater than quantity.`
+                    );
+
+                    return;
+
+                }
+
+
+                const netQuantity =
+                    qty -
+                    ret;
+
+
+                if (
+                    Number(
+                        product.stock
+                    ) <
+                    netQuantity
+                ) {
+
+                    alert(
+                        `${product.name}: only ${product.stock} units available.`
+                    );
+
+                    return;
+
+                }
+
+            }
+
+
+            // =================================================
+            // CREATE INVOICE OBJECT
+            // =================================================
+
+            const invoice = {
+
+                id:
+                    Date.now(),
+
+                type:
+                    "salesman",
+
+                partyId:
+                    Number(
+                        currentSalesmanId
+                    ),
+
+                partyName:
+                    document.getElementById(
+                        "salesmanName"
+                    )?.textContent ||
+                    "",
+
+                date:
+                    new Date().toISOString(),
+
+                items:
+                    issuedItems.map(
+                        item => {
+
+                            const product =
+                                products.find(
+                                    p =>
+                                        Number(
+                                            p.id
+                                        ) ===
+                                        Number(
+                                            item.productId
+                                        )
+                                );
+
+
+                            const quantity =
+                                Number(
+                                    item.qty
+                                );
+
+
+                            const returnedQuantity =
+                                Number(
+                                    item.ret
+                                ) || 0;
+
+
+                            const netQuantity =
+                                Math.max(
+                                    quantity -
+                                    returnedQuantity,
+                                    0
+                                );
+
+
+                            const price =
+                                Number(
+                                    item.price
+                                );
+
+
+                            return {
+
+                                productId:
+                                    Number(
+                                        item.productId
+                                    ),
+
+                                productName:
+                                    product?.name ||
+                                    "",
+
+                                quantity:
+                                    quantity,
+
+                                returnedQuantity:
+                                    returnedQuantity,
+
+                                returnQuantity:
+                                    returnedQuantity,
+
+                                price:
+                                    price,
+
+                                commissionApplicable:
+                                    item.commissionApplicable,
+
+                                amount:
+                                    netQuantity *
+                                    price
+
+                            };
+
+                        }
+                    ),
+
+
+                subtotal:
+                    Number(
+                        document.getElementById(
+                            "subTotal"
+                        )?.textContent
+                            ?.replace(
+                                /,/g,
+                                ""
+                            )
+                    ) || 0,
+
+
+                commission:
+                    Number(
+                        document.getElementById(
+                            "commision"
+                        )?.textContent
+                            ?.replace(
+                                /,/g,
+                                ""
+                            )
+                    ) || 0,
+
+
+                discount:
+                    Number(
+                        document.getElementById(
+                            "Discount"
+                        )?.value
+                    ) || 0,
+
+
+                netTotal:
+                    Number(
+                        document.getElementById(
+                            "NetTotal"
+                        )?.textContent
+                            ?.replace(
+                                /,/g,
+                                ""
+                            )
+                    ) || 0,
+
+
+                cash:
+                    Number(
+                        document.getElementById(
+                            "Cash"
+                        )?.value
+                    ) || 0,
+
+
+                currentBill:
+                    Number(
+                        document.getElementById(
+                            "currentBill"
+                        )?.textContent
+                            ?.replace(
+                                /,/g,
+                                ""
+                            )
+                    ) || 0,
+
+
+                arrears:
+                    Number(
+                        document.getElementById(
+                            "Arrears"
+                        )?.textContent
+                            ?.replace(
+                                /,/g,
+                                ""
+                            )
+                    ) || 0,
+
+
+                balance:
+                    Number(
+                        document.getElementById(
+                            "balance"
+                        )?.textContent
+                            ?.replace(
+                                /,/g,
+                                ""
+                            )
+                    ) || 0,
+
+
+                dynamicComission:
+                    Number(
+                        entercomission
+                    )
+
+            };
+
+
+            console.log(
+                "Invoice:",
+                invoice
+            );
+
+
+            const createInvoiceButton =
+                document.getElementById(
+                    "createInvoiceBtn"
+                );
+
+
+            try {
+
+                if (
+                    createInvoiceButton
+                ) {
+
+                    createInvoiceButton.disabled =
+                        true;
+
+                }
+
+
+                // =================================================
+                // OFFLINE
+                // =================================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
+                    await applyIssueLocally(
+                        invoice
+                    );
+
+
+                    await addToSyncQueue({
+
+                        endpoint:
+                            "/invoices",
+
+                        method:
+                            "POST",
+
+                        body:
+                            invoice
+
+                    });
+
+
+                    alert(
+                        "Sales invoice saved offline. Product stock, salesman balance, and invoice data were saved locally. It will synchronize when internet returns."
+                    );
+
+
+                    openPrintInvoiceModal(
+                        invoice
+                    );
+
+
+                    issuedItems =
+                        [];
+
+
+                    renderIssueTable();
+
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // ONLINE
+                // =================================================
+
+                const response =
+                    await fetch(
+                        `${API}/invoices`,
+                        {
+
+                            method:
+                                "POST",
+
+                            credentials:
+                                "include",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    invoice
+                                )
+
+                        }
+                    );
+
+
+                // =================================================
+                // SESSION EXPIRED
+                // =================================================
+
+                if (
+                    response.status ===
+                    401
+                ) {
+
+                    window.location.href =
+                        "login.html";
+
+                    return;
+
+                }
+
+
+                const result =
+                    await response.json();
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    throw new Error(
+                        result.message ||
+                        "Failed to create invoice."
+                    );
+
+                }
+
+
+                console.log(
+                    "Invoice created:",
+                    result
+                );
+
+
+                // =================================================
+                // SAVE ONLINE-CREATED INVOICE TO INDEXEDDB
+                // =================================================
+
+                await saveToOfflineDB(
+                    "invoices",
+                    invoice
+                );
+
+
+                // =================================================
+                // REFRESH PRODUCTS
+                // =================================================
+
+                await fetchProducts();
+
+
+                // =================================================
+                // REFRESH SALESMEN
+                // =================================================
+
+                await fetchSalesmen();
+
+
+                alert(
+                    result.message ||
+                    "Invoice created successfully."
+                );
+
+
+                // =================================================
+                // PRINT
+                // =================================================
+
+                openPrintInvoiceModal(
+                    invoice
+                );
+
+
+                issuedItems =
+                    [];
+
+
+                renderIssueTable();
+
+
+            } catch (error) {
+
+                console.error(
+                    "Invoice error:",
+                    error
+                );
+
+
+                // =================================================
+                // NETWORK FAILURE
+                // =================================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
+                    try {
+
+                        await applyIssueLocally(
+                            invoice
+                        );
+
+
+                        await addToSyncQueue({
+
+                            endpoint:
+                                "/invoices",
+
+                            method:
+                                "POST",
+
+                            body:
+                                invoice
+
+                        });
+
+
+                        alert(
+                            "Internet connection was lost. Sales invoice was saved offline and will synchronize when internet returns."
+                        );
+
+
+                        openPrintInvoiceModal(
+                            invoice
+                        );
+
+
+                        issuedItems =
+                            [];
+
+
+                        renderIssueTable();
+
+
+                    } catch (
+                        offlineError
+                    ) {
+
+                        console.error(
+                            "Offline invoice error:",
+                            offlineError
+                        );
+
+
+                        alert(
+                            "Failed to save invoice offline."
+                        );
+
+                    }
+
+                } else {
+
+                    alert(
+                        error.message ||
+                        "Failed to save invoice."
+                    );
+
+                }
+
+            } finally {
+
+                if (
+                    createInvoiceButton
+                ) {
+
+                    createInvoiceButton.disabled =
+                        false;
+
+                }
+
+            }
+
+        }
+    );
+
+
+// ===========================================================
+// PRINT A4 INVOICE
+// ===========================================================
+
+function printRealInvoice(
+    invoice
+) {
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=900,height=1000"
+        );
+
+
+    if (!printWindow) {
+
+        alert(
+            "Please allow popups to print the invoice."
+        );
+
+        return;
+
+    }
+
+
+    const invoiceDate =
+        new Date(
+            invoice.date
+        ).toLocaleDateString(
+            "en-GB",
+            {
+                day:
+                    "2-digit",
+
+                month:
+                    "short",
+
+                year:
+                    "numeric"
+            }
+        );
+
+
+    const itemsRows =
+        invoice.items
+            .map(
+                (
+                    item,
+                    index
+                ) => {
+
+                    const returned =
+                        Number(
+                            item.returnedQuantity ??
+                            item.returnQuantity ??
+                            0
+                        );
+
+
+                    const quantity =
+                        Number(
+                            item.quantity ||
+                            0
+                        );
+
+
+                    const net =
+                        quantity -
+                        returned;
+
+
+                    return `
+
+                        <tr>
+
+                            <td>
+                                ${index + 1}
+                            </td>
+
+                            <td>
+                                ${escapeHTML(
+                                    item.productName ||
+                                    "-"
+                                )}
+                            </td>
+
+                            <td>
+                                ${Number(
+                                    item.price ||
+                                    0
+                                ).toLocaleString()}
+                            </td>
+
+                            <td>
+                                ${quantity}
+                            </td>
+
+                            <td>
+                                ${returned}
+                            </td>
+
+                            <td>
+                                ${net}
+                            </td>
+
+                            <td>
+                                ${Number(
+                                    item.amount ||
+                                    0
+                                ).toLocaleString()}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
+
+
+    const totalQty =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Number(
+                    item.quantity ||
+                    0
+                ),
+            0
+        );
+
+
+    const totalReturn =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Number(
+                    item.returnedQuantity ??
+                    item.returnQuantity ??
+                    0
+                ),
+            0
+        );
+
+
+    const totalNet =
+        totalQty -
+        totalReturn;
 
 
     printWindow.document.write(`
 
 <!DOCTYPE html>
+
 <html>
 
 <head>
 
 <meta charset="UTF-8">
 
-<title>Invoice ${invoice.id}</title>
+<title>
+    Invoice ${invoice.id}
+</title>
 
 <style>
 
@@ -749,8 +3666,6 @@ body {
     margin: auto;
 }
 
-/* ================= HEADER ================= */
-
 .header {
     text-align: center;
     margin-bottom: 10px;
@@ -774,8 +3689,6 @@ body {
     margin-top: 10px;
 }
 
-/* ================= CUSTOMER INFO ================= */
-
 .info-table {
     width: 100%;
     border-collapse: collapse;
@@ -796,8 +3709,6 @@ body {
 .info-value {
     width: 32%;
 }
-
-/* ================= ITEMS ================= */
 
 .items-table {
     width: 100%;
@@ -821,13 +3732,9 @@ body {
     text-align: left;
 }
 
-/* ================= SUBTOTAL ================= */
-
 .subtotal-row td {
     font-weight: bold;
 }
-
-/* ================= TOTALS ================= */
 
 .totals-container {
     display: flex;
@@ -861,8 +3768,6 @@ body {
     border-top: 2px solid #000;
 }
 
-/* ================= SIGNATURES ================= */
-
 .signatures {
     display: flex;
     justify-content: space-between;
@@ -889,8 +3794,6 @@ body {
     font-size: 10px;
 }
 
-/* ================= PRINT ================= */
-
 @media print {
 
     body {
@@ -907,12 +3810,9 @@ body {
 
 </head>
 
-
 <body>
 
 <div class="invoice">
-
-    <!-- ================= HEADER ================= -->
 
     <div class="header">
 
@@ -921,12 +3821,18 @@ body {
         </div>
 
         <div class="company-address">
+
             Head Office: New Ring Road Near Madni Colony Back side Zantara Town Peshawar
+
             <br>
+
             Tel # 091-2601784 &nbsp;&nbsp;
             Mobile # 0345-9101300 / 0317-1234570
+
             <br>
+
             Peshawar Pakistan
+
         </div>
 
         <div class="invoice-title">
@@ -935,8 +3841,6 @@ body {
 
     </div>
 
-
-    <!-- ================= SALESMAN INFO ================= -->
 
     <table class="info-table">
 
@@ -947,7 +3851,10 @@ body {
             </td>
 
             <td class="info-value">
-                ${invoice.partyName}
+                ${escapeHTML(
+                    invoice.partyName ||
+                    "-"
+                )}
             </td>
 
             <td class="info-label">
@@ -984,8 +3891,6 @@ body {
     </table>
 
 
-    <!-- ================= ITEMS ================= -->
-
     <table class="items-table">
 
         <thead>
@@ -993,17 +3898,11 @@ body {
             <tr>
 
                 <th>No.</th>
-
                 <th>Type of Goods</th>
-
                 <th>Price</th>
-
                 <th>Sales</th>
-
                 <th>Return</th>
-
                 <th>Net S</th>
-
                 <th>Amount</th>
 
             </tr>
@@ -1023,31 +3922,22 @@ body {
                 </td>
 
                 <td>
-                    ${invoice.items.reduce(
-                        (total, item) => total + Number(item.quantity || 0),
-                        0
-                    )}
+                    ${totalQty}
                 </td>
 
                 <td>
-                    ${invoice.items.reduce(
-                        (total, item) => total + Number(item.returnedQuantity || 0),
-                        0
-                    )}
+                    ${totalReturn}
                 </td>
 
                 <td>
-                    ${invoice.items.reduce(
-                        (total, item) =>
-                            total +
-                            Number(item.quantity || 0) -
-                            Number(item.returnedQuantity || 0),
-                        0
-                    )}
+                    ${totalNet}
                 </td>
 
                 <td>
-                    ${Number(invoice.subtotal).toLocaleString()}
+                    ${Number(
+                        invoice.subtotal ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1056,8 +3946,6 @@ body {
 
     </table>
 
-
-    <!-- ================= TOTALS ================= -->
 
     <div class="totals-container">
 
@@ -1070,7 +3958,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.subtotal).toLocaleString()}
+                    ${Number(
+                        invoice.subtotal ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1079,11 +3970,19 @@ body {
             <tr>
 
                 <td>
-                    Commission 20%
+                    Commission ${
+                        Number(
+                            invoice.dynamicComission ||
+                            0
+                        ) * 100
+                    }%
                 </td>
 
                 <td>
-                    ${Number(invoice.commission).toLocaleString()}
+                    ${Number(
+                        invoice.commission ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1096,7 +3995,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.discount).toLocaleString()}
+                    ${Number(
+                        invoice.discount ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1109,7 +4011,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.netTotal).toLocaleString()}
+                    ${Number(
+                        invoice.netTotal ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1122,7 +4027,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.cash).toLocaleString()}
+                    ${Number(
+                        invoice.cash ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1135,7 +4043,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.currentBill).toLocaleString()}
+                    ${Number(
+                        invoice.currentBill ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1148,7 +4059,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.arrears).toLocaleString()}
+                    ${Number(
+                        invoice.arrears ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1161,7 +4075,10 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.balance).toLocaleString()}
+                    ${Number(
+                        invoice.balance ||
+                        0
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1170,8 +4087,6 @@ body {
 
     </div>
 
-
-    <!-- ================= SIGNATURES ================= -->
 
     <div class="signatures">
 
@@ -1257,77 +4172,145 @@ window.onafterprint = function() {
 
 }
 
-function printThermalInvoice(invoice) {
 
-    const printWindow = window.open(
-        "",
-        "_blank",
-        "width=400,height=800"
-    );
+// ===========================================================
+// THERMAL PRINT
+// ===========================================================
+
+function printThermalInvoice(
+    invoice
+) {
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=400,height=800"
+        );
+
 
     if (!printWindow) {
-        alert("Please allow popups to print the invoice.");
+
+        alert(
+            "Please allow popups to print the invoice."
+        );
+
         return;
+
     }
 
-    const invoiceDate = new Date(invoice.date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-    });
 
-    const totalQty = invoice.items.reduce(
-        (total, item) => total + Number(item.quantity || 0),
-        0
-    );
+    const invoiceDate =
+        new Date(
+            invoice.date
+        ).toLocaleDateString(
+            "en-GB",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
 
-    const totalReturn = invoice.items.reduce(
-        (total, item) => total + Number(item.returnedQuantity || 0),
-        0
-    );
 
-    const totalNet = invoice.items.reduce(
-        (total, item) =>
-            total +
-            Number(item.quantity || 0) -
-            Number(item.returnedQuantity || 0),
-        0
-    );
+    const totalQty =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Number(
+                    item.quantity || 0
+                ),
+            0
+        );
 
-    const itemsRows = invoice.items.map((item, index) => {
 
-        const quantity =
-            Number(item.quantity || 0);
+    const totalReturn =
+        invoice.items.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                Number(
+                    item.returnedQuantity ??
+                    item.returnQuantity ??
+                    0
+                ),
+            0
+        );
 
-        const returned =
-            Number(item.returnedQuantity || 0);
 
-        const net =
-            Math.max(quantity - returned, 0);
+    const totalNet =
+        totalQty -
+        totalReturn;
 
-        return `
-            <tr>
-                <td class="no">${index + 1}</td>
 
-                <td class="product">
-                    ${item.productName}
-                </td>
+    const itemsRows =
+        invoice.items
+            .map(
+                (
+                    item,
+                    index
+                ) => {
 
-                <td class="qty">
-                    ${quantity}
-                </td>
+                    const quantity =
+                        Number(
+                            item.quantity ||
+                            0
+                        );
 
-                <td class="price">
-                    ${Number(item.price).toLocaleString()}
-                </td>
 
-                <td class="amount">
-                    ${Number(item.amount).toLocaleString()}
-                </td>
-            </tr>
-        `;
+                    const returned =
+                        Number(
+                            item.returnedQuantity ??
+                            item.returnQuantity ??
+                            0
+                        );
 
-    }).join("");
+
+                    return `
+
+                        <tr>
+
+                            <td class="no">
+                                ${index + 1}
+                            </td>
+
+                            <td class="product">
+                                ${escapeHTML(
+                                    item.productName ||
+                                    "-"
+                                )}
+                            </td>
+
+                            <td class="qty">
+                                ${quantity}
+                            </td>
+
+                            <td class="price">
+                                ${Number(
+                                    item.price ||
+                                    0
+                                ).toLocaleString()}
+                            </td>
+
+                            <td class="amount">
+                                ${Number(
+                                    item.amount ||
+                                    0
+                                ).toLocaleString()}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
 
 
     printWindow.document.write(`
@@ -1340,7 +4323,9 @@ function printThermalInvoice(invoice) {
 
 <meta charset="UTF-8">
 
-<title>Thermal Invoice ${invoice.id}</title>
+<title>
+    Thermal Invoice ${invoice.id}
+</title>
 
 <style>
 
@@ -1367,290 +4352,346 @@ body {
         Helvetica,
         sans-serif;
 
-    color: #000;
+    color:
+        #000;
 
-    background: #fff;
+    background:
+        #fff;
 
-    font-size: 11px;
+    font-size:
+        11px;
 
-    line-height: 1.3;
+    line-height:
+        1.3;
 
 }
 
 .receipt {
 
-    width: 72mm;
+    width:
+        72mm;
 
-    margin: 0 auto;
+    margin:
+        0 auto;
 
-    padding: 4mm 0;
+    padding:
+        4mm 0;
 
 }
 
-
-/* ================= HEADER ================= */
-
 .header {
 
-    text-align: center;
+    text-align:
+        center;
 
-    margin-bottom: 8px;
+    margin-bottom:
+        8px;
 
 }
 
 .company-name {
 
-    font-size: 18px;
+    font-size:
+        18px;
 
-    font-weight: bold;
+    font-weight:
+        bold;
 
-    margin-bottom: 3px;
+    margin-bottom:
+        3px;
 
 }
 
 .company-address {
 
-    font-size: 9px;
+    font-size:
+        9px;
 
-    line-height: 1.3;
+    line-height:
+        1.3;
 
 }
 
 .invoice-title {
 
-    font-size: 14px;
+    font-size:
+        14px;
 
-    font-weight: bold;
+    font-weight:
+        bold;
 
-    margin-top: 7px;
+    margin-top:
+        7px;
 
-    border-top: 1px dashed #000;
+    border-top:
+        1px dashed #000;
 
-    border-bottom: 1px dashed #000;
+    border-bottom:
+        1px dashed #000;
 
-    padding: 4px 0;
+    padding:
+        4px 0;
 
 }
 
-
-/* ================= INFO ================= */
-
 .info {
 
-    margin-top: 7px;
+    margin-top:
+        7px;
 
-    margin-bottom: 7px;
+    margin-bottom:
+        7px;
 
-    font-size: 10px;
+    font-size:
+        10px;
 
 }
 
 .info-row {
 
-    display: flex;
+    display:
+        flex;
 
-    justify-content: space-between;
+    justify-content:
+        space-between;
 
-    margin-bottom: 2px;
+    margin-bottom:
+        2px;
 
 }
 
 .info-label {
 
-    font-weight: bold;
+    font-weight:
+        bold;
 
 }
 
-
-/* ================= ITEMS ================= */
-
 .items-table {
 
-    width: 100%;
+    width:
+        100%;
 
-    border-collapse: collapse;
+    border-collapse:
+        collapse;
 
-    margin-top: 5px;
+    margin-top:
+        5px;
 
 }
 
 .items-table th {
 
-    border-top: 1px dashed #000;
+    border-top:
+        1px dashed #000;
 
-    border-bottom: 1px dashed #000;
+    border-bottom:
+        1px dashed #000;
 
-    padding: 4px 1px;
+    padding:
+        4px 1px;
 
-    font-size: 9px;
+    font-size:
+        9px;
 
 }
 
 .items-table td {
 
-    padding: 4px 1px;
+    padding:
+        4px 1px;
 
-    vertical-align: top;
+    vertical-align:
+        top;
 
-    font-size: 9px;
+    font-size:
+        9px;
 
 }
 
 .no {
 
-    width: 8%;
+    width:
+        8%;
 
-    text-align: left;
+    text-align:
+        left;
 
 }
 
 .product {
 
-    width: 36%;
+    width:
+        36%;
 
-    text-align: left;
+    text-align:
+        left;
 
-    word-break: break-word;
+    word-break:
+        break-word;
 
 }
 
 .qty {
 
-    width: 12%;
+    width:
+        12%;
 
-    text-align: center;
+    text-align:
+        center;
 
 }
 
 .price {
 
-    width: 20%;
+    width:
+        20%;
 
-    text-align: right;
+    text-align:
+        right;
 
 }
 
 .amount {
 
-    width: 24%;
+    width:
+        24%;
 
-    text-align: right;
+    text-align:
+        right;
 
 }
 
-
-/* ================= SUBTOTAL ================= */
-
 .subtotal {
 
-    border-top: 1px dashed #000;
+    border-top:
+        1px dashed #000;
 
-    border-bottom: 1px dashed #000;
+    border-bottom:
+        1px dashed #000;
 
-    padding: 5px 0;
+    padding:
+        5px 0;
 
-    margin-top: 3px;
+    margin-top:
+        3px;
 
 }
 
 .subtotal-row {
 
-    display: flex;
+    display:
+        flex;
 
-    justify-content: space-between;
+    justify-content:
+        space-between;
 
-    margin-bottom: 2px;
+    margin-bottom:
+        2px;
 
 }
 
-
-/* ================= TOTALS ================= */
-
 .totals {
 
-    margin-top: 7px;
+    margin-top:
+        7px;
 
 }
 
 .total-row {
 
-    display: flex;
+    display:
+        flex;
 
-    justify-content: space-between;
+    justify-content:
+        space-between;
 
-    padding: 2px 0;
+    padding:
+        2px 0;
 
 }
 
 .total-label {
 
-    text-align: left;
+    text-align:
+        left;
 
 }
 
 .total-value {
 
-    text-align: right;
+    text-align:
+        right;
 
 }
 
 .balance {
 
-    border-top: 1px solid #000;
+    border-top:
+        1px solid #000;
 
-    border-bottom: 1px solid #000;
+    border-bottom:
+        1px solid #000;
 
-    font-size: 13px;
+    font-size:
+        13px;
 
-    font-weight: bold;
+    font-weight:
+        bold;
 
-    padding: 5px 0;
+    padding:
+        5px 0;
 
-    margin-top: 3px;
+    margin-top:
+        3px;
 
 }
 
-
-/* ================= FOOTER ================= */
-
 .footer {
 
-    text-align: center;
+    text-align:
+        center;
 
-    margin-top: 12px;
+    margin-top:
+        12px;
 
-    border-top: 1px dashed #000;
+    border-top:
+        1px dashed #000;
 
-    padding-top: 7px;
+    padding-top:
+        7px;
 
-    font-size: 9px;
+    font-size:
+        9px;
 
 }
 
 .thank-you {
 
-    font-weight: bold;
+    font-weight:
+        bold;
 
-    font-size: 11px;
+    font-size:
+        11px;
 
-    margin-bottom: 3px;
+    margin-bottom:
+        3px;
 
 }
-
-
-/* ================= PRINT ================= */
 
 @media print {
 
     body {
 
-        width: 80mm;
+        width:
+            80mm;
 
     }
 
     .receipt {
 
-        width: 72mm;
+        width:
+            72mm;
 
     }
 
@@ -1660,13 +4701,9 @@ body {
 
 </head>
 
-
 <body>
 
 <div class="receipt">
-
-
-    <!-- HEADER -->
 
     <div class="header">
 
@@ -1695,8 +4732,6 @@ body {
 
     </div>
 
-
-    <!-- SALESMAN INFO -->
 
     <div class="info">
 
@@ -1733,7 +4768,10 @@ body {
             </span>
 
             <span>
-                ${invoice.partyName}
+                ${escapeHTML(
+                    invoice.partyName ||
+                    "-"
+                )}
             </span>
 
         </div>
@@ -1753,8 +4791,6 @@ body {
 
     </div>
 
-
-    <!-- ITEMS -->
 
     <table class="items-table">
 
@@ -1795,8 +4831,6 @@ body {
 
     </table>
 
-
-    <!-- SUBTOTAL -->
 
     <div class="subtotal">
 
@@ -1841,10 +4875,7 @@ body {
     </div>
 
 
-    <!-- TOTALS -->
-
     <div class="totals">
-
 
         <div class="total-row">
 
@@ -1853,7 +4884,11 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.subtotal).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.subtotal ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1862,11 +4897,20 @@ body {
         <div class="total-row">
 
             <span class="total-label">
-                Commission 20%
+                Commission ${
+                    Number(
+                        invoice.dynamicComission ||
+                        0
+                    ) * 100
+                }%
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.commission).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.commission ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1879,7 +4923,11 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.discount).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.discount ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1892,7 +4940,11 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.netTotal).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.netTotal ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1905,7 +4957,11 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.cash).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.cash ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1918,7 +4974,11 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.currentBill).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.currentBill ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1931,7 +4991,11 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.arrears).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.arrears ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -1944,15 +5008,17 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.balance).toLocaleString()}
+                Rs.
+                ${Number(
+                    invoice.balance ||
+                    0
+                ).toLocaleString()}
             </span>
 
         </div>
 
     </div>
 
-
-    <!-- FOOTER -->
 
     <div class="footer">
 
@@ -2000,21 +5066,36 @@ window.onafterprint = function() {
 
 }
 
-// =========================================
-// PRINT INVOICE MODAL
-// =========================================
 
-let invoiceWaitingForPrint = null;
+// ===========================================================
+// PRINT MODAL
+// ===========================================================
+
+let invoiceWaitingForPrint =
+    null;
 
 
-function openPrintInvoiceModal(invoice) {
+function openPrintInvoiceModal(
+    invoice
+) {
 
-    invoiceWaitingForPrint = invoice;
+    invoiceWaitingForPrint =
+        invoice;
+
 
     const modal =
-        document.getElementById("printInvoiceModal");
+        document.getElementById(
+            "printInvoiceModal"
+        );
 
-    modal.classList.add("show");
+
+    if (modal) {
+
+        modal.classList.add(
+            "show"
+        );
+
+    }
 
 }
 
@@ -2022,400 +5103,430 @@ function openPrintInvoiceModal(invoice) {
 function closePrintInvoiceModal() {
 
     const modal =
-        document.getElementById("printInvoiceModal");
+        document.getElementById(
+            "printInvoiceModal"
+        );
 
-    modal.classList.remove("show");
 
-    invoiceWaitingForPrint = null;
+    if (modal) {
+
+        modal.classList.remove(
+            "show"
+        );
+
+    }
+
+
+    invoiceWaitingForPrint =
+        null;
 
 }
 
 
-// Thermal button
+// ===========================================================
+// THERMAL PRINT BUTTON
+// ===========================================================
+
 document
-    .getElementById("printThermalBtn")
-    .addEventListener("click", () => {
+    .getElementById(
+        "printThermalBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
 
-        if (!invoiceWaitingForPrint) return;
+            if (
+                !invoiceWaitingForPrint
+            ) {
 
-        const invoice =
-            invoiceWaitingForPrint;
+                return;
 
-        closePrintInvoiceModal();
-
-        printThermalInvoice(invoice);
-
-    });
-
-
-// Real/A4 button
-document
-    .getElementById("printRealBtn")
-    .addEventListener("click", () => {
-
-        if (!invoiceWaitingForPrint) return;
-
-        const invoice =
-            invoiceWaitingForPrint;
-
-        closePrintInvoiceModal();
-
-        printRealInvoice(invoice);
-
-    });
+            }
 
 
-// Close button
-document
-    .getElementById("closePrintModal")
-    .addEventListener("click", () => {
+            const invoice =
+                invoiceWaitingForPrint;
 
-        closePrintInvoiceModal();
-
-    });
-
-
-// Cancel button
-document
-    .getElementById("cancelPrintBtn")
-    .addEventListener("click", () => {
-
-        closePrintInvoiceModal();
-
-    });
-
-
-// Click outside modal
-document
-    .getElementById("printInvoiceModal")
-    .addEventListener("click", (e) => {
-
-        if (
-            e.target.id ===
-            "printInvoiceModal"
-        ) {
 
             closePrintInvoiceModal();
 
+
+            printThermalInvoice(
+                invoice
+            );
+
         }
-
-    });
-
-document.getElementById("createInvoiceBtn").addEventListener("click", async () => {
-
-    if (issuedItems.length === 0) {
-        alert("Please add products first.");
-        return;
-    }
-
-const invoice = {
-
-    id: Date.now(),
-
-    type: "salesman",
-
-    partyId: currentSalesmanId,
-
-    partyName: document.getElementById("salesmanName").textContent,
-
-    date: new Date(),
-
-    items: issuedItems.map(item => {
-
-        const product = products.find(
-            p => p.id === item.productId
-        );
-
-        return {
-
-            productId: item.productId,
-
-            productName: product.name,
-
-            quantity: item.qty,
-
-            returnQuantity: item.ret,
-
-            price: item.price,
-
-            commissionApplicable:item.commissionApplicable,
-
-            amount: (item.qty - item.ret) * item.price
-
-        };
-
-    }),
-
-    subtotal: Number(
-        document.getElementById("subTotal").textContent.replace(/,/g, "")
-    ),
-
-    commission: Number(
-        document.getElementById("commision").textContent.replace(/,/g, "")
-    ),
-
-    discount: Number(
-        document.getElementById("Discount").value
-    ),
-
-    netTotal: Number(
-        document.getElementById("NetTotal").textContent.replace(/,/g, "")
-    ),
-
-    cash: Number(
-        document.getElementById("Cash").value
-    ),
-
-    currentBill: Number(
-        document.getElementById("currentBill").textContent.replace(/,/g, "")
-    ),
-
-    arrears: Number(
-        document.getElementById("Arrears").textContent.replace(/,/g, "")
-    ),
-
-    balance: Number(
-        document.getElementById("balance").textContent.replace(/,/g, "")
-    ),
-    
-    dynamicComission:entercomission
-    
-};
-console.log("invoice",invoice)
-    try {
-
-        const response = await fetch(
-            `${API}/invoices`,
-            {
-                method: "POST",
-                
-        credentials: 'include',
-    
-                headers: {
-                    "Content-Type": "application/json"
-                },
-               body: JSON.stringify(invoice)
-            },
-            
-        );
-         if (response.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        const result = await response.json();
-
-        if (response.ok) {
-
-    alert(result.message);
-
-    console.log(result);
-
-   // Ask which bill the user wants to print
-// Show print selection popup
-openPrintInvoiceModal(invoice);
-
-// Refresh latest data from backend
-await fetchProducts();
-await fetchSalesmen();
-
-}
-else {
-
-    alert(
-        result.message ||
-        "Failed to create invoice."
     );
 
-}
 
-    }
-    catch (err) {
+// ===========================================================
+// A4 PRINT BUTTON
+// ===========================================================
 
-        console.error(err);
+document
+    .getElementById(
+        "printRealBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
 
-        alert("Failed to save invoice");
+            if (
+                !invoiceWaitingForPrint
+            ) {
 
-    }
+                return;
 
-});
-renderIssueTable();
+            }
 
-// ---- Mobile sidebar toggle ----
-const sidebar = document.getElementById("sidebar");
-const overlay = document.getElementById("sidebarOverlay");
-const menuToggle = document.getElementById("menuToggle");
+
+            const invoice =
+                invoiceWaitingForPrint;
+
+
+            closePrintInvoiceModal();
+
+
+            printRealInvoice(
+                invoice
+            );
+
+        }
+    );
+
+
+// ===========================================================
+// CLOSE PRINT MODAL
+// ===========================================================
+
+document
+    .getElementById(
+        "closePrintModal"
+    )
+    ?.addEventListener(
+        "click",
+        closePrintInvoiceModal
+    );
+
+
+document
+    .getElementById(
+        "cancelPrintBtn"
+    )
+    ?.addEventListener(
+        "click",
+        closePrintInvoiceModal
+    );
+
+
+// ===========================================================
+// OUTSIDE PRINT MODAL
+// ===========================================================
+
+document
+    .getElementById(
+        "printInvoiceModal"
+    )
+    ?.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target.id ===
+                "printInvoiceModal"
+            ) {
+
+                closePrintInvoiceModal();
+
+            }
+
+        }
+    );
+
+
+// ===========================================================
+// DISCOUNT / CASH
+// ===========================================================
+
+document
+    .getElementById(
+        "Discount"
+    )
+    ?.addEventListener(
+        "input",
+        updateSubtotal
+    );
+
+
+document
+    .getElementById(
+        "Cash"
+    )
+    ?.addEventListener(
+        "input",
+        updateSubtotal
+    );
+
+
+// ===========================================================
+// DYNAMIC COMMISSION
+// ===========================================================
+
+document
+    .getElementById(
+        "dynamicCommission"
+    )
+    ?.addEventListener(
+        "input",
+        event => {
+
+            entercomission =
+                Number(
+                    event.target.value
+                ) / 100;
+
+
+            updateSubtotal();
+
+        }
+    );
+
+
+// ===========================================================
+// MOBILE SIDEBAR
+// ===========================================================
+
+const sidebar =
+    document.getElementById(
+        "sidebar"
+    );
+
+
+const overlay =
+    document.getElementById(
+        "sidebarOverlay"
+    );
+
+
+const menuToggle =
+    document.getElementById(
+        "menuToggle"
+    );
+
 
 function openSidebar() {
-  sidebar.classList.add("open");
-  overlay.classList.add("show");
+
+    if (sidebar) {
+
+        sidebar.classList.add(
+            "open"
+        );
+
+    }
+
+
+    if (overlay) {
+
+        overlay.classList.add(
+            "show"
+        );
+
+    }
+
 }
+
+
 function closeSidebar() {
-  sidebar.classList.remove("open");
-  overlay.classList.remove("show");
-}
-menuToggle.addEventListener("click", () => {
-  if (sidebar.classList.contains("open")) closeSidebar();
-  else openSidebar();
-});
-overlay.addEventListener("click", closeSidebar);
 
-// ---- Sidebar nav ----
-document.querySelectorAll(".nav-item").forEach((item) => {
-  item.addEventListener("click", () => {
-    document.querySelectorAll(".nav-item").forEach((i) => i.classList.remove("active"));
-    item.classList.add("active");
-    closeSidebar();
-  });
-});
+    if (sidebar) {
 
-function updateIssueRow(index) {
-
-    const item = issuedItems[index];
-
-    if (!item) return;
-
-    const product = products.find(
-        p => p.id === item.productId
-    );
-
-    if (!product) return;
-
-    const qty = Number(item.qty) || 0;
-    const ret = Number(item.ret) || 0;
-
-    // Stock remaining after issuing this quantity
-    const availableStock = Math.max(
-        product.stock - qty,
-        0
-    );
-
-    // Net sales
-    const net = Math.max(
-        qty - ret,
-        0
-    );
-
-    // Amount
-    const amount =
-        net * item.price;
-
-
-    // =========================
-    // UPDATE AVAILABLE STOCK
-    // =========================
-
-    const stockElement =
-        document.getElementById(
-            "available-stock-" + index
+        sidebar.classList.remove(
+            "open"
         );
-
-if (stockElement) {
-
-    stockElement.textContent = availableStock;
-
-    // Remove old stock color
-    stockElement.classList.remove(
-        "stock-good",
-        "stock-low",
-        "stock-critical"
-    );
-
-    // Apply new color
-    stockElement.classList.add(
-        getStockClass(availableStock)
-    );
-}
-
-    // =========================
-    // UPDATE NET
-    // =========================
-
-    const netElement =
-        document.getElementById(
-            "net-" + index
-        );
-
-    if (netElement) {
-
-        netElement.textContent =
-            net;
 
     }
 
 
-    // =========================
-    // UPDATE AMOUNT
-    // =========================
+    if (overlay) {
 
-    const amountElement =
-        document.getElementById(
-            "amount-" + index
+        overlay.classList.remove(
+            "show"
         );
-
-    if (amountElement) {
-
-        amountElement.textContent =
-            amount.toLocaleString();
 
     }
 
+}
 
-    // =========================
-    // UPDATE TOTALS
-    // =========================
 
-    updateSubtotal();
+if (menuToggle) {
+
+    menuToggle.addEventListener(
+        "click",
+        () => {
+
+            if (
+                sidebar?.classList.contains(
+                    "open"
+                )
+            ) {
+
+                closeSidebar();
+
+            } else {
+
+                openSidebar();
+
+            }
+
+        }
+    );
 
 }
+
+
+if (overlay) {
+
+    overlay.addEventListener(
+        "click",
+        closeSidebar
+    );
+
+}
+
+
+// ===========================================================
+// SIDEBAR NAV
+// ===========================================================
+
 document
-.getElementById("Discount")
-.addEventListener("input",()=>{
+    .querySelectorAll(
+        ".nav-item"
+    )
+    .forEach(
+        item => {
 
-    updateSubtotal();
+            item.addEventListener(
+                "click",
+                () => {
 
-});
-document
-.getElementById("Cash")
-.addEventListener("input",()=>{
-
-    updateSubtotal();
-
-});
-
-
-document
-    .getElementById("issueTableBody")
-    .addEventListener("click", (e) => {
-
-        const deleteBtn =
-            e.target.closest(".delete-issue-row-btn");
-
-        if (!deleteBtn) return;
+                    document
+                        .querySelectorAll(
+                            ".nav-item"
+                        )
+                        .forEach(
+                            navItem =>
+                                navItem.classList.remove(
+                                    "active"
+                                )
+                        );
 
 
-        const index =
-            Number(deleteBtn.dataset.index);
+                    item.classList.add(
+                        "active"
+                    );
 
 
-        if (
-            isNaN(index) ||
-            !issuedItems[index]
-        ) {
-            return;
+                    closeSidebar();
+
+                }
+            );
+
+        }
+    );
+
+
+// ===========================================================
+// HELPER: SET TEXT
+// ===========================================================
+
+function setText(
+    id,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (element) {
+
+        element.textContent =
+            value;
+
+    }
+
+}
+
+
+// ===========================================================
+// HELPER: ESCAPE HTML
+// ===========================================================
+
+function escapeHTML(
+    value
+) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        value ??
+        "";
+
+
+    return div.innerHTML;
+
+}
+
+
+// ===========================================================
+// ONLINE EVENT
+//
+// offline-db.js also has a global online listener.
+// This page listener refreshes its own data after sync.
+// ===========================================================
+
+window.addEventListener(
+    "online",
+    async () => {
+
+        console.log(
+            "Internet restored on Issue Stock page."
+        );
+
+
+        try {
+
+            await processSyncQueue();
+
+
+            await fetchSalesmen();
+
+            await fetchProducts();
+
+            await syncInitialInvoices();
+
+
+        } catch (error) {
+
+            console.error(
+                "Issue Stock online refresh failed:",
+                error
+            );
+
         }
 
+    }
+);
 
-        // Remove the product from the issue list
-        issuedItems.splice(index, 1);
 
+// ===========================================================
+// INITIAL TABLE RENDER
+// ===========================================================
 
-        // Re-render table
-        renderIssueTable();
-
-    });
-    document.getElementById('dynamicCommission').addEventListener('input',(e)=>{
- 
-    entercomission= Number(document.getElementById("dynamicCommission").value/100)
-    console.log('dynamicCommision:',entercomission)
-       updateSubtotal();
-    })
+renderIssueTable();

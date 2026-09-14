@@ -1,13 +1,18 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#5b4b8a">
 
-    <title>Dashboard — FrostyOps</title>
+<title>Dashboard — FrostyOps</title>
 
-    <link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="shared-layout.css">
+<link rel="stylesheet" href="index.css">
+
+
 </head>
 
 <body>
@@ -16,304 +21,386 @@
 
 <div class="shell">
 
-    <!-- ================= SIDEBAR ================= -->
+<!-- ================= SIDEBAR ================= -->
 
-    <aside class="sidebar" id="sidebar">
+<aside class="sidebar" id="sidebar">
 
-        <div class="brand">
+    <div class="brand">
 
-            <div class="brand-badge">
-                <svg width="18" height="18"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="#fff"
-                     stroke-width="2"
-                     stroke-linecap="round"
-                     stroke-linejoin="round">
+        <div class="brand-badge">
 
-                    <path d="M3 7l9-4 9 4-9 4-9-4z"/>
-                    <path d="M3 12l9 4 9-4"/>
-                    <path d="M3 17l9 4 9-4"/>
+            <svg width="18"
+                 height="18"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
 
-                </svg>
+                <circle cx="12" cy="12" r="1"></circle>
+
+                <path d="M12 1v6m0 6v6"></path>
+
+                <path d="M4.22 4.22l4.24 4.24"></path>
+
+                <path d="M13.54 13.54l4.24 4.24"></path>
+
+                <path d="M1 12h6m6 0h6"></path>
+
+                <path d="M4.22 19.78l4.24-4.24"></path>
+
+                <path d="M13.54 10.46l4.24-4.24"></path>
+
+            </svg>
+
+        </div>
+
+        <div>
+
+            <div class="brand-name">
+                FrostyOps
             </div>
 
-            <div>
-
-                <div class="brand-name">
-                    FrostyOps
-                </div>
-
-                <div class="brand-sub">
-                    Ice cream distribution
-                </div>
-
+            <div class="brand-sub">
+                Ice Cream Distribution
             </div>
 
         </div>
 
+    </div>
 
-        <!-- NAVIGATION -->
 
-        <nav class="navlist">
+    <!-- ================= NAVIGATION ================= -->
 
-            <a class="navlink active"
-               href="index.html">
+    <nav class="navlist">
+
+        <a class="navlink"
+           data-nav="dashboard"
+           href="index.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+
+                <path d="M3 11l9-8 9 8"></path>
+
+                <path d="M5 10v10h14V10"></path>
+
+            </svg>
+
+            Dashboard
+
+        </a>
+
+
+        <a class="navlink active"
+           data-nav="categories"
+           href="Categories.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+
+                <rect x="3"
+                      y="3"
+                      width="8"
+                      height="8"
+                      rx="1.5"></rect>
+
+                <rect x="13"
+                      y="3"
+                      width="8"
+                      height="8"
+                      rx="1.5"></rect>
+
+                <rect x="3"
+                      y="13"
+                      width="8"
+                      height="8"
+                      rx="1.5"></rect>
+
+                <rect x="13"
+                      y="13"
+                      width="8"
+                      height="8"
+                      rx="1.5"></rect>
+
+            </svg>
+
+            Categories
+
+        </a>
+
+
+        <a class="navlink"
+           data-nav="products"
+           href="Products.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+
+                <path d="M21 8l-9-5-9 5 9 5 9-5z"></path>
+
+                <path d="M3 8v8l9 5 9-5V8"></path>
+
+                <path d="M12 13v8"></path>
+
+            </svg>
+
+            Products
+
+        </a>
+
+
+        <a class="navlink"
+           data-nav="salesmen"
+           href="Salesmen.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+
+                <circle cx="12"
+                        cy="8"
+                        r="4"></circle>
+
+                <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"></path>
+
+            </svg>
+
+            Salesmen
+
+        </a>
+
+
+        <a class="navlink"
+           data-nav="suppliers"
+           href="suppliers.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+
+                <circle cx="8"
+                        cy="9"
+                        r="3"></circle>
+
+                <circle cx="17"
+                        cy="9"
+                        r="3"></circle>
+
+                <path d="M2 21c0-3.5 2.7-6 6-6s6 2.5 6 6"></path>
+
+                <path d="M11 21c0-3 2.4-5.5 5.5-5.5S22 18 22 21"></path>
+
+            </svg>
+
+            Suppliers
+
+        </a>
+
+
+        <a class="navlink"
+           data-nav="purchase"
+           href="purchase-stocks.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
+
+                <path d="M20.6 7.5L12 12l-8.6-4.5"></path>
+
+                <path d="M12 12v9"></path>
+
+                <path d="M20.6 16.5L12 21l-8.6-4.5V7.5L12 3l8.6 4.5v9z"></path>
+
+            </svg>
+
+            Purchase Stocks
+
+        </a>
+
+
+        <a class="navlink"
+           data-nav="issue"
+           href="issueStocks.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
+
+                <rect x="1"
+                      y="7"
+                      width="14"
+                      height="10"
+                      rx="1"></rect>
+
+                <path d="M15 10h3l4 4v3h-7"></path>
+
+                <circle cx="6"
+                        cy="19"
+                        r="1.6"></circle>
+
+                <circle cx="17.5"
+                        cy="19"
+                        r="1.6"></circle>
+
+            </svg>
+
+            Issue Stocks
+
+        </a>
+
+
+        <a class="navlink"
+           data-nav="inventory"
+           href="stockInventory.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
+
+                <path d="M4 4v5h5"></path>
+
+                <path d="M4.6 15a8 8 0 1 0 2-9.4L4 9"></path>
+
+            </svg>
+
+            Stock Inventory
+
+        </a>
+
+
+        <div class="navdivider"></div>
+
+
+        <a class="navlink"
+           data-nav="settings"
+           href="settings.html">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
+
+                <circle cx="12"
+                        cy="12"
+                        r="3"></circle>
+
+                <path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1A1.6 1.6 0 004.6 9a1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9c.4.3.9.5 1.5.5H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"></path>
+
+            </svg>
+
+            Settings
+
+        </a>
+
+    </nav>
+
+</aside>
+
+
+<!-- ================= MAIN ================= -->
+
+<div class="main">
+
+    <!-- ================= TOPBAR ================= -->
+
+    <div class="topbar">
+
+        <div class="topbar-left">
+
+            <button class="hamburger"
+                    id="hamburgerBtn"
+                    type="button"
+                    aria-label="Toggle navigation">
 
                 <svg viewBox="0 0 24 24"
                      fill="none"
                      stroke="currentColor"
                      stroke-width="2">
 
-                    <path d="M3 11l9-8 9 8"/>
-                    <path d="M5 10v10h14V10"/>
+                    <line x1="3"
+                          y1="6"
+                          x2="21"
+                          y2="6"></line>
+
+                    <line x1="3"
+                          y1="12"
+                          x2="21"
+                          y2="12"></line>
+
+                    <line x1="3"
+                          y1="18"
+                          x2="21"
+                          y2="18"></line>
 
                 </svg>
 
+            </button>
+
+            <div class="crumb">
                 Dashboard
-
-            </a>
-
-
-            <a class="navlink"
-               href="Categories.html">
-
-                <svg viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-
-                    <rect x="3" y="3"
-                          width="8"
-                          height="8"
-                          rx="1.5"/>
-
-                    <rect x="13" y="3"
-                          width="8"
-                          height="8"
-                          rx="1.5"/>
-
-                    <rect x="3" y="13"
-                          width="8"
-                          height="8"
-                          rx="1.5"/>
-
-                    <rect x="13" y="13"
-                          width="8"
-                          height="8"
-                          rx="1.5"/>
-
-                </svg>
-
-                Categories
-
-            </a>
-
-
-            <a class="navlink"
-               href="Products.html">
-
-                <svg viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-
-                    <path d="M21 8l-9-5-9 5 9 5 9-5z"/>
-                    <path d="M3 8v8l9 5 9-5V8"/>
-                    <path d="M12 13v8"/>
-
-                </svg>
-
-                Products
-
-            </a>
-
-
-            <a class="navlink"
-               href="Salesmen.html">
-
-                <svg viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
-
-                </svg>
-
-                Salesmen
-
-            </a>
-
-
-            <a class="navlink"
-               href="suppliers.html">
-
-                <svg viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2">
-
-                    <circle cx="8" cy="9" r="3"/>
-                    <circle cx="17" cy="9" r="3"/>
-
-                    <path d="M2 21c0-3.5 2.7-6 6-6s6 2.5 6 6"/>
-                    <path d="M11 21c0-3 2.4-5.5 5.5-5.5S22 18 22 21"/>
-
-                </svg>
-
-                Suppliers
-
-            </a>
-
-
-            <a class="navlink"
-   href="purchase-stocks.html">
-
-    <svg viewBox="0 0 24 24"
-         fill="none"
-         stroke="currentColor"
-         stroke-width="2"
-         stroke-linecap="round"
-         stroke-linejoin="round">
-
-        <path d="M20.6 7.5L12 12l-8.6-4.5"/>
-        <path d="M12 12v9"/>
-        <path d="M20.6 16.5L12 21l-8.6-4.5V7.5L12 3l8.6 4.5v9z"/>
-
-    </svg>
-
-    Purchase Stocks
-
-</a>
-
-
-<a class="navlink"
-   href="issueStocks.html">
-
-    <svg viewBox="0 0 24 24"
-         fill="none"
-         stroke="currentColor"
-         stroke-width="2"
-         stroke-linecap="round"
-         stroke-linejoin="round">
-
-        <rect x="1" y="7" width="14" height="10" rx="1"/>
-        <path d="M15 10h3l4 4v3h-7"/>
-        <circle cx="6" cy="19" r="1.6"/>
-        <circle cx="17.5" cy="19" r="1.6"/>
-
-    </svg>
-
-    Issue Stocks
-
-</a>
-
-
-<a class="navlink"
-   href="stockInventory.html">
-
-    <svg viewBox="0 0 24 24"
-         fill="none"
-         stroke="currentColor"
-         stroke-width="2"
-         stroke-linecap="round"
-         stroke-linejoin="round">
-
-        <path d="M4 4v5h5"/>
-        <path d="M4.6 15a8 8 0 1 0 2-9.4L4 9"/>
-
-    </svg>
-
-    Stock Inventory
-
-</a>
-
-            <div class="navdivider"></div>
-
-
-            <a class="navlink"
-               href="settings.html">
-
-                Settings
-
-            </a>
-
-        </nav>
-
-    </aside>
-
-
-    <!-- ================= MAIN ================= -->
-
-    <div class="main">
-
-
-        <!-- TOP BAR -->
-
-        <div class="topbar">
-
-            <div style="display:flex;align-items:center">
-
-                <button class="hamburger"
-                        id="hamburgerBtn">
-
-                    <svg viewBox="0 0 24 24"
-                         fill="none"
-                         stroke="currentColor"
-                         stroke-width="2">
-
-                        <path d="M4 6h16"/>
-                        <path d="M4 12h16"/>
-                        <path d="M4 18h16"/>
-
-                    </svg>
-
-                </button>
-
-
-                <div class="crumb">
-                    Dashboard
-                </div>
-
-            </div>
-
-
-            <div class="topbar-right">
-
-
-                <div class="pill">
-
-                    <span class="pill-text"
-                          id="currentDate">
-
-                        Loading...
-
-                    </span>
-
-                </div>
-
-
-                <div class="pill admin">
-
-                    <span class="avatar-dot"></span>
-
-                    <span class="pill-text" id="admin">
-                        Admin
-                    </span>
-
-                </div>
-
             </div>
 
         </div>
 
 
+        <div class="topbar-right">
 
-        <!-- ================= PAGE ================= -->
+            <div class="pill">
 
-        <div class="page">
+                <span class="pill-text"
+                      id="currentDate">
+
+                    Today
+
+                </span>
+
+            </div>
+
+
+            <div class="pill admin">
+
+                <span class="avatar-dot"></span>
+
+                <span class="pill-text"
+                      id="admin">
+
+                    Admin
+
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= PAGE ================= -->
+
+    <div class="page">
+
+        <div class="content">
 
 
             <!-- ================= STAT CARDS ================= -->
@@ -321,12 +408,15 @@
             <div class="stat-row">
 
 
-                <!-- PRODUCTS -->
+                <!-- TOTAL PRODUCTS -->
 
                 <div class="stat-card">
 
                     <div class="stat-icon">
-                        <img src="assets/Group (1).png">
+
+                        <img src="assets/2875986 1.png"
+                             alt="Products">
+
                     </div>
 
                     <div>
@@ -343,7 +433,7 @@
                         </div>
 
                         <div class="stat-sub">
-                            All Ice Cream Products
+                            Active products
                         </div>
 
                     </div>
@@ -351,12 +441,15 @@
                 </div>
 
 
-                <!-- STOCK -->
+                <!-- TOTAL STOCKS -->
 
                 <div class="stat-card">
 
                     <div class="stat-icon">
-                        <img src="assets/2875986 1.png">
+
+                        <img src="assets/Group (1).png"
+                             alt="Stocks">
+
                     </div>
 
                     <div>
@@ -373,7 +466,7 @@
                         </div>
 
                         <div class="stat-sub">
-                            All Products Available
+                            In inventory
                         </div>
 
                     </div>
@@ -381,12 +474,15 @@
                 </div>
 
 
-                <!-- SALESMEN -->
+                <!-- TOTAL SALESMEN -->
 
                 <div class="stat-card">
 
                     <div class="stat-icon">
-                        <img src="assets/Vector (5).png">
+
+                        <img src="assets/Group (2).png"
+                             alt="Salesmen">
+
                     </div>
 
                     <div>
@@ -403,7 +499,7 @@
                         </div>
 
                         <div class="stat-sub">
-                            Active Salesmen
+                            Active salesmen
                         </div>
 
                     </div>
@@ -416,7 +512,10 @@
                 <div class="stat-card">
 
                     <div class="stat-icon">
-                        <img src="assets/Group (2).png">
+
+                        <img src="assets/Vector (5).png"
+                             alt="Today Issued">
+
                     </div>
 
                     <div>
@@ -433,7 +532,7 @@
                         </div>
 
                         <div class="stat-sub">
-                            Invoice Generated
+                            Units issued
                         </div>
 
                     </div>
@@ -446,7 +545,10 @@
                 <div class="stat-card">
 
                     <div class="stat-icon">
-                        <img src="assets/money 1.png">
+
+                        <img src="assets/money 1.png"
+                             alt="Today Sales">
+
                     </div>
 
                     <div>
@@ -458,12 +560,115 @@
                         <div class="stat-num"
                              id="todaySalesValue">
 
-                            0
+                            PKR 0
 
                         </div>
 
                         <div class="stat-sub">
-                            Total Value (PKR)
+                            Sale value
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= SALES ANALYTICS ================= -->
+
+            <section class="analytics-card">
+
+                <div class="analytics-header">
+
+                    <div class="analytics-title-wrap">
+
+                        <h2>
+                            Sales Analytics
+                        </h2>
+
+                        <p id="analyticsSubtitle">
+                            Sales performance for the current week
+                        </p>
+
+                    </div>
+
+
+                    <div class="period-switch">
+
+                        <button class="period-btn active"
+                                type="button"
+                                data-period="weekly">
+
+                            Weekly
+
+                        </button>
+
+                        <button class="period-btn"
+                                type="button"
+                                data-period="monthly">
+
+                            Monthly
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ANALYTICS SUMMARY -->
+
+                <div class="analytics-summary">
+
+                    <div class="analytics-mini">
+
+                        <div class="analytics-mini-label">
+                            Current Period
+                        </div>
+
+                        <div class="analytics-mini-value"
+                             id="analyticsCurrent">
+
+                            PKR 0
+
+                        </div>
+
+                        <div class="analytics-mini-growth growth-neutral"
+                             id="analyticsGrowth">
+
+                            0%
+
+                        </div>
+
+                        <div class="analytics-mini-label"
+                             id="analyticsGrowthLabel">
+
+                            vs previous period
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="analytics-mini">
+
+                        <div class="analytics-mini-label">
+                            Previous Period
+                        </div>
+
+                        <div class="analytics-mini-value"
+                             id="analyticsPrevious">
+
+                            PKR 0
+
+                        </div>
+
+                        <div class="analytics-mini-label"
+                             id="analyticsCurrentSub">
+
+                            Previous period sales
+
                         </div>
 
                     </div>
@@ -471,13 +676,86 @@
                 </div>
 
 
-            </div>
+                <!-- CHART -->
 
+                <div class="analytics-chart-wrap">
+
+                    <svg id="salesChart"
+                         viewBox="0 0 900 320"
+                         preserveAspectRatio="none"
+                         role="img"
+                         aria-label="Sales analytics chart">
+
+                    </svg>
+
+
+                    <div class="analytics-empty"
+                         id="analyticsEmpty">
+
+                        <div>
+                            No sales data available for this period.
+                        </div>
+
+                    </div>
+
+
+                    <div class="chart-tooltip"
+                         id="chartTooltip">
+
+                    </div>
+
+                </div>
+
+
+                <div class="analytics-bottom">
+
+                    <span>
+                        Sales value
+                    </span>
+
+                    <span>
+                        PKR
+                    </span>
+
+                </div>
+
+            </section>
 
 
             <!-- ================= DASHBOARD GRID ================= -->
 
             <div class="dashboard-grid">
+
+
+                <!-- ================= TOP SALESMEN ================= -->
+
+                <div class="card dashboard-box top-sales">
+
+                    <div class="table-head">
+
+                        <h2>
+                            Top Salesmen
+                            <span class="small-text">
+                                (by total value)
+                            </span>
+                        </h2>
+
+                        <button class="btn-add"
+                                id="viewAllSalesmen"
+                                type="button">
+
+                            View All
+
+                        </button>
+
+                    </div>
+
+
+                    <div id="salesmenList">
+                        <!-- Loaded by JavaScript -->
+                    </div>
+
+                </div>
 
 
                 <!-- ================= STOCK OVERVIEW ================= -->
@@ -491,7 +769,8 @@
                         </h2>
 
                         <button class="btn-add"
-                                id="viewAllStock">
+                                id="viewAllStock"
+                                type="button">
 
                             View All
 
@@ -535,7 +814,7 @@
 
                             <tbody id="Values">
 
-                                <!-- Data loaded from server -->
+                                <!-- Data loaded by index.js -->
 
                             </tbody>
 
@@ -544,7 +823,6 @@
                     </div>
 
                 </div>
-
 
 
                 <!-- ================= RECENT INVOICES ================= -->
@@ -558,7 +836,8 @@
                         </h2>
 
                         <button class="btn-add"
-                                id="viewAllInvoices">
+                                id="viewAllInvoices"
+                                type="button">
 
                             View All
 
@@ -591,8 +870,6 @@
                                         Total(PKR)
                                     </th>
 
-                                  
-
                                 </tr>
 
                             </thead>
@@ -600,7 +877,7 @@
 
                             <tbody id="Values2">
 
-                                <!-- Data loaded from server -->
+                                <!-- Data loaded by index.js -->
 
                             </tbody>
 
@@ -611,45 +888,7 @@
                 </div>
 
 
-
-                <!-- ================= TOP SALESMEN ================= -->
-
-                <div class="card dashboard-box top-sales">
-
-                    <div class="table-head">
-
-                        <h2>
-
-                            Top Salesmen
-
-                            <span class="small-text">
-                                (by total value)
-                            </span>
-
-                        </h2>
-
-
-                        <button class="btn-add"
-                                id="viewAllSalesmen">
-
-                            View All
-
-                        </button>
-
-                    </div>
-
-
-                    <div id="salesmenList">
-
-                        <!-- Data loaded from server -->
-
-                    </div>
-
-                </div>
-
-
             </div>
-
 
         </div>
 
@@ -658,6 +897,13 @@
 </div>
 
 
+</div>
+
+<script src="config.js"></script>
+
+<script src="shared-layout.js"></script>
+
+<script src="offline-db.js"></script>
 
 <script src="index.js"></script>
 

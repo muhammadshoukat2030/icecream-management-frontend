@@ -1,351 +1,944 @@
-const tbody = document.getElementById("salesmenTbody");
-const statTotal = document.getElementById("statTotal");
-const statActive = document.getElementById("statActive");
-const statDeliveries=document.getElementById("todayDeliveries")
-const addPanel = document.getElementById("addPanel");
-const profilePanel = document.getElementById("profilePanel");
-const openAddBtn = document.getElementById("openAddBtn");
+// ===========================================================
+// SALESMEN ADMIN PAGE
+// ===========================================================
 
 
+// ===========================================================
+// DOM
+// ===========================================================
 
-const API = "https://icecream-management-backend.vercel.app";
+const tbody =
+    document.getElementById(
+        "salesmenTbody"
+    );
+
+const statTotal =
+    document.getElementById(
+        "statTotal"
+    );
+
+const statActive =
+    document.getElementById(
+        "statActive"
+    );
+
+const statDeliveries =
+    document.getElementById(
+        "todayDeliveries"
+    );
+
+const addPanel =
+    document.getElementById(
+        "addPanel"
+    );
+
+const profilePanel =
+    document.getElementById(
+        "profilePanel"
+    );
+
+const openAddBtn =
+    document.getElementById(
+        "openAddBtn"
+    );
+
+
+// ===========================================================
+// GLOBAL API
+// ===========================================================
+
+const API =
+    window.APP_CONFIG.API;
+
+
+// ===========================================================
+// STATE
+// ===========================================================
+
+let salesmen = [];
+
+let todayDeliveries = 0;
+
+
+// ===========================================================
+// AUTH
+// ===========================================================
+
 let adminUser;
-getLocalStorageUser=()=>{
-if (!localStorage.getItem('user')){
-      window.location.href = 'login.html';
+
+getLocalStorageUser = () => {
+
+    if (
+        !localStorage.getItem(
+            "user"
+        )
+    ) {
+
+        window.location.href =
+            "login.html";
+
         return;
 
-}
+    }
 
- adminUser=JSON.parse(localStorage.getItem('user'));
-console.log(adminUser.email)
 
-}
+    adminUser =
+        JSON.parse(
+            localStorage.getItem(
+                "user"
+            )
+        );
+
+
+    console.log(
+        adminUser.email
+    );
+
+};
+
 
 getLocalStorageUser();
-document.getElementById('admin').textContent=adminUser.email;
-const today = new Date().toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-});
 
-console.log(today);
-document.getElementById('datePill').textContent=today
-async function loadSalesmen() {
-    try {
-        const response = await fetch(`${API}/allSalesmen`,
-            {
-        credentials: 'include'
-    }
-        );
- if (response.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        if (!response.ok) {
-            throw new Error("Failed to fetch salesmen");
-        }
 
-        const data = await response.json();
-        console.log(data)
-        // If your API returns:
-        // { status: "success", data: { salesmen: [...] } }
+if (adminUser) {
 
-        const salesmen = data.data;
-        const todayDeliveries=data.todayDeliveries
-        renderSalesmen(salesmen,todayDeliveries);
+    document.getElementById(
+        "admin"
+    ).textContent =
+        adminUser.email;
 
-    } catch (err) {
-        console.error(err);
-    }
 }
 
-function renderSalesmen(salesmen,todayDeliveries) {
+
+const today =
+    new Date().toLocaleDateString(
+        "en-GB",
+        {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        }
+    );
+
+
+console.log(today);
+
+
+document.getElementById(
+    "datePill"
+).textContent =
+    today;
+
+
+// ===========================================================
+// LOAD SALESMEN
+// ===========================================================
+
+async function loadSalesmen() {
+
+    // =======================================================
+    // LOAD CACHED SALESMEN FIRST
+    // =======================================================
+
+    try {
+
+        const cachedSalesmen =
+            await getAllFromOfflineDB(
+                "salesmen"
+            );
+
+
+        if (
+            cachedSalesmen &&
+            cachedSalesmen.length > 0
+        ) {
+
+            salesmen =
+                cachedSalesmen;
+
+
+            console.log(
+                "Salesmen loaded from IndexedDB:",
+                salesmen
+            );
+
+
+            renderSalesmen(
+                salesmen,
+                0
+            );
+
+        }
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Offline Salesmen Load Error:",
+            error
+        );
+
+    }
+
+
+    // =======================================================
+    // OFFLINE
+    // =======================================================
+
+    if (!navigator.onLine) {
+
+        console.log(
+            "Offline mode. Using IndexedDB salesmen."
+        );
+
+
+        if (
+            salesmen.length === 0
+        ) {
+
+            renderSalesmen(
+                [],
+                0
+            );
+
+        }
+
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // PROCESS PENDING QUEUE FIRST
+    // =======================================================
+
+    try {
+
+        await processSyncQueue();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Initial sync error:",
+            error
+        );
+
+    }
+
+
+    // =======================================================
+    // FETCH FRESH SALESMEN
+    // =======================================================
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/allSalesmen`,
+                {
+                    credentials:
+                        "include"
+                }
+            );
+
+
+        // ===================================================
+        // JWT EXPIRED
+        // ===================================================
+
+        if (
+            response.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to fetch salesmen"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        console.log(
+            "Salesmen API response:",
+            data
+        );
+
+
+        const freshSalesmen =
+            data.data || [];
+
+
+        todayDeliveries =
+            data.todayDeliveries || 0;
+
+
+        // ===================================================
+        // UPDATE STATE
+        // ===================================================
+
+        salesmen =
+            freshSalesmen;
+
+
+        // ===================================================
+        // CACHE SALESmen
+        // ===================================================
+
+        await clearOfflineStore(
+            "salesmen"
+        );
+
+
+        await saveManyToOfflineDB(
+            "salesmen",
+            salesmen
+        );
+
+
+        // ===================================================
+        // RENDER
+        // ===================================================
+
+        renderSalesmen(
+            salesmen,
+            todayDeliveries
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Salesmen API Error:",
+            error
+        );
+
+
+        // ===================================================
+        // FALLBACK TO INDEXEDDB
+        // ===================================================
+
+        try {
+
+            const cachedSalesmen =
+                await getAllFromOfflineDB(
+                    "salesmen"
+                );
+
+
+            salesmen =
+                cachedSalesmen || [];
+
+
+            renderSalesmen(
+                salesmen,
+                todayDeliveries
+            );
+
+        }
+
+        catch (offlineError) {
+
+            console.error(
+                "Salesmen offline fallback error:",
+                offlineError
+            );
+
+
+            renderSalesmen(
+                [],
+                0
+            );
+
+        }
+
+    }
+
+}
+
+
+// ===========================================================
+// RENDER SALESMEN
+// ===========================================================
+
+function renderSalesmen(
+    salesmenData,
+    deliveries = 0
+) {
 
     tbody.innerHTML = "";
 
+
     let activeCount = 0;
 
-    salesmen.forEach((salesman) => {
 
-        if (salesman.status) activeCount++;
+    salesmenData.forEach(
+        (salesman) => {
 
-        const row = document.createElement("tr");
+            if (
+                salesman.status
+            ) {
 
-        row.innerHTML = `
-            <td>${salesman.id}</td>
-            <td>${salesman.name}</td>
-            <td>${salesman.phone}</td>
-            <td>${salesman.address}</td>
-            <td>${salesman.status ? "Active" : "Inactive"}</td>
-          
-            <td>Rs ${salesman.outstandingBalance}</td>
-            <td>
-                <button onclick="editSalesman('${salesman.id}')">
-                    Edit  
-                </button>
+                activeCount++;
 
-                <button onclick="deleteSalesman('${salesman.id}')">
-                    Delete
-                </button>
-            </td>
-        `;
-
-      row.addEventListener("click",async()=>{
-    
-    showSalesmanProfile(salesman);
+            }
 
 
-});
+            const row =
+                document.createElement(
+                    "tr"
+                );
 
-tbody.appendChild(row);
-    });
 
-    statTotal.textContent = salesmen.length;
-    statActive.textContent = activeCount;
-    statDeliveries.textContent=todayDeliveries;
-    
+            row.innerHTML = `
+
+                <td>
+                    ${salesman.id}
+                </td>
+
+                <td>
+                    ${salesman.name}
+                </td>
+
+                <td>
+                    ${salesman.phone || "-"}
+                </td>
+
+                <td>
+                    ${salesman.address || salesman.Adress || "-"}
+                </td>
+
+                <td>
+
+                    <span class="badge ${salesman.status ? "success" : "danger"}">
+
+                        ${salesman.status
+                            ? "Active"
+                            : "Inactive"
+                        }
+
+                    </span>
+
+                </td>
+
+                <td>
+                    Rs ${salesman.outstandingBalance || 0}
+                </td>
+
+                <td>
+
+                    <div class="action-cell">
+
+                        <button
+                            class="btn btn-secondary btn-sm"
+                            onclick="editSalesman('${salesman.id}')">
+
+                            Edit
+
+                        </button>
+
+
+                        <button
+                            class="btn btn-danger btn-sm"
+                            onclick="deleteSalesman('${salesman.id}')">
+
+                            Delete
+
+                        </button>
+
+                    </div>
+
+                </td>
+
+            `;
+
+
+            row.addEventListener(
+                "click",
+                async () => {
+
+                    await showSalesmanProfile(
+                        salesman
+                    );
+
+                }
+            );
+
+
+            tbody.appendChild(
+                row
+            );
+
+        }
+    );
+
+
+    statTotal.textContent =
+        salesmenData.length;
+
+
+    statActive.textContent =
+        activeCount;
+
+
+    statDeliveries.textContent =
+        deliveries;
+
 }
+
+
+// ===========================================================
+// EDIT SALESMAN
+// ===========================================================
 
 async function editSalesman(id) {
 
+    let salesman = null;
+
+
+    const numericId =
+        Number(id);
+
+
+    // =======================================================
+    // OFFLINE / CACHE FIRST
+    // =======================================================
+
     try {
 
-        // Get salesman information
-        const response = await fetch(
-            `${API}/oneSalesman?id=${id}`,
-            {
-        credentials: 'include'
-    }
-        );
-         if (response.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        const data = await response.json();
-
-        if (!response.ok) {
-
-            alert(
-                data.message || "Failed to get salesman"
+        const cachedSalesmen =
+            await getAllFromOfflineDB(
+                "salesmen"
             );
 
-            return;
+
+        salesman =
+            cachedSalesmen.find(
+                s =>
+                    Number(s.id) === numericId
+            ) || null;
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Salesman cache lookup error:",
+            error
+        );
+
+    }
+
+
+    // =======================================================
+    // ONLINE: GET LATEST SINGLE SALESMAN
+    // =======================================================
+
+    if (
+        navigator.onLine
+    ) {
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API}/oneSalesman?id=${numericId}`,
+                    {
+                        credentials:
+                            "include"
+                    }
+                );
+
+
+            if (
+                response.status === 401
+            ) {
+
+                window.location.href =
+                    "login.html";
+
+                return;
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                response.ok &&
+                data.salesman
+            ) {
+
+                salesman =
+                    data.salesman;
+
+
+                // Keep cache current
+
+                await saveToOfflineDB(
+                    "salesmen",
+                    salesman
+                );
+
+            }
+
+            else if (
+                !salesman
+            ) {
+
+                alert(
+                    data.message ||
+                    "Failed to get salesman"
+                );
+
+                return;
+
+            }
+
         }
 
-        const salesman = data.salesman;
+        catch (error) {
 
-        console.log("Editing salesman:", salesman);
+            console.error(
+                error
+            );
 
 
-        // Hide profile
-        profilePanel.classList.add("hidden");
+            if (!salesman) {
 
-        // Show edit panel
-        addPanel.classList.remove("hidden");
+                alert(
+                    "Server error while loading salesman"
+                );
 
+                return;
 
-        // Create edit form
-        addPanel.innerHTML = `
+            }
 
-            <div class="add-panel">
+        }
 
-                <h3>Edit Salesman</h3>
+    }
 
-                <p class="hint">
-                    Update salesman information
-                </p>
 
+    if (!salesman) {
 
-                <form id="editSalesmanForm">
+        alert(
+            "Salesman not found"
+        );
 
+        return;
 
-                    <div class="field">
+    }
 
-                        <label>ID</label>
 
-                        <input
-                            type="number"
-                            value="${salesman.id}"
-                            disabled
-                        >
+    console.log(
+        "Editing salesman:",
+        salesman
+    );
 
-                    </div>
 
+    // =======================================================
+    // SHOW EDIT PANEL
+    // =======================================================
 
-                    <div class="field">
+    profilePanel.classList.add(
+        "hidden"
+    );
 
-                        <label>Name</label>
 
-                        <input
-                            id="editName"
-                            type="text"
-                            value="${salesman.name || ""}"
-                            required
-                        >
+    addPanel.classList.remove(
+        "hidden"
+    );
 
-                    </div>
 
+    addPanel.innerHTML = `
 
-                    <div class="field">
+        <div class="add-panel">
 
-                        <label>Phone</label>
+            <h3>
+                Edit Salesman
+            </h3>
 
-                        <input
-                            id="editPhone"
-                            type="text"
-                            value="${salesman.phone || ""}"
-                            required
-                        >
 
-                    </div>
+            <p class="hint">
+                Update salesman information
+            </p>
 
 
-                    <div class="field">
+            <form id="editSalesmanForm">
 
-                        <label>Address</label>
 
-                        <input
-                            id="editAddress"
-                            type="text"
-                            value="${salesman.address || ""}"
-                            required
-                        >
+                <div class="field">
 
-                    </div>
+                    <label>
+                        ID
+                    </label>
 
 
-                    <div class="field">
+                    <input
+                        type="number"
+                        value="${salesman.id}"
+                        disabled
+                    >
 
-                        <label>Outstanding Balance</label>
+                </div>
 
-                        <input
-                            id="editBalance"
-                            type="number"
-                            value="${salesman.outstandingBalance || 0}"
-                        >
 
-                    </div>
+                <div class="field">
 
+                    <label>
+                        Name
+                    </label>
 
-                    <div class="field">
 
-                        <label>CNIC</label>
+                    <input
+                        id="editName"
+                        type="text"
+                        value="${salesman.name || ""}"
+                        required
+                    >
 
-                        <input
-                            id="editCNIC"
-                            type="text"
-                            value="${salesman.CNIC || ""}"
-                        >
+                </div>
 
-                    </div>
 
+                <div class="field">
 
-                    <div class="field">
+                    <label>
+                        Phone
+                    </label>
 
-                        <label>Email</label>
 
-                        <input
-                            id="editEmail"
-                            type="email"
-                            value="${salesman.email || ""}"
-                        >
+                    <input
+                        id="editPhone"
+                        type="text"
+                        value="${salesman.phone || ""}"
+                        required
+                    >
 
-                    </div>
+                </div>
 
 
-                    <div class="field">
+                <div class="field">
 
-                        <label>Status</label>
+                    <label>
+                        Address
+                    </label>
 
-                        <select id="editStatus">
 
-                            <option
-                                value="true"
-                                ${salesman.status ? "selected" : ""}
-                            >
-                                Active
-                            </option>
+                    <input
+                        id="editAddress"
+                        type="text"
+                        value="${salesman.address || salesman.Adress || ""}"
+                        required
+                    >
 
-                            <option
-                                value="false"
-                                ${!salesman.status ? "selected" : ""}
-                            >
-                                Inactive
-                            </option>
+                </div>
 
-                        </select>
 
-                    </div>
+                <div class="field">
 
+                    <label>
+                        Outstanding Balance
+                    </label>
 
-                    <div class="add-actions">
 
-                        <button
-                            type="button"
-                            class="btn-ghost"
-                            id="cancelEdit"
-                        >
-                            Cancel
-                        </button>
+                    <input
+                        id="editBalance"
+                        type="number"
+                        value="${salesman.outstandingBalance || 0}"
+                    >
 
+                </div>
 
-                        <button
-                            type="submit"
-                            class="btn-save"
-                        >
-                            Update
-                        </button>
 
-                    </div>
+                <div class="field">
 
+                    <label>
+                        CNIC
+                    </label>
 
-                </form>
 
-            </div>
+                    <input
+                        id="editCNIC"
+                        type="text"
+                        value="${salesman.CNIC || salesman.cnic || ""}"
+                    >
 
-        `;
+                </div>
 
 
-        // Cancel button
+                <div class="field">
 
-        document
-            .getElementById("cancelEdit")
-            .onclick = () => {
+                    <label>
+                        Email
+                    </label>
 
-                addPanel.classList.add("hidden");
 
-                profilePanel.classList.remove("hidden");
+                    <input
+                        id="editEmail"
+                        type="email"
+                        value="${salesman.email || ""}"
+                    >
 
-            };
+                </div>
 
 
-        // Submit edit form
+                <div class="field">
 
-        document
-            .getElementById("editSalesmanForm")
-            .addEventListener("submit", async (e) => {
+                    <label>
+                        Status
+                    </label>
+
+
+                    <select id="editStatus">
+
+                        <option
+                            value="true"
+                            ${salesman.status ? "selected" : ""}>
+
+                            Active
+
+                        </option>
+
+
+                        <option
+                            value="false"
+                            ${!salesman.status ? "selected" : ""}>
+
+                            Inactive
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="add-actions">
+
+                    <button
+                        type="button"
+                        class="btn-ghost"
+                        id="cancelEdit">
+
+                        Cancel
+
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="btn-save">
+
+                        Update
+
+                    </button>
+
+                </div>
+
+
+            </form>
+
+        </div>
+
+    `;
+
+
+    // =======================================================
+    // CANCEL
+    // =======================================================
+
+    document
+        .getElementById(
+            "cancelEdit"
+        )
+        .onclick = () => {
+
+            addPanel.classList.add(
+                "hidden"
+            );
+
+            profilePanel.classList.remove(
+                "hidden"
+            );
+
+        };
+
+
+    // =======================================================
+    // SUBMIT UPDATE
+    // =======================================================
+
+    document
+        .getElementById(
+            "editSalesmanForm"
+        )
+        .addEventListener(
+            "submit",
+            async (e) => {
 
                 e.preventDefault();
 
 
-               const updatedSalesman = {
-    name: document.getElementById("editName").value,
-    phone: document.getElementById("editPhone").value,
+                const updatedSalesman = {
 
-  Adress: document.getElementById("editAddress").value,
+                    name:
+                        document.getElementById(
+                            "editName"
+                        ).value,
 
-    outstandingBalance:
-        Number(document.getElementById("editBalance").value),
+                    phone:
+                        document.getElementById(
+                            "editPhone"
+                        ).value,
 
-    cnic: document.getElementById("editCNIC").value,
+                    // Preserve backend spelling.
+                    Adress:
+                        document.getElementById(
+                            "editAddress"
+                        ).value,
 
-    email: document.getElementById("editEmail").value,
+                    outstandingBalance:
+                        Number(
+                            document.getElementById(
+                                "editBalance"
+                            ).value
+                        ),
 
-    status:
-        document.getElementById("editStatus").value === "true"
-};
+                    cnic:
+                        document.getElementById(
+                            "editCNIC"
+                        ).value,
+
+                    email:
+                        document.getElementById(
+                            "editEmail"
+                        ).value,
+
+                    status:
+                        document.getElementById(
+                            "editStatus"
+                        ).value === "true"
+
+                };
 
 
                 console.log(
@@ -354,37 +947,221 @@ async function editSalesman(id) {
                 );
 
 
+                // =================================================
+                // OFFLINE
+                // =================================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
                     try {
-                    const updateResponse = await fetch(
-                        `${API}/salesmen/${id}`,
-                        {
-                            method: "PUT",
-                             credentials: 'include',
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
 
-                            body: JSON.stringify(updatedSalesman)
-                        }
-                    );
+                        const updatedLocalSalesman = {
 
-                     if (updateResponse.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
+                            ...salesman,
+
+                            name:
+                                updatedSalesman.name,
+
+                            phone:
+                                updatedSalesman.phone,
+
+                            address:
+                                updatedSalesman.Adress,
+
+                            Adress:
+                                updatedSalesman.Adress,
+
+                            outstandingBalance:
+                                updatedSalesman.outstandingBalance,
+
+                            cnic:
+                                updatedSalesman.cnic,
+
+                            email:
+                                updatedSalesman.email,
+
+                            status:
+                                updatedSalesman.status
+
+                        };
+
+
+                        await saveToOfflineDB(
+                            "salesmen",
+                            updatedLocalSalesman
+                        );
+
+
+                        await addToSyncQueue({
+
+                            endpoint:
+                                `/salesmen/${numericId}`,
+
+                            method:
+                                "PUT",
+
+                            body:
+                                updatedSalesman
+
+                        });
+
+
+                        salesmen =
+                            salesmen.map(
+                                s =>
+                                    Number(s.id) ===
+                                    numericId
+                                    ? updatedLocalSalesman
+                                    : s
+                            );
+
+
+                        renderSalesmen(
+                            salesmen,
+                            todayDeliveries
+                        );
+
+
+                        addPanel.classList.add(
+                            "hidden"
+                        );
+
+                        profilePanel.classList.remove(
+                            "hidden"
+                        );
+
+
+                        alert(
+                            "Salesman updated offline. It will be synchronized when internet returns."
+                        );
+
+
+                        return;
+
+                    }
+
+                    catch (error) {
+
+                        console.error(
+                            "Offline salesman update error:",
+                            error
+                        );
+
+
+                        alert(
+                            "Failed to update salesman offline."
+                        );
+
+
+                        return;
+
+                    }
+
+                }
+
+
+                // =================================================
+                // ONLINE UPDATE
+                // =================================================
+
+                try {
+
+                    const updateResponse =
+                        await fetch(
+                            `${API}/salesmen/${numericId}`,
+                            {
+
+                                method:
+                                    "PUT",
+
+                                credentials:
+                                    "include",
+
+                                headers: {
+
+                                    "Content-Type":
+                                        "application/json"
+
+                                },
+
+                                body:
+                                    JSON.stringify(
+                                        updatedSalesman
+                                    )
+
+                            }
+                        );
+
+
+                    if (
+                        updateResponse.status === 401
+                    ) {
+
+                        window.location.href =
+                            "login.html";
+
+                        return;
+
+                    }
+
+
                     const result =
                         await updateResponse.json();
 
 
-                    if (!updateResponse.ok) {
+                    if (
+                        !updateResponse.ok
+                    ) {
 
-                        alert(
+                        throw new Error(
                             result.message ||
                             "Failed to update salesman"
                         );
 
-                        return;
                     }
+
+
+                    // =================================================
+                    // UPDATE LOCAL CACHE
+                    // =================================================
+
+                    const updatedLocalSalesman = {
+
+                        ...salesman,
+
+                        name:
+                            updatedSalesman.name,
+
+                        phone:
+                            updatedSalesman.phone,
+
+                        address:
+                            updatedSalesman.Adress,
+
+                        Adress:
+                            updatedSalesman.Adress,
+
+                        outstandingBalance:
+                            updatedSalesman.outstandingBalance,
+
+                        cnic:
+                            updatedSalesman.cnic,
+
+                        email:
+                            updatedSalesman.email,
+
+                        status:
+                            updatedSalesman.status
+
+                    };
+
+
+                    await saveToOfflineDB(
+                        "salesmen",
+                        updatedLocalSalesman
+                    );
 
 
                     alert(
@@ -392,448 +1169,1526 @@ async function editSalesman(id) {
                     );
 
 
-                    // Hide edit form
-                    addPanel.classList.add("hidden");
-
-                    // Show profile
-                    profilePanel.classList.remove("hidden");
+                    addPanel.classList.add(
+                        "hidden"
+                    );
 
 
-                    // Refresh table
+                    profilePanel.classList.remove(
+                        "hidden"
+                    );
+
+
                     await loadSalesmen();
 
+                }
 
-                } catch (error) {
+                catch (error) {
 
-                    console.error(error);
+                    console.error(
+                        "Update salesman error:",
+                        error
+                    );
+
+
+                    // =============================================
+                    // NETWORK FAILURE
+                    // =============================================
+
+                    if (
+                        !navigator.onLine
+                    ) {
+
+                        try {
+
+                            const updatedLocalSalesman = {
+
+                                ...salesman,
+
+                                name:
+                                    updatedSalesman.name,
+
+                                phone:
+                                    updatedSalesman.phone,
+
+                                address:
+                                    updatedSalesman.Adress,
+
+                                Adress:
+                                    updatedSalesman.Adress,
+
+                                outstandingBalance:
+                                    updatedSalesman.outstandingBalance,
+
+                                cnic:
+                                    updatedSalesman.cnic,
+
+                                email:
+                                    updatedSalesman.email,
+
+                                status:
+                                    updatedSalesman.status
+
+                            };
+
+
+                            await saveToOfflineDB(
+                                "salesmen",
+                                updatedLocalSalesman
+                            );
+
+
+                            await addToSyncQueue({
+
+                                endpoint:
+                                    `/salesmen/${numericId}`,
+
+                                method:
+                                    "PUT",
+
+                                body:
+                                    updatedSalesman
+
+                            });
+
+
+                            salesmen =
+                                salesmen.map(
+                                    s =>
+                                        Number(s.id) ===
+                                        numericId
+                                        ? updatedLocalSalesman
+                                        : s
+                                );
+
+
+                            renderSalesmen(
+                                salesmen,
+                                todayDeliveries
+                            );
+
+
+                            alert(
+                                "Internet connection was lost. Salesman update was saved offline."
+                            );
+
+
+                            addPanel.classList.add(
+                                "hidden"
+                            );
+
+                            profilePanel.classList.remove(
+                                "hidden"
+                            );
+
+
+                            return;
+
+                        }
+
+                        catch (
+                            offlineError
+                        ) {
+
+                            console.error(
+                                "Offline fallback update error:",
+                                offlineError
+                            );
+
+                            alert(
+                                "Failed to save salesman update offline."
+                            );
+
+                            return;
+
+                        }
+
+                    }
+
 
                     alert(
+                        error.message ||
                         "Server error while updating salesman"
                     );
 
                 }
 
-            });
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Server error while loading salesman"
+            }
         );
 
-    }
 }
+
+
+// ===========================================================
+// DELETE SALESMAN
+// ===========================================================
 
 async function deleteSalesman(id) {
 
-    const confirmed = confirm(
-        "Are you sure you want to delete this salesman?"
-    );
+    const numericId =
+        Number(id);
+
+
+    const salesman =
+        salesmen.find(
+            s =>
+                Number(s.id) ===
+                numericId
+        );
+
+
+    const confirmed =
+        confirm(
+            `Are you sure you want to delete "${salesman?.name || "this salesman"}"?`
+        );
+
 
     if (!confirmed) {
+
         return;
+
     }
+
+
+    // =======================================================
+    // OFFLINE DELETE
+    // =======================================================
+
+    if (
+        !navigator.onLine
+    ) {
+
+        try {
+
+            await deleteFromOfflineDB(
+                "salesmen",
+                numericId
+            );
+
+
+            await addToSyncQueue({
+
+                endpoint:
+                    `/salesmen/${numericId}`,
+
+                method:
+                    "DELETE",
+
+                body:
+                    null
+
+            });
+
+
+            salesmen =
+                salesmen.filter(
+                    s =>
+                        Number(s.id) !==
+                        numericId
+                );
+
+
+            renderSalesmen(
+                salesmen,
+                todayDeliveries
+            );
+
+
+            profilePanel.classList.add(
+                "hidden"
+            );
+
+
+            alert(
+                "Salesman deleted offline. The deletion will sync when internet returns."
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Offline delete salesman error:",
+                error
+            );
+
+
+            alert(
+                "Failed to delete salesman offline."
+            );
+
+        }
+
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // ONLINE DELETE
+    // =======================================================
 
     try {
 
-        const response = await fetch(
-            `${API}/salesmen/${id}`,
-            {
-                method: "DELETE",
-                 credentials: 'include'
-            }
-        );
-         if (response.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        const data = await response.json();
+        const response =
+            await fetch(
+                `${API}/salesmen/${numericId}`,
+                {
 
-        if (!response.ok) {
-            alert(data.message || "Failed to delete salesman");
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "include"
+
+                }
+            );
+
+
+        if (
+            response.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
             return;
+
         }
 
-        alert("Salesman deleted successfully");
 
-        // Refresh salesman table
-        await loadSalesmen();
+        const data =
+            await response.json();
 
-        // Hide profile if it was open
-        profilePanel.classList.add("hidden");
 
-    } catch (error) {
+        if (
+            !response.ok
+        ) {
 
-        console.error(error);
+            throw new Error(
+                data.message ||
+                "Failed to delete salesman"
+            );
 
-        alert("Server error while deleting salesman");
+        }
+
+
+        await deleteFromOfflineDB(
+            "salesmen",
+            numericId
+        );
+
+
+        salesmen =
+            salesmen.filter(
+                s =>
+                    Number(s.id) !==
+                    numericId
+            );
+
+
+        renderSalesmen(
+            salesmen,
+            todayDeliveries
+        );
+
+
+        profilePanel.classList.add(
+            "hidden"
+        );
+
+
+        alert(
+            "Salesman deleted successfully"
+        );
 
     }
+
+    catch (error) {
+
+        console.error(
+            "Delete salesman error:",
+            error
+        );
+
+
+        // ===================================================
+        // NETWORK FAILURE
+        // ===================================================
+
+        if (
+            !navigator.onLine
+        ) {
+
+            try {
+
+                await deleteFromOfflineDB(
+                    "salesmen",
+                    numericId
+                );
+
+
+                await addToSyncQueue({
+
+                    endpoint:
+                        `/salesmen/${numericId}`,
+
+                    method:
+                        "DELETE",
+
+                    body:
+                        null
+
+                });
+
+
+                salesmen =
+                    salesmen.filter(
+                        s =>
+                            Number(s.id) !==
+                            numericId
+                    );
+
+
+                renderSalesmen(
+                    salesmen,
+                    todayDeliveries
+                );
+
+
+                profilePanel.classList.add(
+                    "hidden"
+                );
+
+
+                alert(
+                    "Internet connection was lost. Salesman deletion was saved offline."
+                );
+
+            }
+
+            catch (
+                offlineError
+            ) {
+
+                console.error(
+                    "Offline fallback delete error:",
+                    offlineError
+                );
+
+
+                alert(
+                    "Failed to save salesman deletion offline."
+                );
+
+            }
+
+
+            return;
+
+        }
+
+
+        alert(
+            error.message ||
+            "Server error while deleting salesman"
+        );
+
+    }
+
 }
 
-loadSalesmen();
 
-/* ============================================================
-   ADD SALESMAN PANEL
-   NOTE: the input ids below (salesmanId, salesmanName, ...) match
-   the ids read inside the submit handler further down. The form's
-   id is "addSalesmanForm" so it matches the listener that's
-   attached to it — these were mismatched before, which silently
-   broke the Add Salesman flow.
-============================================================ */
+// ===========================================================
+// ADD SALESMAN PANEL
+// ===========================================================
+
 addPanel.innerHTML = `
 
-<div class="add-panel">
+    <div class="add-panel">
 
-<h3>Add Salesman</h3>
-
-<p class="hint">
-Create a new salesman profile
-</p>
+        <h3>
+            Add Salesman
+        </h3>
 
 
-<form id="addSalesmanForm">
+        <p class="hint">
+            Create a new salesman profile
+        </p>
 
 
-<div class="field">
-<label>ID</label>
-<input id="salesmanId" type="number" required>
-</div>
+        <form id="addSalesmanForm">
 
 
-<div class="field">
-<label>Name</label>
-<input id="salesmanName" type="text" required>
-</div>
+            <div class="field">
+
+                <label>
+                    ID
+                </label>
+
+                <input
+                    id="salesmanId"
+                    type="number"
+                    required>
+
+            </div>
 
 
-<div class="field">
-<label>Phone</label>
-<input id="salesmanPhone" type="text" required>
-</div>
+            <div class="field">
+
+                <label>
+                    Name
+                </label>
+
+                <input
+                    id="salesmanName"
+                    type="text"
+                    required>
+
+            </div>
 
 
-<div class="field">
-<label>Address</label>
-<input id="salesmanAddress" type="text" required>
-</div>
+            <div class="field">
+
+                <label>
+                    Phone
+                </label>
+
+                <input
+                    id="salesmanPhone"
+                    type="text"
+                    required>
+
+            </div>
 
 
-<div class="field">
-<label>Outstanding Balance</label>
-<input id="salesmanBalance" type="number" value="0">
-</div>
+            <div class="field">
+
+                <label>
+                    Address
+                </label>
+
+                <input
+                    id="salesmanAddress"
+                    type="text"
+                    required>
+
+            </div>
 
 
-<div class="field">
-<label>CNIC</label>
-<input id="CNIC" type="text" value="">
-</div>
+            <div class="field">
 
-<div class="field">
-<label>Email</label>
-<input id="email" type="email" value="">
-</div>
+                <label>
+                    Outstanding Balance
+                </label>
 
+                <input
+                    id="salesmanBalance"
+                    type="number"
+                    value="0">
 
-<div class="field">
-<label>Status</label>
-
-<select id="salesmanStatus">
-<option value="true">Active</option>
-<option value="false">Inactive</option>
-</select>
-
-</div>
+            </div>
 
 
+            <div class="field">
 
-<div class="add-actions">
+                <label>
+                    CNIC
+                </label>
 
-<button type="button" 
-class="btn-ghost"
-id="cancelAdd">
+                <input
+                    id="CNIC"
+                    type="text"
+                    value="">
 
-Cancel
-
-</button>
-
-
-<button class="btn-save">
-
-Save
-
-</button>
-
-</div>
+            </div>
 
 
-</form>
+            <div class="field">
 
-</div>
+                <label>
+                    Email
+                </label>
+
+                <input
+                    id="email"
+                    type="email"
+                    value="">
+
+            </div>
+
+
+            <div class="field">
+
+                <label>
+                    Status
+                </label>
+
+
+                <select id="salesmanStatus">
+
+                    <option value="true">
+                        Active
+                    </option>
+
+                    <option value="false">
+                        Inactive
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="add-actions">
+
+                <button
+                    type="button"
+                    class="btn-ghost"
+                    id="cancelAdd">
+
+                    Cancel
+
+                </button>
+
+
+                <button
+                    class="btn-save"
+                    type="submit">
+
+                    Save
+
+                </button>
+
+            </div>
+
+
+        </form>
+
+    </div>
 
 `;
 
 
-// Open Add Panel
-openAddBtn.onclick = ()=>{
+// ===========================================================
+// OPEN ADD PANEL
+// ===========================================================
 
-    profilePanel.classList.add("hidden");
+openAddBtn.onclick = () => {
 
-    addPanel.classList.remove("hidden");
+    profilePanel.classList.add(
+        "hidden"
+    );
 
-};
 
-
-// Close Add Panel
-document.getElementById("cancelAdd").onclick=()=>{
-
-    addPanel.classList.add("hidden");
-
-    profilePanel.classList.remove("hidden");
+    addPanel.classList.remove(
+        "hidden"
+    );
 
 };
 
 
-// Submit Form
+// ===========================================================
+// CLOSE ADD PANEL
+// ===========================================================
+
 document
-.getElementById("addSalesmanForm")
-.addEventListener("submit", async(e)=>{
+    .getElementById(
+        "cancelAdd"
+    )
+    .onclick = () => {
 
-    e.preventDefault();
+        addPanel.classList.add(
+            "hidden"
+        );
 
 
-    const salesman = {
-
-        id:Number(
-            document.getElementById("salesmanId").value
-        ),
-
-        name:
-            document.getElementById("salesmanName").value,
-
-        phone:
-            document.getElementById("salesmanPhone").value,
-
-        address:
-            document.getElementById("salesmanAddress").value,
-
-        status:
-            document.getElementById("salesmanStatus").value==="true",
-
-        outstandingBalance:
-            Number(
-                document.getElementById("salesmanBalance").value
-            ),
-
-            cnic:document.getElementById("CNIC").value,
-            email:document.getElementById("email").value
-
+        profilePanel.classList.remove(
+            "hidden"
+        );
 
     };
 
 
-    try{
+// ===========================================================
+// ADD SALESMAN
+// ===========================================================
 
-        const response = await fetch(
-            `${API}/salesmen`,
-            {
-                method:"POST",
-                credentials: 'include',
-                headers:{
-                    "Content-Type":"application/json"
-                },
+document
+    .getElementById(
+        "addSalesmanForm"
+    )
+    .addEventListener(
+        "submit",
+        async (e) => {
 
-                body:JSON.stringify(salesman)
+            e.preventDefault();
+
+
+            const salesman = {
+
+                id:
+                    Number(
+                        document.getElementById(
+                            "salesmanId"
+                        ).value
+                    ),
+
+                name:
+                    document.getElementById(
+                        "salesmanName"
+                    ).value,
+
+                phone:
+                    document.getElementById(
+                        "salesmanPhone"
+                    ).value,
+
+                address:
+                    document.getElementById(
+                        "salesmanAddress"
+                    ).value,
+
+                status:
+                    document.getElementById(
+                        "salesmanStatus"
+                    ).value === "true",
+
+                outstandingBalance:
+                    Number(
+                        document.getElementById(
+                            "salesmanBalance"
+                        ).value
+                    ),
+
+                cnic:
+                    document.getElementById(
+                        "CNIC"
+                    ).value,
+
+                email:
+                    document.getElementById(
+                        "email"
+                    ).value
+
+            };
+
+
+            // =================================================
+            // OFFLINE
+            // =================================================
+
+            if (
+                !navigator.onLine
+            ) {
+
+                try {
+
+                    // Save locally
+
+                    await saveToOfflineDB(
+                        "salesmen",
+                        salesman
+                    );
+
+
+                    // Queue POST
+
+                    await addToSyncQueue({
+
+                        endpoint:
+                            "/salesmen",
+
+                        method:
+                            "POST",
+
+                        body:
+                            salesman
+
+                    });
+
+
+                    // Update page state
+
+                    salesmen.push(
+                        salesman
+                    );
+
+
+                    renderSalesmen(
+                        salesmen,
+                        todayDeliveries
+                    );
+
+
+                    e.target.reset();
+
+
+                    addPanel.classList.add(
+                        "hidden"
+                    );
+
+                    profilePanel.classList.remove(
+                        "hidden"
+                    );
+
+
+                    alert(
+                        "Salesman saved offline. It will be synchronized when internet returns."
+                    );
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Offline salesman save error:",
+                        error
+                    );
+
+
+                    alert(
+                        "Failed to save salesman offline."
+                    );
+
+                }
+
+
+                return;
+
             }
-        );
 
-         if (response.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        if(response.ok){
 
-            alert("Salesman Added Successfully");
+            // =================================================
+            // ONLINE ADD
+            // =================================================
 
-            e.target.reset();
+            try {
 
-            addPanel.classList.add("hidden");
-            profilePanel.classList.remove("hidden");
+                const response =
+                    await fetch(
+                        `${API}/salesmen`,
+                        {
 
-            loadSalesmen();
+                            method:
+                                "POST",
+
+                            credentials:
+                                "include",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    salesman
+                                )
+
+                        }
+                    );
+
+
+                if (
+                    response.status === 401
+                ) {
+
+                    window.location.href =
+                        "login.html";
+
+                    return;
+
+                }
+
+
+                const result =
+                    await response.json();
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    throw new Error(
+                        result.message ||
+                        "Failed to add salesman"
+                    );
+
+                }
+
+
+                alert(
+                    "Salesman Added Successfully"
+                );
+
+
+                e.target.reset();
+
+
+                addPanel.classList.add(
+                    "hidden"
+                );
+
+
+                profilePanel.classList.remove(
+                    "hidden"
+                );
+
+
+                await loadSalesmen();
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Add salesman error:",
+                    error
+                );
+
+
+                // =============================================
+                // NETWORK FAILURE
+                // =============================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
+                    try {
+
+                        await saveToOfflineDB(
+                            "salesmen",
+                            salesman
+                        );
+
+
+                        await addToSyncQueue({
+
+                            endpoint:
+                                "/salesmen",
+
+                            method:
+                                "POST",
+
+                            body:
+                                salesman
+
+                        });
+
+
+                        salesmen.push(
+                            salesman
+                        );
+
+
+                        renderSalesmen(
+                            salesmen,
+                            todayDeliveries
+                        );
+
+
+                        e.target.reset();
+
+
+                        addPanel.classList.add(
+                            "hidden"
+                        );
+
+                        profilePanel.classList.remove(
+                            "hidden"
+                        );
+
+
+                        alert(
+                            "Internet connection was lost. Salesman was saved offline."
+                        );
+
+                    }
+
+                    catch (
+                        offlineError
+                    ) {
+
+                        console.error(
+                            "Offline fallback add error:",
+                            offlineError
+                        );
+
+
+                        alert(
+                            "Failed to save salesman offline."
+                        );
+
+                    }
+
+
+                    return;
+
+                }
+
+
+                alert(
+                    error.message ||
+                    "Server Error"
+                );
+
+            }
 
         }
-        else{
+    );
 
-            alert("Failed to add salesman");
+
+// ===========================================================
+// RIGHT-SIDE PROFILE
+// ===========================================================
+
+async function showSalesmanProfile(
+    salesman
+) {
+
+    let salesmanSummary = {
+
+        todayInvoices: [],
+
+        todayInvoiceLength: 0,
+
+        todayIssued: 0
+
+    };
+
+
+    // =======================================================
+    // ONLINE SUMMARY
+    // =======================================================
+
+    if (
+        navigator.onLine
+    ) {
+
+        try {
+
+            const res =
+                await fetch(
+                    `${API}/summary?id=${salesman.id}`,
+                    {
+                        credentials:
+                            "include"
+                    }
+                );
+
+
+            if (
+                res.status === 401
+            ) {
+
+                window.location.href =
+                    "login.html";
+
+                return;
+
+            }
+
+
+            if (res.ok) {
+
+                salesmanSummary =
+                    await res.json();
+
+            }
 
         }
 
+        catch (error) {
+
+            console.error(
+                "Salesman summary error:",
+                error
+            );
+
+        }
 
     }
-    catch(error){
 
-        console.log(error);
-        alert("Server Error");
 
-    }
+    console.log(
+        "salesman_summary:",
+        salesmanSummary
+    );
 
-});
 
-/* ============================================================
-   RIGHT-SIDE PROFILE PREVIEW PANEL
-   Matches the reference screenshot: avatar + name/status, phone
-   and route line, a Personal information card, a Summary grid,
-   a Recent Invoices list, and Quick Actions.
+    profilePanel.classList.remove(
+        "hidden"
+    );
 
-   Your API's salesman objects currently only carry id, name,
-   phone, Adress, status and outStandingBalance — so fields the
-   screenshot shows that aren't in your schema yet (cnic, email,
-   whatsapp, route, todaysIssued, totalTodayPurchases, lastPayment,
-   recentInvoices) fall back to "N/A" / 0 / an empty state until
-   your backend starts sending them. Add those fields to your
-   salesman documents whenever you're ready and they'll show up
-   automatically — no changes needed here.
-============================================================ */
-async function showSalesmanProfile(salesman){
 
-      const res=await fetch(`${API}/summary?id=${salesman.id}`,
-        {
-        credentials: 'include'
-    }
-      );
-       if (res.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-    const salesman_summary=await res.json();
-    console.log("salesman_summary:", salesman_summary);
-    console.log('todayInvoices',salesman_summary.todayInvoices)
-    
-  
- 
-    profilePanel.classList.remove("hidden");
-    addPanel.classList.add("hidden");
-    const statusClass = salesman.status ? "active" : "inactive";
-    const statusText = salesman.status ? "Active" : "Inactive";
-      profilePanel.innerHTML = `
+    addPanel.classList.add(
+        "hidden"
+    );
 
-      <div class="profile-top">
 
-        <div class="profile-photo"></div>
+    const statusClass =
+        salesman.status
+            ? "active"
+            : "inactive";
 
-        <div>
-          <div class="profile-name">
-            ${salesman.name}
-            <span class="status-badge ${statusClass}">
-              <span class="dot"></span>${statusText}
-            </span>
-          </div>
 
-          <div class="profile-meta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.7a2 2 0 01-.4 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.5 2.7.6a2 2 0 011.9 2.2z"/></svg>
-            ${salesman.phone || "N/A"}
-          </div>
+    const statusText =
+        salesman.status
+            ? "Active"
+            : "Inactive";
 
-          <div class="profile-meta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            ${salesman.route || salesman.address || "N/A"}
-          </div>
+
+    const todayInvoices =
+        salesmanSummary.todayInvoices || [];
+
+
+    profilePanel.innerHTML = `
+
+        <div class="profile-top">
+
+            <div class="profile-photo"></div>
+
+
+            <div>
+
+                <div class="profile-name">
+
+                    ${salesman.name}
+
+                    <span
+                        class="status-badge ${statusClass}">
+
+                        <span class="dot"></span>
+
+                        ${statusText}
+
+                    </span>
+
+                </div>
+
+
+                <div class="profile-meta">
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
+
+                        <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.7a2 2 0 01-.4 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.5 2.7.6a2 2 0 012 2.1z"/>
+
+                    </svg>
+
+                    ${salesman.phone || "N/A"}
+
+                </div>
+
+
+                <div class="profile-meta">
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
+
+                        <path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/>
+
+                        <circle
+                            cx="12"
+                            cy="10"
+                            r="3"/>
+
+                    </svg>
+
+                    ${
+                        salesman.route ||
+                        salesman.address ||
+                        salesman.Adress ||
+                        "N/A"
+                    }
+
+                </div>
+
+            </div>
+
         </div>
 
-      </div>
 
-      <div class="section-block">
-        <div class="section-title">Personal information</div>
-        <div class="info-grid">
-          <div>
-            <div class="info-label">CNIC</div>
-            <div class="info-value">${salesman.cnic || "N/A"}</div>
-          </div>
-          <div>
-            <div class="info-label">Phone</div>
-            <div class="info-value">${salesman.phone || "N/A"}</div>
-          </div>
-          <div>
-            <div class="info-label">Email</div>
-            <div class="info-value">${salesman.email || "N/A"}</div>
-          </div>
-          <div>
-            <div class="info-label">Address</div>
-            <div class="info-value">${salesman.address || "N/A"}</div>
-          </div>
-          <div>
-            <div class="info-label">Whatsapp</div>
-            <div class="info-value">${salesman.whatsapp || salesman.phone || "N/A"}</div>
-          </div>
+        <div class="section-block">
+
+            <div class="section-title">
+                Personal information
+            </div>
+
+
+            <div class="info-grid">
+
+                <div>
+
+                    <div class="info-label">
+                        CNIC
+                    </div>
+
+                    <div class="info-value">
+                        ${salesman.cnic || salesman.CNIC || "N/A"}
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <div class="info-label">
+                        Phone
+                    </div>
+
+                    <div class="info-value">
+                        ${salesman.phone || "N/A"}
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <div class="info-label">
+                        Email
+                    </div>
+
+                    <div class="info-value">
+                        ${salesman.email || "N/A"}
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <div class="info-label">
+                        Address
+                    </div>
+
+                    <div class="info-value">
+                        ${
+                            salesman.address ||
+                            salesman.Adress ||
+                            "N/A"
+                        }
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <div class="info-label">
+                        Whatsapp
+                    </div>
+
+                    <div class="info-value">
+                        ${
+                            salesman.whatsapp ||
+                            salesman.phone ||
+                            "N/A"
+                        }
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
-      </div>
 
-      <div class="section-block">
-        <div class="section-title" style="margin-bottom:14px;">Summary</div>
-        <div class="summary-grid">
-          <div class="summary-box">
-            <div class="summary-label">Todays Issued</div>
-            <div class="summary-value">${salesman_summary.todayInvoiceLength ?? 0}</div>
-          </div>
-          <div class="summary-box">
-            <div class="summary-label">Total today Purchases</div>
-            <div class="summary-value">Rs. ${Number(salesman_summary.todayIssued ?? 0).toLocaleString()}</div>
-          </div>
-          <div class="summary-box">
-            <div class="summary-label">Last Payment</div>
-            <div class="summary-value" style="font-size:14px;">${(salesman_summary.todayInvoices.length>0)?salesman_summary.todayInvoices[0].cash : "—"}</div>
-          </div>
-          <div class="summary-box">
-            <div class="summary-label">Outstanding Balance</div>
-            <div class="summary-value red">Rs. ${Number(salesman.outstandingBalance ?? 0).toLocaleString()}</div>
-          </div>
+
+        <div class="section-block">
+
+            <div
+                class="section-title"
+                style="margin-bottom:14px;">
+
+                Summary
+
+            </div>
+
+
+            <div class="summary-grid">
+
+                <div class="summary-box">
+
+                    <div class="summary-label">
+                        Todays Issued
+                    </div>
+
+                    <div class="summary-value">
+
+                        ${
+                            salesmanSummary.todayInvoiceLength ??
+                            todayInvoices.length ??
+                            0
+                        }
+
+                    </div>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <div class="summary-label">
+                        Total today Purchases
+                    </div>
+
+                    <div class="summary-value">
+
+                        Rs. ${
+                            Number(
+                                salesmanSummary.todayIssued ??
+                                0
+                            ).toLocaleString()
+                        }
+
+                    </div>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <div class="summary-label">
+                        Last Payment
+                    </div>
+
+                    <div
+                        class="summary-value"
+                        style="font-size:14px;">
+
+                        ${
+                            todayInvoices.length > 0
+                                ? todayInvoices[0].cash
+                                : "—"
+                        }
+
+                    </div>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <div class="summary-label">
+                        Outstanding Balance
+                    </div>
+
+                    <div class="summary-value red">
+
+                        Rs. ${
+                            Number(
+                                salesman.outstandingBalance ??
+                                0
+                            ).toLocaleString()
+                        }
+
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
-      </div>
 
-      <div class="section-block" style="border-bottom:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div class="section-title" style="margin-bottom:0;">Recent Invoices</div>
-          <span class="view-all">View All</span>
+
+        <div
+            class="section-block"
+            style="border-bottom:none;">
+
+            <div
+                style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-bottom:10px;
+                ">
+
+                <div
+                    class="section-title"
+                    style="margin-bottom:0;">
+
+                    Recent Invoices
+
+                </div>
+
+
+                <span class="view-all">
+                    View All
+                </span>
+
+            </div>
+
+
+            ${
+                renderRecentInvoices(
+                    todayInvoices
+                )
+            }
+
         </div>
-        ${renderRecentInvoices(salesman_summary.todayInvoices)}
-      </div>
 
-      <div class="quick-actions">
-        <div class="section-title" style="margin-bottom:2px;">Quick Actions</div>
-        <div class="qa-row">
-          <button class="btn-outline" id="issueStockBtn">Issue Stock</button>
-                 </div>
-        <button class="btn-solid" id="viewFullProfileBtn">View Full Profile</button>
-      </div>
+
+        <div class="quick-actions">
+
+            <div
+                class="section-title"
+                style="margin-bottom:2px;">
+
+                Quick Actions
+
+            </div>
+
+
+            <div class="qa-row">
+
+                <button
+                    class="btn-outline"
+                    id="issueStockBtn">
+
+                    Issue Stock
+
+                </button>
+
+            </div>
+
+
+            <button
+                class="btn-solid"
+                id="viewFullProfileBtn">
+
+                View Full Profile
+
+            </button>
+
+        </div>
 
     `;
 
-    document.getElementById("issueStockBtn").onclick = () => {
-        alert(`Issue stock flow for ${salesman.name} isn't wired up to the API yet.`);
-    };
-    // document.getElementById("receivePayBtn").onclick = () => {
-    //     alert(`Receive payment flow for ${salesman.name} isn't wired up to the API yet.`);
-    // };
-    document.getElementById("viewFullProfileBtn").onclick = () => {
-           window.location.href=`./salesman-details.html?id=${salesman.id}`
-    };
+
+    document
+        .getElementById(
+            "issueStockBtn"
+        )
+        .onclick = () => {
+
+            alert(
+                `Issue stock flow for ${salesman.name} isn't wired up to the API yet.`
+            );
+
+        };
+
+
+    document
+        .getElementById(
+            "viewFullProfileBtn"
+        )
+        .onclick = () => {
+
+            window.location.href =
+                `./salesman-details.html?id=${salesman.id}`;
+
+        };
+
 }
 
-function renderRecentInvoices(invoices){
-    if(!invoices || !invoices.length){
-        return `<div class="invoice-row"><span style="color:var(--muted);">No recent invoices</span></div>`;
+
+// ===========================================================
+// RECENT INVOICES
+// ===========================================================
+
+function renderRecentInvoices(
+    invoices
+) {
+
+    if (
+        !invoices ||
+        !invoices.length
+    ) {
+
+        return `
+
+            <div class="invoice-row">
+
+                <span style="color:var(--muted);">
+
+                    ${
+                        navigator.onLine
+                            ? "No recent invoices"
+                            : "Recent invoices unavailable offline"
+                    }
+
+                </span>
+
+            </div>
+
+        `;
+
     }
-    return invoices.slice(0,3).map(inv => `
-        <div class="invoice-row">
-          <span>${inv.date.substring(0,10) || "-"}</span>
-          <span>${"INV-"+inv.id ?? "-"}</span>
-          <span>Rs. ${Number(inv.balance ?? 0).toLocaleString()}</span>
-        </div>
-    `).join("");
+
+
+    return invoices
+        .slice(0, 3)
+        .map(
+            inv => `
+
+                <div class="invoice-row">
+
+                    <span>
+                        ${
+                            inv.date
+                                ? inv.date.substring(
+                                    0,
+                                    10
+                                )
+                                : "-"
+                        }
+                    </span>
+
+                    <span>
+                        ${
+                            inv.id !== undefined &&
+                            inv.id !== null
+                                ? "INV-" + inv.id
+                                : "-"
+                        }
+                    </span>
+
+                    <span>
+                        Rs. ${
+                            Number(
+                                inv.balance ??
+                                0
+                            ).toLocaleString()
+                        }
+                    </span>
+
+                </div>
+
+            `
+        )
+        .join("");
+
 }
 
+
+// ===========================================================
+// INITIAL LOAD
+// ===========================================================
+
+loadSalesmen();

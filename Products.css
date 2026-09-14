@@ -1,281 +1,369 @@
+ /* ================================================================
+    FROSTYOPS PRODUCTS
+    Compatible with shared-layout.css
+    Original Products HTML IDs/classes preserved
+    ================================================================ */
+
+
 /* ================================================================
-   FROSTYOPS PRODUCTS
-   CSS matched to FrostyOps Dashboard style
+   ORIGINAL LAYOUT COMPATIBILITY
    ================================================================ */
-
-/* ================= ROOT VARIABLES ================= */
-
-:root {
-    --primary: #5b5ce2;
-    --primary-light: #eef0ff;
-    --accent-pink: #f472b6;
-
-    --bg: #f7f8fc;
-    --sidebar-bg: #ffffff;
-    --card-bg: #ffffff;
-
-    --border: #e5e7eb;
-    --border-light: #edf0f4;
-
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --text-muted: #9ca3af;
-
-    --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-
-    --sidebar-width: 250px;
-
-    --green: #16a34a;
-    --red: #e0435c;
-    --blue: #2f6fed;
-    --purple: #7c5cf0;
-
-    --input-border: #d7d9e0;
-}
-
-/* ================= RESET ================= */
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html,
-body {
-    width: 100%;
-    min-height: 100%;
-}
-
-body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: var(--bg);
-    color: var(--text-primary);
-}
-
-button,
-input,
-select,
-textarea {
-    font-family: inherit;
-}
-
-button {
-    cursor: pointer;
-}
-
-a {
-    text-decoration: none;
-    color: inherit;
-}
-
-/* ================= LAYOUT ================= */
 
 .layout {
     display: flex;
-    min-height: 100vh;
     width: 100%;
+    min-height: 100vh;
 }
 
-/* ================= SIDEBAR ================= */
 
-.sidebar {
-    width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
-    min-height: 100vh;
+/*
+   Shared layout uses .shell.
+   Original Products page uses .layout.
+   Make the original structure behave like .shell.
+*/
+.layout {
+    background: var(--background);
+}
 
-    background: var(--sidebar-bg);
+.layout > .main {
+    flex: 1;
+    min-width: 0;
+}
 
-    border-right: 1px solid var(--border);
 
-    padding: 22px 16px;
+/* ================================================================
+   ORIGINAL SIDEBAR
+   Match shared sidebar design
+   ================================================================ */
+
+.layout > .sidebar {
+    width: 260px;
+    flex: 0 0 260px;
+
+    background:
+        linear-gradient(
+            180deg,
+            var(--primary-dark) 0%,
+            var(--primary) 100%
+        );
+
+    color: #ffffff;
+
+    padding: 24px 0;
 
     position: fixed;
-    left: 0;
+
     top: 0;
+    left: 0;
     bottom: 0;
 
-    z-index: 100;
+    height: 100vh;
 
     overflow-y: auto;
+    overflow-x: hidden;
+
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+
+    z-index: 40;
 }
 
-/* ================= BRAND ================= */
 
-.brand {
+/* Brand */
+
+.layout .brand {
     display: flex;
     align-items: center;
     gap: 12px;
 
-    padding: 4px 8px 26px;
+    padding: 0 20px 24px;
+
+    margin-bottom: 16px;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.brand-badge {
-    width: 38px;
-    height: 38px;
+.layout .brand-badge {
+    width: 40px;
+    height: 40px;
+
+    border-radius: var(--radius-md);
+
+    background: rgba(255, 255, 255, 0.15);
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    border-radius: 10px;
-
-    background: var(--primary);
-
     flex-shrink: 0;
 }
 
-.brand-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
+.layout .brand-badge svg {
+    width: 22px;
+    height: 22px;
+
+    color: #ffffff;
 }
 
-.brand-sub {
-    margin-top: 3px;
+.layout .brand-name {
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.layout .brand-sub {
+    color: rgba(255, 255, 255, 0.7);
 
     font-size: 11px;
-    color: var(--text-secondary);
-
-    white-space: nowrap;
+    font-weight: 500;
 }
 
-/* ================= NAVIGATION ================= */
 
-.navlist {
+/* Navigation */
+
+.layout .navlist {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+
+    gap: 0;
+
+    padding: 0 8px;
 }
 
-.navlink {
+.layout .navlink {
     display: flex;
     align-items: center;
-    gap: 12px;
 
-    min-height: 43px;
+    gap: 12px;
 
     padding: 10px 12px;
 
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
 
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.8);
 
     font-size: 13px;
     font-weight: 500;
 
-    transition:
-        background 0.2s ease,
-        color 0.2s ease;
+    text-decoration: none;
+
+    transition: var(--transition);
+
+    white-space: nowrap;
 }
 
-.navlink svg {
+.layout .navlink svg {
     width: 18px;
     height: 18px;
 
     flex-shrink: 0;
+
+    stroke: currentColor;
 }
 
-.navlink:hover {
-    background: var(--primary-light);
-    color: var(--primary);
+.layout .navlink:hover {
+    background: rgba(255, 255, 255, 0.1);
+
+    color: #ffffff;
+
+    transform: translateX(2px);
 }
 
-.navlink.active {
-    background: var(--primary-light);
-    color: var(--primary);
+.layout .navlink.active {
+    background: rgba(255, 107, 157, 0.9);
+
+    color: #ffffff;
+
     font-weight: 600;
+
+    box-shadow:
+        0 2px 6px rgba(255, 107, 157, 0.3);
 }
 
-.navlink.active svg {
-    stroke: var(--primary);
-}
-
-.navdivider {
+.layout .navdivider {
     height: 1px;
 
-    background: var(--border);
+    background: rgba(255, 255, 255, 0.1);
 
-    margin: 12px 4px;
+    margin: 8px 12px;
 }
 
-/* ================= MAIN ================= */
 
-.main {
-    margin-left: var(--sidebar-width);
+/* ================================================================
+   ORIGINAL MAIN
+   ================================================================ */
 
-    width: calc(100% - var(--sidebar-width));
+.layout > .main {
+    margin-left: 260px;
+
+    width: calc(100% - 260px);
 
     min-height: 100vh;
+
+    background: var(--background);
 }
 
-/* ================= TOP BAR ================= */
 
-.topbar {
-    height: 70px;
+/* ================================================================
+   TOPBAR
+   ================================================================ */
 
+.layout .topbar {
     display: flex;
+
     align-items: center;
     justify-content: space-between;
 
-    padding: 0 28px;
+    gap: 16px;
 
-    background: var(--card-bg);
+    min-height: 60px;
+
+    padding: 14px 24px;
+
+    background: var(--surface);
 
     border-bottom: 1px solid var(--border);
 
     position: sticky;
     top: 0;
 
-    z-index: 50;
+    z-index: 30;
+
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.topbar-left {
+.layout .topbar-left {
     display: flex;
     align-items: center;
+
     gap: 12px;
 
     min-width: 0;
+
+    flex: 1;
 }
 
-.topbar h1 {
-    font-size: 15px;
-    font-weight: 600;
+.layout .topbar h1 {
+    margin: 0;
+
+    font-size: 18px;
+
+    font-weight: 700;
 
     color: var(--text-primary);
 }
 
-.topbar-right {
-    display: flex;
+
+/* ================================================================
+   ORIGINAL MOBILE MENU
+   Match shared hamburger
+   ================================================================ */
+
+.layout .menu-toggle {
+    display: none;
+
+    width: 40px;
+    height: 40px;
+
+    padding: 8px;
+
+    background: var(--surface-alt);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-md);
+
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+
+    flex-direction: column;
+
+    gap: 4px;
+
+    color: var(--text-primary);
+
+    flex-shrink: 0;
+
+    transition: var(--transition);
 }
 
-/* ================= DATE ================= */
+.layout .menu-toggle:hover {
+    background: var(--primary);
 
-.date-pill {
+    border-color: var(--primary);
+
+    color: #ffffff;
+}
+
+.layout .menu-toggle span {
+    display: block;
+
+    width: 16px;
+    height: 2px;
+
+    background: currentColor;
+
+    border-radius: 2px;
+
+    margin: 0 auto;
+}
+
+
+/* ================================================================
+   TOPBAR RIGHT
+   ================================================================ */
+
+.layout .topbar-right {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    justify-content: flex-end;
+
+    flex-wrap: wrap;
+}
+
+
+/* Date */
+
+.layout .date-pill {
     display: flex;
     align-items: center;
 
     min-height: 36px;
 
-    padding: 0 13px;
+    padding: 8px 12px;
 
-    background: #ffffff;
+    background: var(--surface-alt);
 
     border: 1px solid var(--border);
 
-    border-radius: 20px;
+    border-radius: var(--radius-md);
 
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    color: var(--text-secondary);
 
     font-size: 12px;
-    color: var(--text-secondary);
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    transition: var(--transition);
 }
 
-/* ================= ADMIN ================= */
+.layout .date-pill:hover {
+    border-color: var(--primary);
 
-.admin-pill {
+    background: var(--surface);
+}
+
+
+/* Admin */
+
+.layout .admin-pill {
     display: flex;
     align-items: center;
 
@@ -283,267 +371,309 @@ a {
 
     min-height: 36px;
 
-    padding: 0 13px;
+    padding: 8px 12px;
 
-    background: #ffffff;
-
-    border: 1px solid var(--border);
-
-    border-radius: 20px;
-
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-
-    font-size: 12px;
-    color: var(--text-primary);
-
-    font-weight: 600;
-}
-
-.admin-avatar {
-    width: 8px;
-    height: 8px;
-
-    border-radius: 50%;
-
-    background: var(--primary);
-}
-
-/* ================= CONTENT ================= */
-
-.content {
-    padding: 28px;
-}
-
-/* ================= STAT ROW ================= */
-
-.stat-row {
-    display: grid;
-
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-
-    gap: 16px;
-
-    margin-bottom: 22px;
-}
-
-/* ================= STAT CARD ================= */
-
-.stat-card {
-    display: flex;
-    align-items: center;
-
-    gap: 14px;
-
-    min-height: 115px;
-
-    padding: 18px;
-
-    background: var(--card-bg);
+    background: var(--surface-alt);
 
     border: 1px solid var(--border);
 
-    border-radius: 12px;
-
-    box-shadow: var(--shadow);
-}
-
-.stat-icon {
-    width: 48px;
-    height: 48px;
-
-    flex-shrink: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 10px;
-
-    background: var(--primary-light);
-}
-
-.stat-icon svg {
-    width: 25px;
-    height: 25px;
-}
-
-.stat-title {
-    font-size: 12px;
-    font-weight: 600;
+    border-radius: var(--radius-md);
 
     color: var(--text-secondary);
 
-    margin-bottom: 5px;
+    font-size: 12px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    transition: var(--transition);
 }
 
-.stat-number {
-    font-size: 22px;
-    line-height: 1.2;
+.layout .admin-pill:hover {
+    border-color: var(--primary);
 
-    font-weight: 700;
+    background: var(--surface);
 
     color: var(--text-primary);
-
-    margin-bottom: 4px;
 }
 
-.stat-sub {
-    font-size: 10px;
+.layout .admin-avatar {
+    width: 18px;
+    height: 18px;
 
-    color: var(--text-muted);
+    flex-shrink: 0;
+
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent-pink),
+            var(--accent-cyan)
+        );
 }
 
-/* ================= PANELS ================= */
 
-.panels {
-    display: flex;
+/* ================================================================
+   ORIGINAL CONTENT
+   ================================================================ */
 
-    gap: 18px;
+.layout .content {
+    max-width: 1600px;
 
-    align-items: flex-start;
+    width: 100%;
+
+    margin: 0 auto;
+
+    padding: 24px;
 }
 
-/* ================= PRODUCTS LIST ================= */
 
-.categories-panel {
-    background: var(--card-bg);
+/* ================================================================
+   STAT CARDS
+   ================================================================ */
+
+.layout .stat-row {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 16px;
+
+    margin-bottom: 24px;
+}
+
+.layout .stat-card {
+    min-width: 0;
+
+    min-height: 110px;
+
+    background: var(--surface);
 
     border: 1px solid var(--border);
 
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
 
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-xs);
+}
 
+
+/*
+   Your original CSS uses .stat-number.
+   Shared CSS uses .stat-num.
+   Support your original HTML without changing it.
+*/
+
+.layout .stat-number {
+    margin: 0 0 2px;
+
+    color: var(--text-primary);
+
+    font-size: 22px;
+
+    line-height: 1.2;
+
+    font-weight: 700;
+}
+
+.layout .stat-title {
+    margin: 0 0 4px;
+
+    color: var(--text-muted);
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.4px;
+}
+
+
+/* ================================================================
+   PRODUCTS PANELS
+   ================================================================ */
+
+.layout .panels {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 20px;
+}
+
+
+/* Product list */
+
+.layout .categories-panel {
     flex: 1.55;
 
     min-width: 0;
 
     overflow: hidden;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-xs);
 }
 
-/* ================= PANEL HEADER ================= */
 
-.panel-header {
+/* ================================================================
+   PANEL HEADER
+   ================================================================ */
+
+.layout .panel-header {
     display: flex;
 
     align-items: center;
+
     justify-content: space-between;
 
     gap: 12px;
 
-    padding: 18px 20px;
+    padding: 16px 18px;
 
-    border-bottom: 1px solid var(--border-light);
+    background: var(--surface-alt);
+
+    border-bottom: 1px solid var(--border);
 
     flex-wrap: wrap;
 }
 
-.panel-header h2 {
-    font-size: 15px;
-
-    font-weight: 700;
+.layout .panel-header h2 {
+    margin: 0;
 
     color: var(--text-primary);
 
-    flex-shrink: 0;
+    font-size: 15px;
+
+    font-weight: 700;
 }
 
-/* ================= SEARCH ================= */
 
-.search-wrap {
+/* ================================================================
+   SEARCH
+   ================================================================ */
+
+.layout .search-wrap {
+    display: none;
+
     flex: 1 1 200px;
 
     min-width: 0;
-
-    display: none;
 }
 
-.search-wrap.show {
+.layout .search-wrap.show {
     display: block;
 }
 
-.search-wrap input {
+.layout .search-wrap input {
     width: 100%;
 
     max-width: 320px;
 
+    padding: 9px 12px;
+
+    background: var(--surface);
+
     border: 1px solid var(--border);
 
-    border-radius: 20px;
-
-    padding: 9px 14px;
-
-    font-size: 12px;
+    border-radius: var(--radius-md);
 
     color: var(--text-primary);
 
-    background: #ffffff;
-}
-
-.search-wrap input:focus {
-    outline: 2px solid var(--primary-light);
-
-    outline-offset: 0;
-}
-
-/* ================= ADD PRODUCT BUTTON ================= */
-
-.add-cat-btn {
-    border: 1px solid var(--border);
-
-    background: #ffffff;
-
-    border-radius: 20px;
-
-    padding: 8px 14px;
-
     font-size: 12px;
 
-    font-weight: 600;
+    outline: none;
+}
 
-    color: var(--text-primary);
+.layout .search-wrap input:focus {
+    border-color: var(--primary);
 
-    display: flex;
+    box-shadow:
+        0 0 0 3px rgba(91, 75, 138, 0.1);
+}
+
+
+/* ================================================================
+   ADD PRODUCT
+   ================================================================ */
+
+.layout .add-cat-btn {
+    display: inline-flex;
 
     align-items: center;
+    justify-content: center;
 
     gap: 6px;
 
+    padding: 8px 13px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-md);
+
+    color: var(--text-primary);
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
     flex-shrink: 0;
 
-    transition: background 0.2s ease;
+    transition: var(--transition);
 }
 
-.add-cat-btn:hover {
-    background: var(--primary-light);
+.layout .add-cat-btn:hover {
+    background: var(--primary);
 
-    color: var(--primary);
+    border-color: var(--primary);
+
+    color: #ffffff;
 }
 
-/* ================= PRODUCT TABLE ================= */
 
-table.cat-table {
+/* ================================================================
+   PRODUCT TABLE
+   ================================================================ */
+
+.layout table.cat-table {
     width: 100%;
 
     border-collapse: collapse;
 
     table-layout: fixed;
+
+    min-width: 700px;
 }
 
-table.cat-table thead th {
+.layout table.cat-table thead {
+    background: var(--surface-alt);
+}
+
+.layout table.cat-table thead th {
     padding: 12px 10px;
 
-    text-align: center;
+    border-bottom: 1px solid var(--border);
+
+    color: var(--text-secondary);
 
     font-size: 10px;
 
     font-weight: 700;
 
-    color: var(--text-secondary);
-
-    background: #fafbfc;
-
-    border-bottom: 1px solid var(--border-light);
+    text-align: center;
 
     white-space: normal;
 
@@ -552,42 +682,14 @@ table.cat-table thead th {
     vertical-align: middle;
 }
 
-table.cat-table thead th:nth-child(1) {
-    width: 7%;
-}
+.layout table.cat-table tbody td {
+    padding: 10px 8px;
 
-table.cat-table thead th:nth-child(2) {
-    width: 18%;
-}
-
-table.cat-table thead th:nth-child(3) {
-    width: 15%;
-}
-
-table.cat-table thead th:nth-child(4) {
-    width: 17%;
-}
-
-table.cat-table thead th:nth-child(5) {
-    width: 14%;
-}
-
-table.cat-table thead th:nth-child(6) {
-    width: 12%;
-}
-
-table.cat-table thead th:nth-child(7) {
-    width: 17%;
-}
-
-table.cat-table tbody td {
-    padding: 13px 10px;
-
-    font-size: 11px;
+    border-bottom: 1px solid var(--border-light);
 
     color: var(--text-primary);
 
-    border-bottom: 1px solid var(--border-light);
+    font-size: 11px;
 
     text-align: center;
 
@@ -598,57 +700,83 @@ table.cat-table tbody td {
     word-break: break-word;
 }
 
-table.cat-table tbody tr {
+.layout table.cat-table tbody tr {
+    background: var(--surface);
+
     cursor: pointer;
+
+    transition: var(--transition-fast);
 }
 
-table.cat-table tbody tr:last-child td {
+.layout table.cat-table tbody tr:hover {
+    background: var(--surface-alt);
+}
+
+.layout table.cat-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-table.cat-table tbody tr:first-child {
-    background: #fafbff;
+.layout table.cat-table tbody tr.selected td {
+    background: rgba(91, 75, 138, 0.08);
 }
 
-table.cat-table tbody tr:hover {
-    background: #f7f8fb;
+
+/* Column sizing */
+
+.layout table.cat-table th:nth-child(1),
+.layout table.cat-table td:nth-child(1) {
+    width: 7%;
 }
 
-table.cat-table tbody tr.selected {
-    background: var(--primary-light);
+.layout table.cat-table th:nth-child(2),
+.layout table.cat-table td:nth-child(2) {
+    width: 18%;
 }
 
-/* ================= ACTION CELL ================= */
+.layout table.cat-table th:nth-child(3),
+.layout table.cat-table td:nth-child(3) {
+    width: 14%;
+}
+
+.layout table.cat-table th:nth-child(4),
+.layout table.cat-table td:nth-child(4) {
+    width: 17%;
+}
+
+.layout table.cat-table th:nth-child(5),
+.layout table.cat-table td:nth-child(5) {
+    width: 14%;
+}
+
+.layout table.cat-table th:nth-child(6),
+.layout table.cat-table td:nth-child(6) {
+    width: 12%;
+}
+
+
+/* ================================================================
+   ACTION COLUMN
+   Prevent Edit/Delete from increasing row height
+   ================================================================ */
+
+.layout table.cat-table th:last-child,
+.layout table.cat-table td:last-child {
+    width: 140px;
+
+    min-width: 140px;
+    max-width: 140px;
+
+    padding: 6px;
+
+    white-space: nowrap;
+
+    text-align: center;
+
+    vertical-align: middle;
+}
 
 .action-cell {
     display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    flex-wrap: nowrap;
-
-    gap: 6px;
-
-    white-space: nowrap;
-}
-
-/* ================= GENERAL BUTTON ================= */
-
-.btn {
-    border-radius: 16px;
-
-    padding: 6px 12px;
-
-    font-size: 11px;
-
-    font-weight: 600;
-
-    cursor: pointer;
-
-    border: 1px solid var(--border);
-
-    display: inline-flex;
 
     align-items: center;
 
@@ -656,320 +784,346 @@ table.cat-table tbody tr.selected {
 
     gap: 5px;
 
-    background: #ffffff;
+    min-height: 30px;
 
-    color: var(--text-primary);
+    flex-wrap: nowrap;
 
     white-space: nowrap;
-
-    transition: background 0.2s ease;
 }
 
-.btn:hover {
-    background: var(--primary-light);
-
-    color: var(--primary);
+.action-cell .btn {
+    flex: 0 0 auto;
 }
 
-.btn-edit {
-    border-color: var(--border);
 
-    color: var(--text-primary);
+/* Compact action buttons */
+
+.action-cell .btn,
+.action-cell button {
+    height: 30px;
+
+    min-height: 30px;
+
+    padding: 0 9px;
+
+    border-radius: 7px;
+
+    font-size: 10px;
+
+    line-height: 1;
+
+    white-space: nowrap;
 }
 
-.btn-delete {
-    border-color: #f3c3cd;
 
-    color: var(--red);
-}
+/* ================================================================
+   MANUAL ENTRY
+   ================================================================ */
 
-.btn-delete:hover {
-    background: #fdf0f2;
-
-    color: var(--red);
-}
-
-/* ================= MANUAL / DETAILS PANEL ================= */
-
-.manual-panel,
-.details-panel {
-    background: var(--card-bg);
-
-    border: 1px solid var(--border);
-
-    border-radius: 12px;
-
-    box-shadow: var(--shadow);
-
+.layout .manual-panel,
+.layout .details-panel {
     flex: 1;
 
     min-width: 0;
 
     padding: 20px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-lg);
+
+    box-shadow: var(--shadow-xs);
 }
 
-.manual-panel h2,
-.details-panel h2 {
-    font-size: 15px;
+.layout .manual-panel h2,
+.layout .details-panel h2 {
+    margin: 0 0 5px;
 
-    margin: 0 0 4px;
+    font-size: 15px;
 
     font-weight: 700;
 
     color: var(--text-primary);
 }
 
-.manual-sub {
+.layout .manual-sub {
+    margin: 0 0 18px;
+
     font-size: 10px;
 
     color: var(--text-muted);
-
-    margin: 0 0 18px;
 }
 
-/* ================= MANUAL TABLE ================= */
 
-.manual-table-wrap {
+/* ================================================================
+   MANUAL TABLE
+   ================================================================ */
+
+.layout .manual-table-wrap {
     width: 100%;
 
-    overflow-x: auto;
+    overflow-x: hidden;
 }
 
-.manual-table {
+.layout .manual-table {
     width: 100%;
+
+    min-width: 0;
+
+    table-layout: fixed;
 
     border-collapse: separate;
 
     border-spacing: 0 8px;
 }
 
-.manual-table th {
-    text-align: left;
+.layout .manual-table th {
+    padding: 0 4px 5px;
+
+    color: var(--text-secondary);
 
     font-size: 9px;
 
     font-weight: 700;
 
-    color: var(--text-secondary);
+    line-height: 1.25;
 
-    padding: 0 5px 4px;
+    text-align: left;
 
-    line-height: 1.3;
+    vertical-align: bottom;
 
-    white-space: nowrap;
+    white-space: normal;
+
+    overflow-wrap: break-word;
 }
 
-.manual-table td {
+.layout .manual-table td {
     padding: 2px 4px;
+
+    min-width: 0;
 }
 
-.manual-table td.row-num {
-    font-size: 10px;
-
-    color: var(--text-primary);
-
-    text-align: center;
-
-    width: 18px;
-}
-
-.manual-table input,
-.manual-table select {
+.layout .manual-table input,
+.layout .manual-table select {
     width: 100%;
 
-    border: 1px solid var(--input-border);
+    min-width: 0;
 
-    border-radius: 6px;
+    padding: 7px 8px;
 
-    padding: 7px 7px;
+    background: var(--surface);
 
-    font-size: 10px;
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-sm);
 
     color: var(--text-primary);
 
-    background: #ffffff;
+    font-size: 10px;
 
-    appearance: none;
-
-    -webkit-appearance: none;
+    box-sizing: border-box;
 }
 
-.manual-table select {
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+.layout .manual-table input:focus,
+.layout .manual-table select:focus {
+    outline: none;
 
-    background-repeat: no-repeat;
+    border-color: var(--primary);
 
-    background-position: right 5px center;
-
-    background-size: 12px;
-
-    padding-right: 20px;
+    box-shadow:
+        0 0 0 3px rgba(91, 75, 138, 0.1);
 }
 
-.manual-table input:focus,
-.manual-table select:focus {
-    outline: 2px solid var(--primary-light);
+.layout .manual-table td.row-num {
+ width: 55px ;
+    min-width: 55px ;
+    max-width: 55px ;
 
-    outline-offset: 0;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-primary);
 }
 
-.col-name {
+
+/* Manual columns */
+
+.layout .col-name {
     width: 20%;
 }
 
-.col-company {
+.layout .col-company {
     width: 15%;
 }
 
-.col-category {
+.layout .col-category {
     width: 14%;
 }
 
-.col-price {
+.layout .col-price {
     width: 15%;
 }
 
-.col-action {
+.layout .col-action {
     width: 7%;
 
     text-align: center;
 }
 
-/* ================= DELETE ROW ================= */
 
-.del-icon {
-    background: none;
+/* ================================================================
+   DELETE ROW
+   ================================================================ */
 
-    border: none;
-
-    color: var(--red);
-
-    cursor: pointer;
-
-    font-size: 14px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-}
-
-.del-icon:hover {
-    opacity: 0.7;
-}
-
-/* ================= ADD ROW ================= */
-
-.add-row-btn {
-    margin-top: 14px;
-
-    border: 1px solid #c9c9ef;
-
-    background: #ffffff;
-
-    color: var(--primary);
-
-    border-radius: 20px;
-
-    padding: 8px 16px;
-
-    font-size: 11px;
-
-    font-weight: 600;
+.layout .del-icon {
+    width: 28px;
+    height: 28px;
 
     display: inline-flex;
 
     align-items: center;
+    justify-content: center;
 
-    gap: 6px;
+    padding: 0;
+
+    background: transparent;
+
+    border: none;
+
+    color: var(--danger);
+
+    font-size: 14px;
 }
 
-.add-row-btn:hover {
-    background: var(--primary-light);
+.layout .del-icon:hover {
+    opacity: 0.7;
 }
 
-/* ================= MANUAL ACTIONS ================= */
 
-.manual-actions {
-    display: flex;
+/* ================================================================
+   ADD ROW
+   ================================================================ */
 
-    justify-content: space-between;
+.layout .add-row-btn {
+    display: inline-flex;
 
     align-items: center;
 
-    margin-top: 20px;
+    justify-content: center;
 
-    gap: 8px;
-}
+    gap: 6px;
 
-.btn-plain,
-.btn-clear,
-.btn-save {
-    border-radius: 8px;
+    margin-top: 12px;
 
-    padding: 9px 18px;
+    padding: 8px 14px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--primary);
+
+    border-radius: var(--radius-md);
+
+    color: var(--primary);
 
     font-size: 11px;
+
+    font-weight: 600;
+
+    transition: var(--transition);
+}
+
+.layout .add-row-btn:hover {
+    background: var(--primary);
+
+    color: #ffffff;
+}
+
+
+/* ================================================================
+   MANUAL ACTIONS
+   ================================================================ */
+
+.layout .manual-actions {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 8px;
+
+    margin-top: 20px;
+}
+
+.layout .btn-plain,
+.layout .btn-clear,
+.layout .btn-save {
+    padding: 9px 15px;
+
+    border-radius: var(--radius-md);
+
+    font-size: 10px;
 
     font-weight: 600;
 
     cursor: pointer;
 }
 
-.btn-plain {
-    border: 1px solid var(--border);
+.layout .btn-plain {
+    background: var(--surface);
 
-    background: #ffffff;
+    border: 1px solid var(--border);
 
     color: var(--text-primary);
 }
 
-.btn-plain:hover {
-    background: #f2f3f6;
+.layout .btn-plain:hover {
+    background: var(--surface-alt);
 }
 
-.btn-clear {
-    border: 1px solid #f3c3cd;
+.layout .btn-clear {
+    background: var(--surface);
 
-    background: #ffffff;
+    border: 1px solid var(--danger);
 
-    color: var(--red);
+    color: var(--danger);
 }
 
-.btn-clear:hover {
-    background: #fdf0f2;
+.layout .btn-clear:hover {
+    background: var(--danger-bg);
 }
 
-.btn-save {
-    border: 1px solid var(--border);
+.layout .btn-save {
+    background: var(--primary);
 
-    background: #ffffff;
+    border: 1px solid var(--primary);
 
-    color: var(--text-primary);
+    color: #ffffff;
 }
 
-.btn-save:hover {
-    background: var(--primary-light);
-
-    color: var(--primary);
+.layout .btn-save:hover {
+    background: var(--primary-dark);
 }
 
-/* ================= DETAILS PANEL ================= */
 
-#detailsPanel {
+/* ================================================================
+   DETAILS
+   ================================================================ */
+
+.layout #detailsPanel {
     position: relative;
 }
 
-.details-divider {
+.layout .details-divider {
     height: 1px;
 
-    background: var(--border-light);
-
     margin: 14px 0;
+
+    background: var(--border-light);
 }
 
-.details-hero {
+.layout .details-hero {
     display: flex;
 
     align-items: center;
@@ -977,13 +1131,9 @@ table.cat-table tbody tr.selected {
     gap: 16px;
 }
 
-.details-thumb {
-    width: 74px;
-    height: 74px;
-
-    border-radius: 10px;
-
-    background: var(--primary-light);
+.layout .details-thumb {
+    width: 72px;
+    height: 72px;
 
     display: flex;
 
@@ -992,15 +1142,19 @@ table.cat-table tbody tr.selected {
 
     flex-shrink: 0;
 
+    background: var(--surface-alt);
+
+    border-radius: var(--radius-md);
+
     overflow: hidden;
 }
 
-.details-thumb svg {
-    width: 52px;
-    height: 52px;
+.layout .details-thumb svg {
+    width: 50px;
+    height: 50px;
 }
 
-.details-hero-text h3 {
+.layout .details-hero-text h3 {
     margin: 0 0 4px;
 
     font-size: 18px;
@@ -1008,7 +1162,7 @@ table.cat-table tbody tr.selected {
     font-weight: 700;
 }
 
-.details-hero-text p {
+.layout .details-hero-text p {
     margin: 0;
 
     font-size: 11px;
@@ -1016,17 +1170,15 @@ table.cat-table tbody tr.selected {
     color: var(--text-muted);
 }
 
-/* ================= DETAILS GRID ================= */
-
-.details-grid {
+.layout .details-grid {
     display: flex;
 
     flex-direction: column;
 
-    gap: 13px;
+    gap: 12px;
 }
 
-.details-row {
+.layout .details-row {
     display: flex;
 
     gap: 10px;
@@ -1034,7 +1186,7 @@ table.cat-table tbody tr.selected {
     font-size: 12px;
 }
 
-.d-label {
+.layout .d-label {
     width: 100px;
 
     flex-shrink: 0;
@@ -1044,65 +1196,61 @@ table.cat-table tbody tr.selected {
     font-weight: 600;
 }
 
-.d-value {
-    color: var(--text-primary);
-
-    font-weight: 400;
-
+.layout .d-value {
     min-width: 0;
+
+    color: var(--text-primary);
 
     overflow-wrap: break-word;
 
     word-break: break-word;
 }
 
-/* ================= DETAILS CARDS ================= */
-
-.details-cards {
+.layout .details-cards {
     display: flex;
 
-    gap: 16px;
+    gap: 14px;
 
-    margin-top: 22px;
+    margin-top: 20px;
 }
 
-.details-card {
+.layout .details-card {
     flex: 1;
+
+    padding: 15px;
+
+    background: var(--surface);
 
     border: 1px solid var(--border);
 
-    border-radius: 10px;
-
-    padding: 16px 18px;
-
-    background: #ffffff;
+    border-radius: var(--radius-md);
 }
 
-.details-card h4 {
-    margin: 0 0 12px;
+.layout .details-card h4 {
+    margin: 0 0 11px;
 
-    font-size: 13px;
+    font-size: 12px;
 
     font-weight: 700;
 }
 
-.price-block {
-    margin-bottom: 12px;
+.layout .price-block {
+    margin-bottom: 11px;
 }
 
-.price-block:last-child {
+.layout .price-block:last-child {
     margin-bottom: 0;
 }
 
-.price-label {
-    margin: 0 0 2px;
+.layout .price-label {
+    margin: 0 0 3px;
 
     font-size: 10px;
 
     color: var(--text-muted);
 }
 
-.price-value {
+.layout .price-value {
     margin: 0;
 
     font-size: 19px;
@@ -1110,444 +1258,471 @@ table.cat-table tbody tr.selected {
     font-weight: 800;
 }
 
-.price-value.blue {
-    color: var(--blue);
+.layout .price-value.blue {
+    color: var(--info);
 }
 
-.price-value.green {
-    color: var(--green);
+.layout .price-value.green {
+    color: var(--success);
 }
 
-.price-value.purple {
-    color: var(--purple);
+.layout .price-value.purple {
+    color: #7c5cf0;
 }
 
-.price-value.stock {
-    font-size: 24px;
+.layout .price-value.stock {
+    font-size: 22px;
 
     color: var(--text-primary);
 }
 
-.price-value .units {
-    font-size: 12px;
+.layout .price-value .units {
+    margin-left: 4px;
+
+    font-size: 11px;
 
     font-weight: 600;
 
     color: var(--text-muted);
-
-    margin-left: 4px;
 }
 
-/* ================= MOBILE MENU ================= */
-
-.menu-toggle {
-    display: none;
-
-    width: 38px;
-    height: 38px;
-
-    border: 1px solid var(--border);
-
-    background: #ffffff;
-
-    border-radius: 8px;
-
-    align-items: center;
-    justify-content: center;
-
-    flex-direction: column;
-
-    gap: 4px;
-
-    padding: 0;
-}
-
-.menu-toggle span {
-    display: block;
-
-    height: 2px;
-
-    width: 16px;
-
-    background: var(--text-primary);
-
-    border-radius: 2px;
-}
-
-/* ================= OVERLAY ================= */
-
-.sidebar-overlay {
-    display: none;
-
-    position: fixed;
-
-    inset: 0;
-
-    background: rgba(0, 0, 0, 0.35);
-
-    z-index: 90;
-}
-
-.sidebar-overlay.show {
-    display: block;
-}
 
 /* ================================================================
    EDIT PRODUCT FORM
    ================================================================ */
 
-#editProductForm {
-    margin-top: 20px;
+.layout #editProductForm {
+    margin-top: 18px;
 
     padding: 20px;
 
-    background: #ffffff;
+    background: var(--surface);
 
     border: 1px solid var(--border);
 
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
 
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-xs);
 }
 
-#editProductForm .form-group {
-    margin-bottom: 16px;
+.layout #editProductForm .form-group {
+    margin-bottom: 15px;
 }
 
-#editProductForm label {
+.layout #editProductForm label {
     display: block;
 
     margin-bottom: 6px;
 
+    color: var(--text-secondary);
+
     font-size: 11px;
 
     font-weight: 600;
-
-    color: var(--text-secondary);
 }
 
-#editProductForm input,
-#editProductForm select,
-#editProductForm textarea {
+.layout #editProductForm input,
+.layout #editProductForm select,
+.layout #editProductForm textarea {
     width: 100%;
 
     padding: 10px 12px;
 
-    border: 1px solid var(--input-border);
+    background: var(--surface);
 
-    border-radius: 8px;
+    border: 1px solid var(--border);
 
-    background: #ffffff;
-
-    font-size: 12px;
+    border-radius: var(--radius-md);
 
     color: var(--text-primary);
 
-    outline: none;
+    font-size: 12px;
 
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
+    outline: none;
 }
 
-#editProductForm input:focus,
-#editProductForm select:focus,
-#editProductForm textarea:focus {
+.layout #editProductForm input:focus,
+.layout #editProductForm select:focus,
+.layout #editProductForm textarea:focus {
     border-color: var(--primary);
 
-    box-shadow: 0 0 0 3px rgba(91, 92, 226, 0.10);
+    box-shadow:
+        0 0 0 3px rgba(91, 75, 138, 0.1);
 }
 
-#editProductForm textarea {
+.layout #editProductForm textarea {
     min-height: 90px;
 
     resize: vertical;
 }
 
-#editProductForm button {
-    border-radius: 8px;
+
+/* Edit buttons */
+
+.layout #saveEditProductBtn {
+    margin-right: 7px;
 
     padding: 9px 16px;
 
-    font-size: 11px;
-
-    font-weight: 600;
-
-    cursor: pointer;
-}
-
-#saveEditProductBtn {
     background: var(--primary);
-
-    color: #ffffff;
 
     border: 1px solid var(--primary);
 
-    margin-right: 8px;
-}
+    border-radius: var(--radius-md);
 
-#saveEditProductBtn:hover {
-    background: #4f50d2;
-}
-
-#cancelEditProductBtn {
-    background: #ffffff;
-
-    color: var(--text-primary);
-
-    border: 1px solid var(--border) !important;
-}
-
-#cancelEditProductBtn:hover {
-    background: #f2f3f6;
-}
-
-#editProductBtn {
-    margin-top: 18px;
-
-    background: #ffffff;
-
-    color: var(--primary);
-
-    border: 1px solid var(--border);
-
-    border-radius: 8px;
-
-    padding: 9px 16px;
+    color: #ffffff;
 
     font-size: 11px;
 
     font-weight: 600;
-
-    cursor: pointer;
 }
 
-#editProductBtn:hover {
+.layout #saveEditProductBtn:hover {
+    background: var(--primary-dark);
+}
+
+.layout #cancelEditProductBtn {
+    padding: 9px 16px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border) !important;
+
+    border-radius: var(--radius-md);
+
+    color: var(--text-primary);
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+.layout #cancelEditProductBtn:hover {
+    background: var(--surface-alt);
+}
+
+.layout #editProductBtn {
+    margin-top: 16px;
+
+    padding: 9px 15px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-md);
+
+    color: var(--primary);
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+.layout #editProductBtn:hover {
     background: var(--primary-light);
 }
 
+
 /* ================================================================
-   RESPONSIVE
+   MOBILE
    ================================================================ */
-
-@media (max-width: 1200px) {
-
-    .stat-card {
-        min-width: 0;
-    }
-
-    .panels {
-        gap: 16px;
-    }
-
-}
 
 @media (max-width: 1024px) {
 
-    .panels {
+    .layout .panels {
         flex-direction: column;
     }
 
-    .categories-panel,
-    .manual-panel,
-    .details-panel {
+    .layout .categories-panel,
+    .layout .manual-panel,
+    .layout .details-panel {
         width: 100%;
     }
 
-    .stat-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .layout .stat-row {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
     }
 
-    .categories-panel {
+    .layout .categories-panel {
         overflow-x: auto;
     }
 
-    table.cat-table {
-        table-layout: auto;
-
+    .layout table.cat-table {
         min-width: 760px;
     }
 
-    .manual-table-wrap {
+    .layout .manual-table-wrap {
         overflow-x: auto;
     }
 
-    .manual-table {
+    .layout .manual-table {
         min-width: 560px;
     }
 
-    .details-cards {
+    .layout .details-cards {
         flex-direction: column;
     }
-
 }
+
 
 @media (max-width: 768px) {
 
-    .sidebar {
+    .layout > .sidebar {
+        position: fixed;
+
+        left: 0;
+        top: 0;
+        bottom: 0;
+
+        width: 260px;
+
         transform: translateX(-100%);
 
-        transition: transform 0.25s ease;
+        transition:
+            transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        box-shadow:
+            2px 0 8px rgba(0, 0, 0, 0.15);
     }
 
-    .sidebar.open {
+    .layout > .sidebar.open {
         transform: translateX(0);
     }
 
-    .main {
+    .layout > .main {
         margin-left: 0;
 
         width: 100%;
     }
 
-    .menu-toggle {
-        display: flex;
+    .layout .menu-toggle {
+        display: inline-flex;
     }
 
-    .topbar {
-        padding: 0 18px;
+    .layout .content {
+        padding: 16px;
     }
 
-    .topbar-right {
-        gap: 6px;
+    .layout .stat-row {
+        grid-template-columns:
+            repeat(auto-fit, minmax(160px, 1fr));
+
+        gap: 12px;
     }
 
-    .date-pill,
-    .admin-pill {
-        padding-left: 9px;
-        padding-right: 9px;
+    .layout .stat-card {
+        padding: 12px;
+
+        gap: 10px;
     }
 
-    .content {
-        padding: 20px;
+    .layout .stat-icon {
+        width: 40px;
+        height: 40px;
     }
 
-    .stat-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .layout .stat-number {
+        font-size: 18px;
     }
 
-    .panels {
+    .layout .panel-header {
         flex-direction: column;
+
+        align-items: flex-start;
     }
 
-    .categories-panel,
-    .manual-panel,
-    .details-panel {
+    .layout .search-wrap {
         width: 100%;
     }
 
-    #editProductForm {
-        padding: 18px;
+    .layout .search-wrap input {
+        max-width: none;
     }
-
-    #editProductForm input,
-    #editProductForm select,
-    #editProductForm textarea {
-        font-size: 16px;
-    }
-
-    #saveEditProductBtn,
-    #cancelEditProductBtn {
-        width: 100%;
-
-        margin: 5px 0;
-    }
-
 }
+
 
 @media (max-width: 480px) {
 
-    .topbar {
-        height: 62px;
-    }
-
-    .topbar h1 {
-        font-size: 14px;
-    }
-
-    .topbar-right .date-pill {
-        display: none;
-    }
-
-    .content {
-        padding: 15px;
-    }
-
-    .stat-row {
-        grid-template-columns: 1fr;
-    }
-
-    .stat-card {
-        min-height: 100px;
-    }
-
-    .panel-header {
-        padding: 15px;
-    }
-
-    .panel-header h2 {
-        font-size: 14px;
-    }
-
-    .add-cat-btn {
-        font-size: 11px;
-
-        padding: 7px 12px;
-    }
-
-    .search-wrap input {
-        max-width: none;
-    }
-
-    table.cat-table {
-        min-width: 720px;
-    }
-
-    .manual-panel,
-    .details-panel {
-        padding: 18px;
-    }
-
-    .manual-panel h2,
-    .details-panel h2 {
-        font-size: 14px;
-    }
-
-    .manual-actions {
-        flex-wrap: wrap;
-
-        gap: 8px;
-    }
-
-    .btn-plain,
-    .btn-clear,
-    .btn-save {
-        flex: 1 1 auto;
-    }
-
-    .details-hero {
-        flex-wrap: wrap;
-    }
-
-}
-
-@media (max-width: 360px) {
-
-    .stat-card {
-        padding: 14px;
-    }
-
-    .stat-icon {
-        width: 42px;
-        height: 42px;
-    }
-
-    .stat-number {
-        font-size: 19px;
-    }
-
-    .content {
+    .layout .content {
         padding: 12px;
     }
 
+    .layout .topbar {
+        padding: 10px 12px;
+
+        min-height: 52px;
+    }
+
+    .layout .topbar-left,
+    .layout .topbar-right {
+        gap: 8px;
+    }
+
+    .layout .topbar h1 {
+        font-size: 15px;
+    }
+
+    .layout .date-pill {
+        display: none;
+    }
+
+    .layout .stat-row {
+        grid-template-columns: 1fr;
+    }
+
+    .layout .stat-card {
+        flex-direction: column;
+
+        text-align: center;
+
+        align-items: center;
+    }
+
+    .layout .stat-icon {
+        align-self: center;
+    }
+
+    .layout .manual-actions {
+        flex-wrap: wrap;
+    }
+
+    .layout .btn-plain,
+    .layout .btn-clear,
+    .layout .btn-save {
+        flex: 1 1 auto;
+    }
+}
+
+
+/* ================================================================
+   PRINT
+   ================================================================ */
+
+@media print {
+
+    .layout .topbar,
+    .layout .menu-toggle,
+    .layout .sidebar,
+    .layout .sidebar-overlay {
+        display: none !important;
+    }
+
+    .layout .categories-panel,
+    .layout .manual-panel,
+    .layout .details-panel {
+        box-shadow: none;
+    }
+}
+ /* ONLY widen the ID column */
+.layout .manual-table th:first-child,
+.layout .manual-table td:first-child {
+    width: 55px !important;
+    min-width: 55px !important;
+    max-width: 55px !important;
+    box-sizing: border-box;
+}
+
+/* ID heading: wider horizontally, NOT taller */
+.layout .manual-table th:first-child {
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: clip;
+    height: 20px !important;
+    line-height: 12px !important;
+    padding: 0 4px 5px !important;
+    vertical-align: bottom;
+}
+
+/* ID input */
+.layout .manual-table td:first-child input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    font-size: 10px;
+}
+
+/* ================================================================
+   MANUAL TABLE HEADINGS — HORIZONTAL SPACE, CONTROLLED HEIGHT
+   ================================================================ */
+
+.layout .manual-table th {
+    white-space: normal !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    /* Keep headings compact vertically */
+    height: 28px;
+    max-height: 28px;
+
+    padding: 0 5px 5px !important;
+
+    line-height: 12px !important;
+    vertical-align: bottom;
+
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+
+/* Give the ID heading/input slightly more room */
+.layout .manual-table th:first-child,
+.layout .manual-table td:first-child {
+    width: 55px !important;
+    min-width: 55px !important;
+    max-width: 55px !important;
+}
+
+
+/* Name */
+.layout .manual-table th:nth-child(2),
+.layout .manual-table td:nth-child(2) {
+    width: 19% !important;
+}
+
+
+/* Company */
+.layout .manual-table th:nth-child(3),
+.layout .manual-table td:nth-child(3) {
+    width: 15% !important;
+}
+
+
+/* Category */
+.layout .manual-table th:nth-child(4),
+.layout .manual-table td:nth-child(4) {
+    width: 14% !important;
+}
+
+
+/* Price columns */
+.layout .manual-table th:nth-child(5),
+.layout .manual-table td:nth-child(5),
+.layout .manual-table th:nth-child(6),
+.layout .manual-table td:nth-child(6),
+.layout .manual-table th:nth-child(7),
+.layout .manual-table td:nth-child(7) {
+    width: 13% !important;
+}
+
+
+/* Delete */
+.layout .manual-table th:last-child,
+.layout .manual-table td:last-child {
+    width: 7% !important;
+    text-align: center;
+}
+
+
+/* Inputs stay inside their columns */
+.layout .manual-table input,
+.layout .manual-table select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
 }

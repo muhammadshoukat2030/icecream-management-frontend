@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stock Inventory</title>
+<link rel="stylesheet" href="shared-layout.css">
 <link rel="stylesheet" href="stockInventory.css">
 </head>
 <body>
 
-<div class="layout">
+<div class="shell layout">
 
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
+<div class="overlay sidebar-overlay" id="sidebarOverlay"></div>
    <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar">
     <div class="brand">
@@ -68,15 +68,23 @@
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
-          <span></span><span></span><span></span>
+    <button class="menu-toggle hamburger" id="menuToggle" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
         </button>
-        <h1>Stock Inventory</h1>
+      <div class="crumb">Stock Inventory</div>
       </div>
-      <div class="topbar-right">
-        <div class="date-pill" id="datePill">04 July,2026</div>
-        <div class="admin-pill"  id="admin"><span class="admin-avatar"></span> Admin</div>
-      </div>
+     <div class="topbar-right">
+
+     <div class="pill date-pill">
+    <span class="pill-text" id="datePill">Today</span>
+</div>
+
+<div class="pill admin admin-pill">
+    <span class="avatar-dot"></span>
+    <span class="pill-text" id="admin">Admin</span>
+</div>
+
+    </div>
     </div>
 
     <div class="content">
@@ -141,22 +149,30 @@
 
       <!-- Stock Inventory table -->
       <div class="categories-panel">
-        <div class="panel-header">
-          <h2>Stock Inventory</h2>
-          <div class="search-wrap show">
-            <input type="text" id="searchInput" placeholder="Search by product, company or category">
-          </div>
-    
-<select id="categoryFilter">
-  <option value="">All Categories</option>
-</select>
-<select id="stockFilter">
-    <option value="">All Stock</option>
-    <option value="in-stock">In Stock</option>
-    <option value="low-stock">Low Stock</option>
-    <option value="out-of-stock">Out of Stock</option>
-</select>
-        </div>
+       <div class="panel-header inventory-header">
+  <h2>Stock Inventory</h2>
+
+  <div class="inventory-controls">
+    <div class="search-wrap">
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by product, company or category"
+      >
+    </div>
+
+    <select id="categoryFilter">
+      <option value="">All Categories</option>
+    </select>
+
+    <select id="stockFilter">
+      <option value="">All Stock</option>
+      <option value="in-stock">In Stock</option>
+      <option value="low-stock">Low Stock</option>
+      <option value="out-of-stock">Out of Stock</option>
+    </select>
+  </div>
+</div>
         <div class="table-scroll">
         <table class="cat-table inventory-table">
           <thead>
@@ -169,7 +185,7 @@
               <th>Last Purchases</th>
               <th>Stock Value</th>
               <th>Status</th>
-              <th>Action</th>
+             
             </tr>
           </thead>
           <tbody id="inventoryTableBody">
@@ -182,7 +198,9 @@
     </div>
   </div>
 </div>
-
+<script src="config.js"></script>
+<script src="shared-layout.js"></script>
+<script src="offline-db.js"></script>
 <script src="stockInventory.js"></script>
 </body>
 </html>

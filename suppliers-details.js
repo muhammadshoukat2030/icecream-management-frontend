@@ -1,7 +1,14 @@
 // ============================================================
 // SUPPLIER DETAILS PAGE
 // ============================================================
-const API= "https://icecream-management-backend.vercel.app";
+
+
+// ============================================================
+// GLOBAL API
+// ============================================================
+
+const API =
+    window.APP_CONFIG.API;
 
 
 // ============================================================
@@ -17,39 +24,100 @@ let supplierProducts = [];
 let filteredSupplierInvoices = [];
 
 let filteredSupplierProducts = [];
-let invoiceForPrint;
-let adminUser;
-getLocalStorageUser=()=>{
-if (!localStorage.getItem('user')){
-      window.location.href = 'login.html';
-        return;
+
+let invoiceForPrint = null;
+
+let adminUser = null;
+
+let editingInvoice = null;
+
+let finalInvoice = null;
+
+
+// ============================================================
+// AUTH / ADMIN USER
+// ============================================================
+
+function getLocalStorageUser() {
+
+    const user =
+        localStorage.getItem("user");
+
+    if (!user) {
+
+        window.location.href =
+            "login.html";
+
+        return null;
+
+    }
+
+    try {
+
+        return JSON.parse(user);
+
+    }
+    catch (error) {
+
+        console.error(
+            "Invalid local user:",
+            error
+        );
+
+        window.location.href =
+            "login.html";
+
+        return null;
+
+    }
 
 }
 
- adminUser=JSON.parse(localStorage.getItem('user'));
-console.log(adminUser.email)
+
+adminUser =
+    getLocalStorageUser();
+
+
+if (adminUser) {
+
+    const adminElement =
+        document.getElementById("admin");
+
+    if (adminElement) {
+
+        adminElement.textContent =
+            adminUser.email || "";
+
+    }
 
 }
 
-getLocalStorageUser();
-document.getElementById('admin').textContent=adminUser.email;
+
 // ============================================================
 // GET SUPPLIER ID FROM URL
 // ============================================================
 
 const urlParams =
-    new URLSearchParams(window.location.search);
+    new URLSearchParams(
+        window.location.search
+    );
+
 
 const supplierId =
-    Number(urlParams.get("id"));
+    Number(
+        urlParams.get("id")
+    );
 
 
 if (!supplierId) {
 
-    alert("Supplier ID is missing.");
+    alert(
+        "Supplier ID is missing."
+    );
 
     window.location.href =
         "suppliers.html";
+
 }
 
 
@@ -58,43 +126,82 @@ if (!supplierId) {
 // ============================================================
 
 const crumbCurrent =
-    document.getElementById("crumbCurrent");
+    document.getElementById(
+        "crumbCurrent"
+    );
+
 
 const supplierNameElement =
-    document.querySelector(".supplier-name");
+    document.querySelector(
+        ".supplier-name"
+    );
+
 
 const infoCompanyName =
-    document.getElementById("infoCompanyName");
+    document.getElementById(
+        "infoCompanyName"
+    );
+
 
 const infoContactPerson =
-    document.getElementById("infoContactPerson");
+    document.getElementById(
+        "infoContactPerson"
+    );
+
 
 const infoAddress =
-    document.getElementById("infoAddress");
+    document.getElementById(
+        "infoAddress"
+    );
+
 
 const infoPhone =
-    document.getElementById("infoPhone");
+    document.getElementById(
+        "infoPhone"
+    );
+
 
 const infoWhatsapp =
-    document.getElementById("infoWhatsapp");
+    document.getElementById(
+        "infoWhatsapp"
+    );
+
 
 const infoEmail =
-    document.getElementById("infoEmail");
+    document.getElementById(
+        "infoEmail"
+    );
+
 
 const infoCity =
-    document.getElementById("infoCity");
+    document.getElementById(
+        "infoCity"
+    );
+
 
 const infoStatus =
-    document.getElementById("infoStatus");
+    document.getElementById(
+        "infoStatus"
+    );
+
 
 const detailsLogo =
-    document.getElementById("detailsLogo");
+    document.getElementById(
+        "detailsLogo"
+    );
+
 
 const summaryTableBody =
-    document.getElementById("summaryTableBody");
+    document.getElementById(
+        "summaryTableBody"
+    );
+
 
 const invoiceTableBody =
-    document.getElementById("invoiceTableBody");
+    document.getElementById(
+        "invoiceTableBody"
+    );
+
 
 const supplierProductsTableBody =
     document.getElementById(
@@ -122,10 +229,108 @@ document.addEventListener(
 
         setupSearch();
 
-        await loadSupplier();
+        setupInvoiceEditing();
+
+        await initializeSupplierDetails();
 
     }
 );
+
+
+// ============================================================
+// INITIALIZE SUPPLIER DETAILS
+// ============================================================
+
+async function initializeSupplierDetails() {
+
+    try {
+
+        /*
+         * Load supplier information.
+         *
+         * loadSupplier() loads IndexedDB first and then
+         * refreshes from backend when online.
+         */
+        await loadSupplier();
+
+
+        if (!supplier) {
+            return;
+        }
+
+
+        /*
+         * First/full invoice synchronization:
+         *
+         *   new device -> all invoices
+         *
+         * Later:
+         *
+         *   all invoices since last sync
+         */
+        if (navigator.onLine) {
+
+            await syncInvoicesToOfflineDB();
+
+        }
+
+
+        /*
+         * Build the page from local data.
+         */
+        await loadSupplierDetails();
+
+    }
+    catch (error) {
+
+        console.error(
+            "Supplier details initialization error:",
+            error
+        );
+
+        alert(
+            "Unable to load supplier information."
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// AUTHENTICATED FETCH
+// ============================================================
+
+async function authenticatedFetch(
+    url,
+    options = {}
+) {
+
+    const response =
+        await fetch(
+            url,
+            {
+                ...options,
+                credentials: "include"
+            }
+        );
+
+
+    if (
+        response.status === 401
+    ) {
+
+        window.location.href =
+            "login.html";
+
+        return null;
+
+    }
+
+
+    return response;
+
+}
 
 
 // ============================================================
@@ -134,16 +339,96 @@ document.addEventListener(
 
 async function loadSupplier() {
 
+    showLoading();
+
+
+    /*
+     * ========================================================
+     * 1. LOAD FROM INDEXEDDB FIRST
+     * ========================================================
+     */
+
     try {
 
-        showLoading();
+        const cachedSuppliers =
+            await getAllFromOfflineDB(
+                "suppliers"
+            );
+
+
+        const cachedSupplier =
+            cachedSuppliers.find(
+                item =>
+                    Number(
+                        item.id
+                    ) ===
+                    Number(
+                        supplierId
+                    )
+            );
+
+
+        if (cachedSupplier) {
+
+            supplier =
+                cachedSupplier;
+
+
+            renderSupplierInformation();
+
+        }
+
+    }
+    catch (cacheError) {
+
+        console.error(
+            "Supplier cache load failed:",
+            cacheError
+        );
+
+    }
+
+
+    /*
+     * ========================================================
+     * 2. OFFLINE
+     * ========================================================
+     */
+
+    if (
+        !navigator.onLine
+    ) {
+
+        if (!supplier) {
+
+            alert(
+                "Supplier information is not available offline."
+            );
+
+        }
+
+        return;
+
+    }
+
+
+    /*
+     * ========================================================
+     * 3. REFRESH FROM BACKEND
+     * ========================================================
+     */
+
+    try {
 
         const response =
-            await fetch(
-                `${API}/suppliers/${supplierId}`,{
-  credentials: "include",
-}
+            await authenticatedFetch(
+                `${API}/suppliers/${supplierId}`
             );
+
+
+        if (!response) {
+            return;
+        }
 
 
         if (!response.ok) {
@@ -160,19 +445,43 @@ async function loadSupplier() {
 
 
         supplier =
-            result.data || result;
+            result.data ||
+            result.supplier ||
+            result;
 
 
-        await loadSupplierDetails();
+        /*
+         * Cache authoritative supplier state.
+         */
+
+        await saveToOfflineDB(
+            "suppliers",
+            supplier
+        );
+
+
+        renderSupplierInformation();
 
     }
     catch (error) {
 
-        console.error(error);
-
-        alert(
-            "Unable to load supplier information."
+        console.error(
+            "Supplier online load failed:",
+            error
         );
+
+
+        /*
+         * If cache exists, continue using it.
+         */
+
+        if (!supplier) {
+
+            alert(
+                "Unable to load supplier information."
+            );
+
+        }
 
     }
 
@@ -185,7 +494,13 @@ async function loadSupplier() {
 
 async function loadSupplierDetails() {
 
+    if (!supplier) {
+        return;
+    }
+
+
     renderSupplierInformation();
+
 
     await Promise.all([
         loadSupplierInvoices(),
@@ -216,12 +531,10 @@ async function loadSupplierDetails() {
 
 function renderSupplierInformation() {
 
-    if (!supplier) return;
+    if (!supplier) {
+        return;
+    }
 
-
-    // --------------------------------------------------------
-    // Status
-    // --------------------------------------------------------
 
     const status =
         getSupplierStatusText(
@@ -376,16 +689,9 @@ function renderSupplierInformation() {
 // SUPPLIER STATUS
 // ============================================================
 
-function getSupplierStatusText(status) {
-
-    /*
-     * Your MongoDB schema uses Boolean for status.
-     *
-     * true  = Active
-     * false = Inactive
-     *
-     * This also supports old/string data.
-     */
+function getSupplierStatusText(
+    status
+) {
 
     if (
         status === true ||
@@ -424,7 +730,9 @@ function getSupplierStatusText(status) {
 // CONVERT STATUS FOR BACKEND
 // ============================================================
 
-function getSupplierStatusBoolean(status) {
+function getSupplierStatusBoolean(
+    status
+) {
 
     return (
         status === true ||
@@ -444,7 +752,9 @@ function getSupplierStatusBoolean(status) {
 
 function renderLogo() {
 
-    if (!detailsLogo) return;
+    if (!detailsLogo) {
+        return;
+    }
 
 
     if (supplier.logo) {
@@ -487,45 +797,72 @@ function renderLogo() {
 
 
 // ============================================================
-// LOAD SUPPLIER INVOICES
+// GET SUPPLIER INVOICES FROM INDEXEDDB
 // ============================================================
 
 async function loadSupplierInvoices() {
 
     try {
 
-        const response =
-            await fetch(
-                `${API}/suppliers/${supplierId}/invoices`,
-                {
-                    credentials:'include'
-                }
+        const allInvoices =
+            await getAllFromOfflineDB(
+                "invoices"
             );
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Unable to load supplier invoices"
-            );
-
-        }
-
-
-        const result =
-            await response.json();
 
 
         supplierInvoices =
-            result.invoices ||
-            result.data ||
-            [];
+            allInvoices
+                .filter(
+                    invoice =>
+                        invoice.type ===
+                            "supplier" &&
 
+                        Number(
+                            invoice.partyId
+                        ) ===
+                        Number(
+                            supplierId
+                        )
+                )
+                .sort(
+                    (a, b) => {
+
+                        const dateDifference =
+                            new Date(b.date) -
+                            new Date(a.date);
+
+
+                        if (
+                            dateDifference !==
+                            0
+                        ) {
+
+                            return dateDifference;
+
+                        }
+
+
+                        return (
+                            Number(b.id) -
+                            Number(a.id)
+                        );
+
+                    }
+                );
+
+
+        console.log(
+            "Supplier invoices from IndexedDB:",
+            supplierInvoices
+        );
 
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "Supplier invoice cache load failed:",
+            error
+        );
 
         supplierInvoices = [];
 
@@ -540,15 +877,112 @@ async function loadSupplierInvoices() {
 
 async function loadSupplierProducts() {
 
+    /*
+     * ========================================================
+     * 1. LOAD PRODUCTS FROM INDEXEDDB
+     * ========================================================
+     */
+
+    try {
+
+        const cachedProducts =
+            await getAllFromOfflineDB(
+                "products"
+            );
+
+
+        const supplierName =
+            String(
+                supplier?.companyName || ""
+            )
+                .trim()
+                .toLowerCase();
+
+
+        supplierProducts =
+            cachedProducts
+                .filter(
+                    product => {
+
+                        const company =
+                            String(
+                                product.company || ""
+                            )
+                                .trim()
+                                .toLowerCase();
+
+
+                        return (
+                            supplierName &&
+                            company ===
+                            supplierName
+                        );
+
+                    }
+                )
+                .map(
+                    product =>
+                        normalizeSupplierProduct(
+                            product
+                        )
+                );
+
+
+        console.log(
+            "Supplier products from IndexedDB:",
+            supplierProducts
+        );
+
+
+    }
+    catch (cacheError) {
+
+        console.error(
+            "Supplier product cache load failed:",
+            cacheError
+        );
+
+        supplierProducts = [];
+
+    }
+
+
+    /*
+     * ========================================================
+     * 2. OFFLINE
+     * ========================================================
+     */
+
+    if (
+        !navigator.onLine
+    ) {
+
+        return;
+
+    }
+
+
+    /*
+     * ========================================================
+     * 3. REFRESH FROM SUPPLIER PRODUCTS ENDPOINT
+     * ========================================================
+     *
+     * Keep the supplier-specific backend endpoint because
+     * it may know supplier relationships that are not visible
+     * from the local company field.
+     */
+
     try {
 
         const response =
-            await fetch(
-                `${API}/suppliers/${supplierId}/products`,
-                {
-                    credentials:'include'
-                }
+            await authenticatedFetch(
+                `${API}/suppliers/${supplierId}/products`
             );
+
+
+        if (!response) {
+            return;
+        }
 
 
         if (!response.ok) {
@@ -564,20 +998,193 @@ async function loadSupplierProducts() {
             await response.json();
 
 
-        supplierProducts =
+        const freshProducts =
             result.products ||
             result.data ||
             [];
 
 
+        if (
+            !Array.isArray(
+                freshProducts
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        supplierProducts =
+            freshProducts.map(
+                product =>
+                    normalizeSupplierProduct(
+                        product
+                    )
+            );
+
+
+        /*
+         * Also upsert the fresh products into the common
+         * products store so other offline pages can use them.
+         */
+
+        const localProducts =
+            supplierProducts.map(
+                product => ({
+
+                    id:
+                        Number(
+                            product.id
+                        ),
+
+                    productName:
+                        product.name,
+
+                    brand:
+                        product.brand ||
+                        product.company,
+
+                    company:
+                        product.company,
+
+                    purchasePrice:
+                        Number(
+                            product.purchasePrice || 0
+                        ),
+
+                    salePrice:
+                        Number(
+                            product.salePrice || 0
+                        ),
+
+                    category:
+                        product.category ||
+                        "Other",
+
+                    description:
+                        product.description ||
+                        "",
+
+                    stock:
+                        Number(
+                            product.stock || 0
+                        ),
+
+                    commissionApplicable:
+                        product.commissionApplicable,
+
+                    lastPurchase:
+                        product.lastPurchase ||
+                        ""
+
+                })
+            );
+
+
+        if (
+            localProducts.length > 0
+        ) {
+
+            await saveManyToOfflineDB(
+                "products",
+                localProducts
+            );
+
+        }
+
+
+        console.log(
+            "Fresh supplier products:",
+            supplierProducts
+        );
+
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "Supplier products online load failed:",
+            error
+        );
 
-        supplierProducts = [];
+        /*
+         * Keep cached products.
+         */
 
     }
+
+}
+
+
+// ============================================================
+// NORMALIZE SUPPLIER PRODUCT
+// ============================================================
+
+function normalizeSupplierProduct(
+    product
+) {
+
+    return {
+
+        id:
+            Number(
+                product.id ??
+                product.product_id ??
+                0
+            ),
+
+        name:
+            product.name ??
+            product.productName ??
+            product.product_name ??
+            "Unknown",
+
+        brand:
+            product.brand ??
+            product.company ??
+            "",
+
+        company:
+            product.company ??
+            "",
+
+        purchasePrice:
+            Number(
+                product.purchasePrice ??
+                product.price ??
+                0
+            ),
+
+        salePrice:
+            Number(
+                product.salePrice ??
+                0
+            ),
+
+        category:
+            product.category ??
+            "Other",
+
+        description:
+            product.description ??
+            "",
+
+        stock:
+            Number(
+                product.stock ??
+                product.qunatity ??
+                product.quantity ??
+                0
+            ),
+
+        commissionApplicable:
+            product.commissionApplicable,
+
+        lastPurchase:
+            product.lastPurchase ??
+            ""
+
+    };
 
 }
 
@@ -601,19 +1208,21 @@ function setupSearch() {
 
 function createInvoiceSearch() {
 
-    if (!summaryTableBody) return;
+    if (!summaryTableBody) {
+        return;
+    }
 
 
     const table =
-        summaryTableBody.closest("table");
+        summaryTableBody.closest(
+            "table"
+        );
 
 
-    if (!table) return;
+    if (!table) {
+        return;
+    }
 
-
-    /*
-     * Do not create the search twice.
-     */
 
     if (
         document.getElementById(
@@ -627,7 +1236,9 @@ function createInvoiceSearch() {
 
 
     const wrapper =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
 
     wrapper.id =
@@ -704,7 +1315,7 @@ function createInvoiceSearch() {
         );
 
 
-    searchInput.addEventListener(
+    searchInput?.addEventListener(
         "input",
         () => {
 
@@ -716,13 +1327,16 @@ function createInvoiceSearch() {
     );
 
 
-    clearButton.addEventListener(
+    clearButton?.addEventListener(
         "click",
         () => {
 
-            searchInput.value = "";
+            searchInput.value =
+                "";
 
-            filterSupplierInvoices("");
+            filterSupplierInvoices(
+                ""
+            );
 
             searchInput.focus();
 
@@ -738,7 +1352,9 @@ function createInvoiceSearch() {
 
 function createProductSearch() {
 
-    if (!supplierProductsTableBody) return;
+    if (!supplierProductsTableBody) {
+        return;
+    }
 
 
     const table =
@@ -747,7 +1363,9 @@ function createProductSearch() {
         );
 
 
-    if (!table) return;
+    if (!table) {
+        return;
+    }
 
 
     if (
@@ -762,7 +1380,9 @@ function createProductSearch() {
 
 
     const wrapper =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
 
     wrapper.id =
@@ -839,7 +1459,7 @@ function createProductSearch() {
         );
 
 
-    searchInput.addEventListener(
+    searchInput?.addEventListener(
         "input",
         () => {
 
@@ -851,13 +1471,16 @@ function createProductSearch() {
     );
 
 
-    clearButton.addEventListener(
+    clearButton?.addEventListener(
         "click",
         () => {
 
-            searchInput.value = "";
+            searchInput.value =
+                "";
 
-            filterSupplierProducts("");
+            filterSupplierProducts(
+                ""
+            );
 
             searchInput.focus();
 
@@ -871,10 +1494,14 @@ function createProductSearch() {
 // FILTER INVOICES
 // ============================================================
 
-function filterSupplierInvoices(searchValue) {
+function filterSupplierInvoices(
+    searchValue
+) {
 
     const search =
-        String(searchValue || "")
+        String(
+            searchValue || ""
+        )
             .trim()
             .toLowerCase();
 
@@ -943,10 +1570,14 @@ function filterSupplierInvoices(searchValue) {
 // FILTER PRODUCTS
 // ============================================================
 
-function filterSupplierProducts(searchValue) {
+function filterSupplierProducts(
+    searchValue
+) {
 
     const search =
-        String(searchValue || "")
+        String(
+            searchValue || ""
+        )
             .trim()
             .toLowerCase();
 
@@ -1015,10 +1646,13 @@ function filterSupplierProducts(searchValue) {
 
 function renderSummary() {
 
-    if (!summaryTableBody) return;
+    if (!summaryTableBody) {
+        return;
+    }
 
 
-    summaryTableBody.innerHTML = "";
+    summaryTableBody.innerHTML =
+        "";
 
 
     const invoices =
@@ -1038,9 +1672,7 @@ function renderSummary() {
                         padding:30px;
                     "
                 >
-
                     No purchases found.
-
                 </td>
 
             </tr>
@@ -1053,15 +1685,16 @@ function renderSummary() {
 
 
     invoices.forEach(
-        (invoice, index) => {
+        (
+            invoice,
+            index
+        ) => {
 
             const row =
-                document.createElement("tr");
+                document.createElement(
+                    "tr"
+                );
 
-
-            /*
-             * Make the entire row clickable.
-             */
 
             row.style.cursor =
                 "pointer";
@@ -1079,12 +1712,19 @@ function renderSummary() {
 
 
             const items =
-                invoice.items || [];
+                Array.isArray(
+                    invoice.items
+                )
+                    ? invoice.items
+                    : [];
 
 
             const totalItems =
                 items.reduce(
-                    (total, item) =>
+                    (
+                        total,
+                        item
+                    ) =>
                         total +
                         Number(
                             item.quantity || 0
@@ -1105,8 +1745,8 @@ function renderSummary() {
 
             const amount =
                 Number(
-                    invoice.subtotal ??
                     invoice.netTotal ??
+                    invoice.subtotal ??
                     invoice.amount ??
                     0
                 );
@@ -1143,11 +1783,9 @@ function renderSummary() {
                     ${index + 1}
                 </td>
 
-
                 <td>
                     ${escapeHTML(date)}
                 </td>
-
 
                 <td>
 
@@ -1164,35 +1802,27 @@ function renderSummary() {
 
                 </td>
 
-
                 <td>
-
                     ${escapeHTML(
                         particulars || "-"
                     )}
-
                 </td>
-
 
                 <td>
                     ${totalItems}
                 </td>
 
-
                 <td>
                     ${formatMoney(amount)}
                 </td>
-
 
                 <td>
                     ${formatMoney(commission)}
                 </td>
 
-
                 <td>
                     ${formatMoney(cash)}
                 </td>
-
 
                 <td>
                     ${formatMoney(balance)}
@@ -1200,10 +1830,6 @@ function renderSummary() {
 
             `;
 
-
-            /*
-             * Entire row opens invoice.
-             */
 
             row.addEventListener(
                 "click",
@@ -1228,45 +1854,158 @@ function renderSummary() {
 
 
 // ============================================================
+// GET LATEST SUPPLIER INVOICE LOCALLY
+// ============================================================
+
+function getLatestSupplierInvoice() {
+
+    if (
+        !supplierInvoices.length
+    ) {
+
+        return null;
+
+    }
+
+
+    return (
+        [...supplierInvoices]
+            .sort(
+                (a, b) => {
+
+                    const dateDifference =
+                        new Date(b.date) -
+                        new Date(a.date);
+
+
+                    if (
+                        dateDifference !==
+                        0
+                    ) {
+
+                        return dateDifference;
+
+                    }
+
+
+                    return (
+                        Number(b.id) -
+                        Number(a.id)
+                    );
+
+                }
+            )[0] ||
+        null
+    );
+
+}
+
+
+// ============================================================
 // SHOW INVOICE
 // ============================================================
 
-async function showInvoice(invoiceId) {
+async function showInvoice(
+    invoiceId
+) {
 
     try {
 
-        const response =
-            await fetch(
-                `${API}/invoice/${invoiceId}`,
-                {
-                    credentials:'include'
-                }
+        /*
+         * Read directly from IndexedDB.
+         */
+
+        const allInvoices =
+            await getAllFromOfflineDB(
+                "invoices"
             );
 
 
-        if (!response.ok) {
-
-            throw new Error(
-                "Invoice not found"
+        const invoice =
+            allInvoices.find(
+                item =>
+                    Number(
+                        item.id
+                    ) ===
+                    Number(
+                        invoiceId
+                    ) &&
+                    item.type ===
+                    "supplier" &&
+                    Number(
+                        item.partyId
+                    ) ===
+                    Number(
+                        supplierId
+                    )
             );
+
+
+        if (!invoice) {
+
+            alert(
+                "Invoice is not available locally."
+            );
+
+            return;
 
         }
 
 
-        const invoice =
-            await response.json();
+        console.log(
+            "Selected supplier invoice:",
+            invoice
+        );
 
 
-        renderInvoice(invoice);
-        invoiceForPrint=invoice;
+        renderInvoice(
+            invoice
+        );
+
+
+        invoiceForPrint =
+            invoice;
+
+
+        /*
+         * Determine latest supplier invoice locally.
+         */
+
+        finalInvoice =
+            getLatestSupplierInvoice();
+
+
+        /*
+         * Only the latest supplier invoice is editable.
+         */
+
+        if (
+            finalInvoice &&
+            Number(
+                finalInvoice.id
+            ) ===
+            Number(
+                invoice.id
+            )
+        ) {
+
+            openInvoiceEditPopup(
+                invoice
+            );
+
+        }
 
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "showInvoice error:",
+            error
+        );
+
 
         alert(
-            "Unable to load invoice."
+            "Unable to load invoice details."
         );
 
     }
@@ -1278,7 +2017,14 @@ async function showInvoice(invoiceId) {
 // RENDER INVOICE
 // ============================================================
 
-function renderInvoice(invoice) {
+function renderInvoice(
+    invoice
+) {
+
+    if (!invoice) {
+        return;
+    }
+
 
     const invoiceNo =
         document.getElementById(
@@ -1294,14 +2040,21 @@ function renderInvoice(invoice) {
     }
 
 
-    if (!invoiceTableBody) return;
+    if (!invoiceTableBody) {
+        return;
+    }
 
 
-    invoiceTableBody.innerHTML = "";
+    invoiceTableBody.innerHTML =
+        "";
 
 
     const items =
-        invoice.items || [];
+        Array.isArray(
+            invoice.items
+        )
+            ? invoice.items
+            : [];
 
 
     items.forEach(
@@ -1322,8 +2075,11 @@ function renderInvoice(invoice) {
 
 
             const net =
-                quantity -
-                returnQuantity;
+                Math.max(
+                    quantity -
+                    returnQuantity,
+                    0
+                );
 
 
             const price =
@@ -1334,7 +2090,9 @@ function renderInvoice(invoice) {
 
             const amount =
                 item.amount !== undefined
-                    ? Number(item.amount || 0)
+                    ? Number(
+                        item.amount || 0
+                    )
                     : net * price;
 
 
@@ -1347,61 +2105,37 @@ function renderInvoice(invoice) {
             row.innerHTML = `
 
                 <td>
-
                     ${escapeHTML(
                         String(
                             item.productId || "-"
                         )
                     )}
-
                 </td>
 
-
                 <td>
-
                     ${escapeHTML(
                         item.productName || "-"
                     )}
-
                 </td>
 
-
                 <td>
-
-                    ${formatMoney(
-                        price
-                    )}
-
+                    ${formatMoney(price)}
                 </td>
 
-
                 <td>
-
                     ${quantity}
-
                 </td>
 
-
                 <td>
-
                     ${returnQuantity}
-
                 </td>
 
-
                 <td>
-
                     ${net}
-
                 </td>
 
-
                 <td>
-
-                    ${formatMoney(
-                        amount
-                    )}
-
+                    ${formatMoney(amount)}
                 </td>
 
             `;
@@ -1419,16 +2153,6 @@ function renderInvoice(invoice) {
         invoice
     );
 
-
-    /*
-     * Add/enable print button for the
-     * currently displayed invoice.
-     */
-
-    setupInvoicePrintButton(
-        invoice
-    );
-
 }
 
 
@@ -1436,12 +2160,19 @@ function renderInvoice(invoice) {
 // INVOICE TOTALS
 // ============================================================
 
-function updateInvoiceTotals(invoice) {
+function updateInvoiceTotals(
+    invoice
+) {
 
     const totals =
         document.querySelectorAll(
             ".invoice-totals .t-row"
         );
+
+
+    if (!invoice) {
+        return;
+    }
 
 
     const subtotal =
@@ -1552,7 +2283,8 @@ function updateInvoiceTotals(invoice) {
             .children[1]
             .textContent =
                 formatMoney(
-                    netTotal - cash
+                    netTotal -
+                    cash
                 );
 
     }
@@ -1580,41 +2312,217 @@ function updateInvoiceTotals(invoice) {
                 );
 
     }
-    document.getElementById('editingComission').textContent=invoice.dynamicComission*100;
+
+
+    const commissionElement =
+        document.querySelector(
+            "#invoiceEditModal #editingComission"
+        );
+
+
+    if (commissionElement) {
+
+        commissionElement.textContent =
+            Number(
+                invoice.dynamicComission || 0
+            ) * 100;
+
+    }
 
 }
 
 
 // ============================================================
-// INVOICE PRINT BUTTON
+// PRODUCTS TABLE
 // ============================================================
 
-function setupInvoicePrintButton(
-    invoice
-) {
+function renderProducts() {
 
-    const printInvoiceBtn =
-        document.getElementById(
-            "printInvoiceBtn"
+    if (!supplierProductsTableBody) {
+        return;
+    }
+
+
+    supplierProductsTableBody.innerHTML =
+        "";
+
+
+    const products =
+        filteredSupplierProducts;
+
+
+    if (!products.length) {
+
+        supplierProductsTableBody.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="7"
+                    style="
+                        text-align:center;
+                        padding:30px;
+                    "
+                >
+                    No products found.
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+
+    }
+
+
+    products.forEach(
+        product => {
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            row.innerHTML = `
+
+                <td>
+
+                    ${escapeHTML(
+                        String(
+                            product.id || "-"
+                        )
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(
+                        product.name || "-"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(
+                        product.company || "-"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${formatMoney(
+                        product.purchasePrice
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${formatMoney(
+                        product.salePrice
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    ${escapeHTML(
+                        product.category || "-"
+                    )}
+
+                </td>
+
+
+                <td>
+
+                    <button
+                        class="view-product-btn"
+                        data-id="${escapeAttribute(
+                            String(
+                                product.id || ""
+                            )
+                        )}"
+                    >
+                        View
+                    </button>
+
+                </td>
+
+            `;
+
+
+            supplierProductsTableBody.appendChild(
+                row
+            );
+
+        }
+    );
+
+
+    document
+        .querySelectorAll(
+            ".view-product-btn"
+        )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    event => {
+
+                        event.stopPropagation();
+
+
+                        const id =
+                            Number(
+                                button.dataset.id
+                            );
+
+
+                        const product =
+                            supplierProducts.find(
+                                item =>
+                                    Number(
+                                        item.id
+                                    ) ===
+                                    id
+                            );
+
+
+                        if (product) {
+
+                            showProductDetails(
+                                product
+                            );
+
+                        }
+
+                    }
+                );
+
+            }
         );
 
 
     if (
-        printInvoiceBtn &&
-        !printInvoiceBtn.dataset.bound
+        products.length &&
+        !document.getElementById(
+            "spDetailName"
+        )?.textContent
     ) {
 
-        printInvoiceBtn.dataset.bound =
-            "true";
-
-
-        printInvoiceBtn.addEventListener(
-            "click",
-            () => {
-
-              
-
-            }
+        showProductDetails(
+            products[0]
         );
 
     }
@@ -1623,10 +2531,3883 @@ function setupInvoicePrintButton(
 
 
 // ============================================================
+// PRODUCT DETAILS
+// ============================================================
+
+function showProductDetails(
+    product
+) {
+
+    const detailName =
+        document.getElementById(
+            "spDetailName"
+        );
+
+
+    const detailIdShort =
+        document.getElementById(
+            "spDetailIdShort"
+        );
+
+
+    const detailFullName =
+        document.getElementById(
+            "spDetailFullName"
+        );
+
+
+    const detailCompany =
+        document.getElementById(
+            "spDetailCompany"
+        );
+
+
+    const detailCategory =
+        document.getElementById(
+            "spDetailCategory"
+        );
+
+
+    const detailId =
+        document.getElementById(
+            "spDetailId"
+        );
+
+
+    const detailDescription =
+        document.getElementById(
+            "spDetailDescription"
+        );
+
+
+    const detailPurchasePrice =
+        document.getElementById(
+            "spDetailPurchasePrice"
+        );
+
+
+    const detailSalePrice =
+        document.getElementById(
+            "spDetailSalePrice"
+        );
+
+
+    const detailProfit =
+        document.getElementById(
+            "spDetailProfit"
+        );
+
+
+    const detailStock =
+        document.getElementById(
+            "spDetailStock"
+        );
+
+
+    if (detailName) {
+
+        detailName.textContent =
+            product.name || "-";
+
+    }
+
+
+    if (detailIdShort) {
+
+        detailIdShort.textContent =
+            `Id:${product.id || "-"}`;
+
+    }
+
+
+    if (detailFullName) {
+
+        detailFullName.textContent =
+            product.name || "-";
+
+    }
+
+
+    if (detailCompany) {
+
+        detailCompany.textContent =
+            product.company || "-";
+
+    }
+
+
+    if (detailCategory) {
+
+        detailCategory.textContent =
+            product.category || "-";
+
+    }
+
+
+    if (detailId) {
+
+        detailId.textContent =
+            product.id || "-";
+
+    }
+
+
+    if (detailDescription) {
+
+        detailDescription.textContent =
+            product.description || "-";
+
+    }
+
+
+    const purchasePrice =
+        Number(
+            product.purchasePrice || 0
+        );
+
+
+    const salePrice =
+        Number(
+            product.salePrice || 0
+        );
+
+
+    if (detailPurchasePrice) {
+
+        detailPurchasePrice.textContent =
+            `Rs.${formatMoney(
+                purchasePrice
+            )}`;
+
+    }
+
+
+    if (detailSalePrice) {
+
+        detailSalePrice.textContent =
+            `Rs.${formatMoney(
+                salePrice
+            )}`;
+
+    }
+
+
+    const profit =
+        salePrice -
+        purchasePrice;
+
+
+    if (detailProfit) {
+
+        detailProfit.textContent =
+            `Rs.${formatMoney(
+                profit
+            )}`;
+
+    }
+
+
+    const stock =
+        Number(
+            product.stock ??
+            product.qunatity ??
+            product.quantity ??
+            0
+        );
+
+
+    if (detailStock) {
+
+        detailStock.innerHTML = `
+
+            ${stock.toLocaleString(
+                "en-PK"
+            )}
+
+            <span class="units">
+                units
+            </span>
+
+        `;
+
+    }
+
+}
+
+
+// ============================================================
+// UPDATE STATISTICS
+// ============================================================
+
+function updateStats() {
+
+    const statNumbers =
+        document.querySelectorAll(
+            ".stat-number"
+        );
+
+
+    if (!statNumbers.length) {
+        return;
+    }
+
+
+    const outstanding =
+        Number(
+            supplier?.outstandingBalance ||
+            0
+        );
+
+
+    const totalPurchases =
+        supplierInvoices.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.netTotal ??
+                    invoice.subtotal ??
+                    invoice.amount ??
+                    0
+                ),
+            0
+        );
+
+
+    const currentMonth =
+        new Date().getMonth();
+
+
+    const currentYear =
+        new Date().getFullYear();
+
+
+    const monthlyPurchases =
+        supplierInvoices
+            .filter(
+                invoice => {
+
+                    const date =
+                        new Date(
+                            invoice.date
+                        );
+
+
+                    return (
+                        date.getMonth() ===
+                            currentMonth &&
+                        date.getFullYear() ===
+                            currentYear
+                    );
+
+                }
+            )
+            .reduce(
+                (
+                    sum,
+                    invoice
+                ) =>
+                    sum +
+                    Number(
+                        invoice.netTotal ??
+                        invoice.subtotal ??
+                        invoice.amount ??
+                        0
+                    ),
+                0
+            );
+
+
+    if (statNumbers[0]) {
+
+        statNumbers[0].textContent =
+            `Rs.${formatMoney(
+                outstanding
+            )}`;
+
+    }
+
+
+    if (statNumbers[1]) {
+
+        statNumbers[1].textContent =
+            `Rs.${formatMoney(
+                totalPurchases
+            )}`;
+
+    }
+
+
+    if (statNumbers[2]) {
+
+        statNumbers[2].textContent =
+            `Rs.${formatMoney(
+                monthlyPurchases
+            )}`;
+
+    }
+
+
+    if (statNumbers[3]) {
+
+        statNumbers[3].textContent =
+            supplierProducts.length
+                .toLocaleString(
+                    "en-PK"
+                );
+
+    }
+
+
+    if (
+        statNumbers[4] &&
+        supplier?.lastPayment
+    ) {
+
+        statNumbers[4].textContent =
+            `Rs.${formatMoney(
+                supplier.lastPayment.amount ||
+                0
+            )}`;
+
+
+        const lastPaymentSub =
+            statNumbers[4]
+                .parentElement
+                ?.querySelector(
+                    ".stat-sub"
+                );
+
+
+        if (lastPaymentSub) {
+
+            lastPaymentSub.textContent =
+                formatDate(
+                    supplier.lastPayment.date
+                );
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// CREATE EDIT BUTTON
+// ============================================================
+
+function createEditButton() {
+
+    const header =
+        document.querySelector(
+            ".info-panel h4"
+        );
+
+
+    if (!header) {
+        return;
+    }
+
+
+    if (
+        document.getElementById(
+            "editSupplierBtn"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const button =
+        document.createElement(
+            "button"
+        );
+
+
+    button.id =
+        "editSupplierBtn";
+
+
+    button.textContent =
+        "Edit Supplier";
+
+
+    button.className =
+        "edit-supplier-btn";
+
+
+    button.addEventListener(
+        "click",
+        openEditSupplierModal
+    );
+
+
+    header.style.display =
+        "flex";
+
+
+    header.style.justifyContent =
+        "space-between";
+
+
+    header.style.alignItems =
+        "center";
+
+
+    header.appendChild(
+        button
+    );
+
+}
+
+
+// ============================================================
+// EDIT SUPPLIER MODAL
+// ============================================================
+
+function openEditSupplierModal() {
+
+    if (!supplier) {
+        return;
+    }
+
+
+    const oldModal =
+        document.getElementById(
+            "editSupplierModal"
+        );
+
+
+    if (oldModal) {
+
+        oldModal.remove();
+
+    }
+
+
+    const modal =
+        document.createElement(
+            "div"
+        );
+
+
+    modal.id =
+        "editSupplierModal";
+
+
+    modal.className =
+        "supplier-modal-overlay";
+
+
+    const currentStatus =
+        getSupplierStatusText(
+            supplier.status
+        );
+
+
+    modal.innerHTML = `
+
+        <div class="supplier-modal">
+
+
+            <div class="supplier-modal-header">
+
+                <h2>
+                    Edit Supplier
+                </h2>
+
+
+                <button
+                    type="button"
+                    id="closeSupplierModal"
+                    class="modal-close"
+                >
+                    &times;
+                </button>
+
+            </div>
+
+
+            <form id="editSupplierForm">
+
+
+                <div class="form-grid">
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Company Name
+                        </label>
+
+                        <input
+                            type="text"
+                            name="companyName"
+                            value="${escapeAttribute(
+                                supplier.companyName || ""
+                            )}"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Contact Person
+                        </label>
+
+                        <input
+                            type="text"
+                            name="contactPerson"
+                            value="${escapeAttribute(
+                                supplier.contactPerson || ""
+                            )}"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Phone
+                        </label>
+
+                        <input
+                            type="text"
+                            name="phone"
+                            value="${escapeAttribute(
+                                supplier.phone || ""
+                            )}"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            WhatsApp
+                        </label>
+
+                        <input
+                            type="text"
+                            name="whatsapp"
+                            value="${escapeAttribute(
+                                supplier.whatsapp || ""
+                            )}"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Email
+                        </label>
+
+                        <input
+                            type="email"
+                            name="email"
+                            value="${escapeAttribute(
+                                supplier.email || ""
+                            )}"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            City
+                        </label>
+
+                        <input
+                            type="text"
+                            name="city"
+                            value="${escapeAttribute(
+                                supplier.city || ""
+                            )}"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group full">
+
+                        <label>
+                            Address
+                        </label>
+
+                        <textarea
+                            name="address"
+                            rows="3"
+                        >${escapeHTML(
+                            supplier.address || ""
+                        )}</textarea>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Status
+                        </label>
+
+                        <select name="status">
+
+                            <option
+                                value="Active"
+                                ${
+                                    currentStatus ===
+                                    "Active"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Active
+                            </option>
+
+
+                            <option
+                                value="Inactive"
+                                ${
+                                    currentStatus ===
+                                    "Inactive"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Inactive
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Picture / Logo URL
+                        </label>
+
+                        <input
+                            type="text"
+                            name="logo"
+                            value="${escapeAttribute(
+                                supplier.logo || ""
+                            )}"
+                            placeholder="https://..."
+                        >
+
+                    </div>
+
+
+                </div>
+
+
+                <div class="immutable-fields">
+
+                    <strong>
+                        Supplier ID:
+                    </strong>
+
+                    ${escapeHTML(
+                        String(
+                            supplier.id ||
+                            supplierId
+                        )
+                    )}
+
+                    <span>
+
+                        ID and financial information
+                        cannot be edited here.
+
+                    </span>
+
+                </div>
+
+
+                <div class="modal-actions">
+
+
+                    <button
+                        type="button"
+                        id="cancelSupplierEdit"
+                        class="cancel-btn"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="save-btn"
+                    >
+                        Save Changes
+                    </button>
+
+
+                </div>
+
+
+            </form>
+
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        modal
+    );
+
+
+    document
+        .getElementById(
+            "closeSupplierModal"
+        )
+        ?.addEventListener(
+            "click",
+            closeEditSupplierModal
+        );
+
+
+    document
+        .getElementById(
+            "cancelSupplierEdit"
+        )
+        ?.addEventListener(
+            "click",
+            closeEditSupplierModal
+        );
+
+
+    modal.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target ===
+                modal
+            ) {
+
+                closeEditSupplierModal();
+
+            }
+
+        }
+    );
+
+
+    document
+        .getElementById(
+            "editSupplierForm"
+        )
+        ?.addEventListener(
+            "submit",
+            updateSupplier
+        );
+
+}
+
+
+// ============================================================
+// UPDATE SUPPLIER
+// ============================================================
+
+async function updateSupplier(
+    event
+) {
+
+    event.preventDefault();
+
+
+    if (!supplier) {
+        return;
+    }
+
+
+    const form =
+        event.target;
+
+
+    const formData =
+        new FormData(form);
+
+
+    const updateData = {};
+
+
+    for (
+        const [
+            key,
+            value
+        ]
+        of formData.entries()
+    ) {
+
+        updateData[key] =
+            String(
+                value
+            ).trim();
+
+    }
+
+
+    updateData.status =
+        getSupplierStatusBoolean(
+            updateData.status
+        );
+
+
+    const originalValues = {
+
+        companyName:
+            supplier.companyName || "",
+
+        contactPerson:
+            supplier.contactPerson || "",
+
+        phone:
+            supplier.phone || "",
+
+        whatsapp:
+            supplier.whatsapp || "",
+
+        email:
+            supplier.email || "",
+
+        city:
+            supplier.city || "",
+
+        address:
+            supplier.address || "",
+
+        status:
+            getSupplierStatusBoolean(
+                supplier.status
+            ),
+
+        logo:
+            supplier.logo || ""
+
+    };
+
+
+    const changedData = {};
+
+
+    Object.keys(
+        updateData
+    )
+        .forEach(
+            field => {
+
+                if (
+                    field ===
+                    "status"
+                ) {
+
+                    if (
+                        updateData.status !==
+                        originalValues.status
+                    ) {
+
+                        changedData.status =
+                            updateData.status;
+
+                    }
+
+                    return;
+
+                }
+
+
+                if (
+                    String(
+                        updateData[field]
+                    ) !==
+                    String(
+                        originalValues[field]
+                    )
+                ) {
+
+                    changedData[field] =
+                        updateData[field];
+
+                }
+
+            }
+        );
+
+
+    if (
+        Object.keys(
+            changedData
+        ).length ===
+        0
+    ) {
+
+        alert(
+            "No changes were made."
+        );
+
+        closeEditSupplierModal();
+
+        return;
+
+    }
+
+
+    const saveButton =
+        form.querySelector(
+            ".save-btn"
+        );
+
+
+    try {
+
+        if (saveButton) {
+
+            saveButton.disabled =
+                true;
+
+            saveButton.textContent =
+                "Saving...";
+
+        }
+
+
+        // =====================================================
+        // OFFLINE SUPPLIER EDIT
+        // =====================================================
+
+        if (
+            !navigator.onLine
+        ) {
+
+            const updatedSupplier =
+                {
+                    ...supplier,
+                    ...changedData
+                };
+
+
+            /*
+             * Keep status as Boolean locally.
+             */
+
+            updatedSupplier.status =
+                getSupplierStatusBoolean(
+                    updatedSupplier.status
+                );
+
+
+            supplier =
+                updatedSupplier;
+
+
+            await saveToOfflineDB(
+                "suppliers",
+                supplier
+            );
+
+
+            await addToSyncQueue({
+
+                endpoint:
+                    `/suppliers/${supplierId}`,
+
+                method:
+                    "PATCH",
+
+                body:
+                    changedData
+
+            });
+
+
+            renderSupplierInformation();
+
+            updateStats();
+
+            closeEditSupplierModal();
+
+
+            alert(
+                "Supplier changes were saved offline and will synchronize when internet returns."
+            );
+
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // ONLINE SUPPLIER EDIT
+        // =====================================================
+
+        const response =
+            await authenticatedFetch(
+                `${API}/suppliers/${supplierId}`,
+                {
+
+                    method:
+                        "PATCH",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify(
+                            changedData
+                        )
+
+                }
+            );
+
+
+        if (!response) {
+            return;
+        }
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.message ||
+                "Unable to update supplier"
+            );
+
+        }
+
+
+        supplier =
+            result.data ||
+            result.supplier ||
+            result;
+
+
+        await saveToOfflineDB(
+            "suppliers",
+            supplier
+        );
+
+
+        renderSupplierInformation();
+
+        updateStats();
+
+
+        closeEditSupplierModal();
+
+
+        alert(
+            "Supplier updated successfully."
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Update supplier error:",
+            error
+        );
+
+
+        /*
+         * If the connection disappeared during the request,
+         * perform the same offline fallback.
+         */
+
+        if (
+            !navigator.onLine
+        ) {
+
+            try {
+
+                const updatedSupplier =
+                    {
+                        ...supplier,
+                        ...changedData
+                    };
+
+
+                updatedSupplier.status =
+                    getSupplierStatusBoolean(
+                        updatedSupplier.status
+                    );
+
+
+                supplier =
+                    updatedSupplier;
+
+
+                await saveToOfflineDB(
+                    "suppliers",
+                    supplier
+                );
+
+
+                await addToSyncQueue({
+
+                    endpoint:
+                        `/suppliers/${supplierId}`,
+
+                    method:
+                        "PATCH",
+
+                    body:
+                        changedData
+
+                });
+
+
+                renderSupplierInformation();
+
+                updateStats();
+
+                closeEditSupplierModal();
+
+
+                alert(
+                    "Internet connection was lost. Supplier changes were saved offline and will synchronize when internet returns."
+                );
+
+            }
+            catch (offlineError) {
+
+                console.error(
+                    "Offline supplier fallback failed:",
+                    offlineError
+                );
+
+
+                alert(
+                    "Failed to save supplier changes offline."
+                );
+
+            }
+
+        }
+        else {
+
+            alert(
+                error.message ||
+                "Failed to update supplier."
+            );
+
+        }
+
+        if (saveButton) {
+
+            saveButton.disabled =
+                false;
+
+            saveButton.textContent =
+                "Save Changes";
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// CLOSE EDIT SUPPLIER MODAL
+// ============================================================
+
+function closeEditSupplierModal() {
+
+    const modal =
+        document.getElementById(
+            "editSupplierModal"
+        );
+
+
+    if (modal) {
+
+        modal.remove();
+
+    }
+
+}
+
+
+// ============================================================
+// OPEN INVOICE EDIT POPUP
+// ============================================================
+
+function openInvoiceEditPopup(
+    invoice
+) {
+
+    editingInvoice =
+        structuredClone(
+            invoice
+        );
+
+
+    const info =
+        document.getElementById(
+            "editInvoiceInfo"
+        );
+
+
+    if (info) {
+
+        info.innerHTML = `
+
+            <div>
+
+                <strong>
+                    Invoice:
+                </strong>
+
+                INV-${escapeHTML(
+                    String(
+                        invoice.id ?? ""
+                    )
+                )}
+
+            </div>
+
+
+            <div>
+
+                <strong>
+                    Supplier:
+                </strong>
+
+                ${escapeHTML(
+                    supplier?.companyName ||
+                    "Supplier"
+                )}
+
+            </div>
+
+
+            <div>
+
+                <strong>
+                    Date:
+                </strong>
+
+                ${escapeHTML(
+                    formatDate(
+                        invoice.date
+                    )
+                )}
+
+            </div>
+
+        `;
+
+    }
+
+
+    const tbody =
+        document.getElementById(
+            "editInvoiceTbody"
+        );
+
+
+    if (!tbody) {
+        return;
+    }
+
+
+    tbody.innerHTML =
+        "";
+
+
+    const items =
+        Array.isArray(
+            editingInvoice.items
+        )
+            ? editingInvoice.items
+            : [];
+
+
+    items.forEach(
+        (
+            item,
+            index
+        ) => {
+
+            const purchaseQty =
+                Number(
+                    item.quantity || 0
+                );
+
+
+            const returnQty =
+                getReturnQuantity(
+                    item
+                );
+
+
+            const price =
+                Number(
+                    item.price || 0
+                );
+
+
+            const netQty =
+                Math.max(
+                    purchaseQty -
+                    returnQty,
+                    0
+                );
+
+
+            const amount =
+                netQty *
+                price;
+
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            row.innerHTML = `
+
+                <td>
+                    ${escapeHTML(
+                        item.productName ||
+                        item.name ||
+                        item.product?.name ||
+                        "-"
+                    )}
+                </td>
+
+
+                <td>
+                    ${purchaseQty}
+                </td>
+
+
+                <td>
+
+                    <input
+                        type="number"
+                        class="edit-return-input"
+                        data-index="${index}"
+                        min="0"
+                        max="${purchaseQty}"
+                        value="${returnQty}"
+                    >
+
+                </td>
+
+
+                <td class="edit-net">
+                    ${netQty}
+                </td>
+
+
+                <td>
+                    ${formatMoney(price)}
+                </td>
+
+
+                <td class="edit-amount">
+                    ${formatMoney(amount)}
+                </td>
+
+            `;
+
+
+            tbody.appendChild(
+                row
+            );
+
+        }
+    );
+
+
+    const cashInput =
+        document.getElementById(
+            "editCash"
+        );
+
+
+    if (cashInput) {
+
+        cashInput.value =
+            Number(
+                editingInvoice.cash || 0
+            );
+
+    }
+
+
+    const commissionElement =
+        document.querySelector(
+            "#invoiceEditModal #editingComission"
+        );
+
+
+    if (commissionElement) {
+
+        commissionElement.textContent =
+            Number(
+                editingInvoice.dynamicComission ||
+                0
+            ) * 100;
+
+    }
+
+
+    updateEditInvoiceTotals();
+
+
+    const modal =
+        document.getElementById(
+            "invoiceEditModal"
+        );
+
+
+    if (modal) {
+
+        modal.classList.add(
+            "show"
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// UPDATE EDIT INVOICE TOTALS
+// ============================================================
+
+function updateEditInvoiceTotals() {
+
+    if (!editingInvoice) {
+        return;
+    }
+
+
+    const rows =
+        document.querySelectorAll(
+            "#editInvoiceTbody tr"
+        );
+
+
+    let subtotal = 0;
+
+    let nonCommissionableAmount = 0;
+
+
+    rows.forEach(
+        (
+            row,
+            index
+        ) => {
+
+            const item =
+                editingInvoice.items[index];
+
+
+            if (!item) {
+                return;
+            }
+
+
+            const purchaseQty =
+                Number(
+                    item.quantity || 0
+                );
+
+
+            const returnInput =
+                row.querySelector(
+                    ".edit-return-input"
+                );
+
+
+            let returnQty =
+                Number(
+                    returnInput?.value || 0
+                );
+
+
+            returnQty =
+                Math.max(
+                    0,
+                    Math.min(
+                        returnQty,
+                        purchaseQty
+                    )
+                );
+
+
+            item.returnQuantity =
+                returnQty;
+
+
+            item.returnedQuantity =
+                returnQty;
+
+
+            const netQty =
+                Math.max(
+                    purchaseQty -
+                    returnQty,
+                    0
+                );
+
+
+            const price =
+                Number(
+                    item.price || 0
+                );
+
+
+            const amount =
+                netQty *
+                price;
+
+
+            subtotal +=
+                amount;
+
+
+            if (
+                item.commissionApplicable ===
+                "no"
+            ) {
+
+                nonCommissionableAmount +=
+                    amount;
+
+            }
+
+
+            const netCell =
+                row.querySelector(
+                    ".edit-net"
+                );
+
+
+            if (netCell) {
+
+                netCell.textContent =
+                    netQty;
+
+            }
+
+
+            const amountCell =
+                row.querySelector(
+                    ".edit-amount"
+                );
+
+
+            if (amountCell) {
+
+                amountCell.textContent =
+                    formatMoney(
+                        amount
+                    );
+
+            }
+
+        }
+    );
+
+
+    const commissionRate =
+        Number(
+            editingInvoice.dynamicComission ||
+            0
+        );
+
+
+    const commissionableAmount =
+        Math.max(
+            subtotal -
+            nonCommissionableAmount,
+            0
+        );
+
+
+    const commission =
+        commissionableAmount *
+        commissionRate;
+
+
+    const discount =
+        Number(
+            editingInvoice.discount ||
+            0
+        );
+
+
+    const netTotal =
+        subtotal -
+        commission -
+        discount;
+
+
+    const cash =
+        Number(
+            document.getElementById(
+                "editCash"
+            )?.value || 0
+        );
+
+
+    const currentBill =
+        netTotal -
+        cash;
+
+
+    const arrears =
+        Number(
+            editingInvoice.arrears || 0
+        );
+
+
+    const balance =
+        currentBill +
+        arrears;
+
+
+    editingInvoice.subtotal =
+        subtotal;
+
+
+    editingInvoice.commission =
+        commission;
+
+
+    editingInvoice.netTotal =
+        netTotal;
+
+
+    editingInvoice.cash =
+        cash;
+
+
+    editingInvoice.currentBill =
+        currentBill;
+
+
+    editingInvoice.balance =
+        balance;
+
+
+    setText(
+        "editSubtotal",
+        formatMoney(
+            subtotal
+        )
+    );
+
+
+    setText(
+        "editCommission",
+        formatMoney(
+            commission
+        )
+    );
+
+
+    setText(
+        "editDiscount",
+        formatMoney(
+            discount
+        )
+    );
+
+
+    setText(
+        "editNetTotal",
+        formatMoney(
+            netTotal
+        )
+    );
+
+
+    setText(
+        "editCurrentBill",
+        formatMoney(
+            currentBill
+        )
+    );
+
+
+    setText(
+        "editArrears",
+        formatMoney(
+            arrears
+        )
+    );
+
+
+    setText(
+        "editBalance",
+        formatMoney(
+            balance
+        )
+    );
+
+}
+
+
+// ============================================================
+// SET TEXT
+// ============================================================
+
+function setText(
+    id,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (element) {
+
+        element.textContent =
+            value;
+
+    }
+
+}
+
+
+// ============================================================
+// SETUP INVOICE EDITING
+// ============================================================
+
+function setupInvoiceEditing() {
+
+    const tbody =
+        document.getElementById(
+            "editInvoiceTbody"
+        );
+
+
+    const cashInput =
+        document.getElementById(
+            "editCash"
+        );
+
+
+    const saveBtn =
+        document.getElementById(
+            "saveInvoiceEdit"
+        );
+
+
+    const cancelBtn =
+        document.getElementById(
+            "cancelInvoiceEdit"
+        );
+
+
+    const closeBtn =
+        document.getElementById(
+            "closeInvoiceModal"
+        );
+
+
+    const modal =
+        document.getElementById(
+            "invoiceEditModal"
+        );
+
+
+    tbody?.addEventListener(
+        "input",
+        event => {
+
+            if (
+                event.target.classList.contains(
+                    "edit-return-input"
+                )
+            ) {
+
+                updateEditInvoiceTotals();
+
+            }
+
+        }
+    );
+
+
+    cashInput?.addEventListener(
+        "input",
+        () => {
+
+            updateEditInvoiceTotals();
+
+        }
+    );
+
+
+    const closeModal =
+        () => {
+
+            modal?.classList.remove(
+                "show"
+            );
+
+            editingInvoice =
+                null;
+
+        };
+
+
+    cancelBtn?.addEventListener(
+        "click",
+        closeModal
+    );
+
+
+    closeBtn?.addEventListener(
+        "click",
+        closeModal
+    );
+
+
+    modal?.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target ===
+                modal
+            ) {
+
+                closeModal();
+
+            }
+
+        }
+    );
+
+
+    saveBtn?.addEventListener(
+        "click",
+        saveSupplierInvoiceEdit
+    );
+
+}
+
+
+// ============================================================
+// APPLY SUPPLIER RETURN LOCALLY
+// ============================================================
+//
+// Supplier invoice stock rule:
+//
+// old return = 2
+// new return = 5
+//
+// Product stock changes:
+// 2 - 5 = -3
+//
+// old return = 5
+// new return = 2
+//
+// Product stock changes:
+// 5 - 2 = +3
+//
+// This matches the backend supplier invoice rule.
+// ============================================================
+
+async function applySupplierReturnLocally(
+    oldInvoice,
+    updatedInvoice
+) {
+
+    const localProducts =
+        await getAllFromOfflineDB(
+            "products"
+        );
+
+
+    const oldItems =
+        oldInvoice.items || [];
+
+
+    const newItems =
+        updatedInvoice.items || [];
+
+
+    const updatedProducts =
+        localProducts.map(
+            product => {
+
+                const productId =
+                    Number(
+                        product.id
+                    );
+
+
+                const oldItem =
+                    oldItems.find(
+                        item =>
+                            Number(
+                                item.productId
+                            ) ===
+                            productId
+                    );
+
+
+                const newItem =
+                    newItems.find(
+                        item =>
+                            Number(
+                                item.productId
+                            ) ===
+                            productId
+                    );
+
+
+                if (
+                    !oldItem &&
+                    !newItem
+                ) {
+
+                    return product;
+
+                }
+
+
+                const oldReturn =
+                    getReturnQuantity(
+                        oldItem
+                    );
+
+
+                const newReturn =
+                    getReturnQuantity(
+                        newItem
+                    );
+
+
+                const stockDifference =
+                    oldReturn -
+                    newReturn;
+
+
+                if (
+                    stockDifference ===
+                    0
+                ) {
+
+                    return product;
+
+                }
+
+
+                return {
+
+                    ...product,
+
+                    stock:
+                        (
+                            Number(
+                                product.stock
+                            ) || 0
+                        ) +
+                        stockDifference
+
+                };
+
+            }
+        );
+
+
+    await saveManyToOfflineDB(
+        "products",
+        updatedProducts
+    );
+
+
+    // ========================================================
+    // UPDATE SUPPLIER BALANCE LOCALLY
+    // ========================================================
+
+    const localSuppliers =
+        await getAllFromOfflineDB(
+            "suppliers"
+        );
+
+
+    const updatedSuppliers =
+        localSuppliers.map(
+            item => {
+
+                if (
+                    Number(
+                        item.id
+                    ) !==
+                    Number(
+                        updatedInvoice.partyId
+                    )
+                ) {
+
+                    return item;
+
+                }
+
+
+                return {
+
+                    ...item,
+
+                    outstandingBalance:
+                        Number(
+                            updatedInvoice.balance
+                        ) || 0
+
+                };
+
+            }
+        );
+
+
+    await saveManyToOfflineDB(
+        "suppliers",
+        updatedSuppliers
+    );
+
+
+    /*
+     * Also update the page's supplier object.
+     */
+
+    const updatedSupplier =
+        updatedSuppliers.find(
+            item =>
+                Number(
+                    item.id
+                ) ===
+                Number(
+                    supplierId
+                )
+        );
+
+
+    if (updatedSupplier) {
+
+        supplier =
+            updatedSupplier;
+
+    }
+
+}
+
+
+// ============================================================
+// SAVE SUPPLIER INVOICE EDIT
+// ============================================================
+
+async function saveSupplierInvoiceEdit() {
+
+    if (!editingInvoice) {
+        return;
+    }
+
+
+    try {
+
+        updateEditInvoiceTotals();
+
+
+        const saveBtn =
+            document.getElementById(
+                "saveInvoiceEdit"
+            );
+
+
+        if (saveBtn) {
+
+            saveBtn.disabled =
+                true;
+
+            saveBtn.textContent =
+                "Saving...";
+
+        }
+
+
+        const oldInvoice =
+            structuredClone(
+                editingInvoice
+            );
+
+
+        const updatedInvoice =
+            structuredClone(
+                editingInvoice
+            );
+
+
+        /*
+         * Build the exact payload expected by:
+         *
+         * PUT /invoice/:id/update-last
+         */
+
+        const items =
+            updatedInvoice.items.map(
+                item => ({
+
+                    productId:
+                        item.productId,
+
+                    returnQuantity:
+                        getReturnQuantity(
+                            item
+                        )
+
+                })
+            );
+
+
+        const cash =
+            Number(
+                updatedInvoice.cash || 0
+            );
+
+
+        // =====================================================
+        // OFFLINE
+        // =====================================================
+
+        if (
+            !navigator.onLine
+        ) {
+
+            await applySupplierReturnLocally(
+                oldInvoice,
+                updatedInvoice
+            );
+
+
+            await saveToOfflineDB(
+                "invoices",
+                updatedInvoice
+            );
+
+
+            await addToSyncQueue({
+
+                endpoint:
+                    `/invoice/${updatedInvoice.id}/update-last`,
+
+                method:
+                    "PUT",
+
+                body: {
+
+                    items:
+                        items,
+
+                    cash:
+                        cash
+
+                }
+
+            });
+
+
+            invoiceForPrint =
+                updatedInvoice;
+
+
+            editingInvoice =
+                null;
+
+
+            document
+                .getElementById(
+                    "invoiceEditModal"
+                )
+                ?.classList.remove(
+                    "show"
+                );
+
+
+            await loadSupplierInvoices();
+
+
+            filteredSupplierInvoices =
+                [...supplierInvoices];
+
+
+            renderSummary();
+
+            updateStats();
+
+            renderInvoice(
+                updatedInvoice
+            );
+
+
+            alert(
+                "Invoice changes were saved offline and will synchronize when internet returns."
+            );
+
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // ONLINE
+        // =====================================================
+
+        const response =
+            await authenticatedFetch(
+                `${API}/invoice/${updatedInvoice.id}/update-last`,
+                {
+
+                    method:
+                        "PUT",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            items:
+                                items,
+
+                            cash:
+                                cash
+
+                        })
+
+                }
+            );
+
+
+        if (!response) {
+            return;
+        }
+
+
+        const result =
+            await response.json()
+                .catch(
+                    () => ({})
+                );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.message ||
+                result.error ||
+                "Failed to update invoice."
+            );
+
+        }
+
+
+        const serverInvoice =
+            result.data ||
+            result.invoice ||
+            result;
+
+
+        /*
+         * Backend is authoritative after a successful online
+         * edit, so cache the server invoice rather than
+         * applying the stock difference locally again.
+         */
+
+        if (
+            serverInvoice &&
+            serverInvoice.id !== undefined
+        ) {
+
+            await saveToOfflineDB(
+                "invoices",
+                serverInvoice
+            );
+
+
+            invoiceForPrint =
+                serverInvoice;
+
+        }
+
+
+        // =====================================================
+        // REFRESH SUPPLIER
+        // =====================================================
+
+        try {
+
+            const supplierResponse =
+                await authenticatedFetch(
+                    `${API}/suppliers/${supplierId}`
+                );
+
+
+            if (
+                supplierResponse &&
+                supplierResponse.ok
+            ) {
+
+                const supplierResult =
+                    await supplierResponse.json();
+
+
+                supplier =
+                    supplierResult.data ||
+                    supplierResult.supplier ||
+                    supplierResult;
+
+
+                await saveToOfflineDB(
+                    "suppliers",
+                    supplier
+                );
+
+            }
+
+        }
+        catch (supplierRefreshError) {
+
+            console.error(
+                "Supplier refresh after invoice edit failed:",
+                supplierRefreshError
+            );
+
+        }
+
+
+        // =====================================================
+        // REFRESH PRODUCTS
+        // =====================================================
+
+        try {
+
+            const productsResponse =
+                await authenticatedFetch(
+                    `${API}/products`
+                );
+
+
+            if (
+                productsResponse &&
+                productsResponse.ok
+            ) {
+
+                const productsResult =
+                    await productsResponse.json();
+
+
+                const freshProducts =
+                    productsResult.products ||
+                    [];
+
+
+                if (
+                    Array.isArray(
+                        freshProducts
+                    )
+                ) {
+
+                    await clearOfflineStore(
+                        "products"
+                    );
+
+
+                    await saveManyToOfflineDB(
+                        "products",
+                        freshProducts.map(
+                            product => ({
+
+                                id:
+                                    Number(
+                                        product.id
+                                    ),
+
+                                productName:
+                                    product.name ??
+                                    product.productName ??
+                                    "",
+
+                                brand:
+                                    product.brand ??
+                                    product.company ??
+                                    "",
+
+                                company:
+                                    product.company ??
+                                    "",
+
+                                purchasePrice:
+                                    Number(
+                                        product.purchasePrice ??
+                                        product.price ??
+                                        0
+                                    ),
+
+                                salePrice:
+                                    Number(
+                                        product.salePrice ??
+                                        0
+                                    ),
+
+                                category:
+                                    product.category ??
+                                    "Other",
+
+                                description:
+                                    product.description ??
+                                    "",
+
+                                stock:
+                                    Number(
+                                        product.qunatity ??
+                                        product.stock ??
+                                        product.quantity ??
+                                        0
+                                    ),
+
+                                commissionApplicable:
+                                    product.commissionApplicable,
+
+                                lastPurchase:
+                                    product.lastPurchase ??
+                                    ""
+
+                            })
+                        )
+                    );
+
+                }
+
+            }
+
+        }
+        catch (productRefreshError) {
+
+            console.error(
+                "Product refresh after invoice edit failed:",
+                productRefreshError
+            );
+
+        }
+
+
+        // =====================================================
+        // CLOSE + REBUILD
+        // =====================================================
+
+        document
+            .getElementById(
+                "invoiceEditModal"
+            )
+            ?.classList.remove(
+                "show"
+            );
+
+
+        editingInvoice =
+            null;
+
+
+        await loadSupplierInvoices();
+
+        await loadSupplierProducts();
+
+
+        filteredSupplierInvoices =
+            [...supplierInvoices];
+
+
+        filteredSupplierProducts =
+            [...supplierProducts];
+
+
+        renderSummary();
+
+        renderProducts();
+
+        updateStats();
+
+
+        if (invoiceForPrint) {
+
+            renderInvoice(
+                invoiceForPrint
+            );
+
+        }
+
+
+        alert(
+            "Invoice updated successfully."
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "saveSupplierInvoiceEdit error:",
+            error
+        );
+
+
+        // =====================================================
+        // NETWORK LOST DURING ONLINE REQUEST
+        // =====================================================
+
+        if (
+            !navigator.onLine
+        ) {
+
+            try {
+
+                /*
+                 * The request did not complete because the
+                 * network disappeared. Apply the local update
+                 * and queue the backend operation.
+                 */
+
+                await applySupplierReturnLocally(
+                    oldInvoice,
+                    updatedInvoice
+                );
+
+
+                await saveToOfflineDB(
+                    "invoices",
+                    updatedInvoice
+                );
+
+
+                await addToSyncQueue({
+
+                    endpoint:
+                        `/invoice/${updatedInvoice.id}/update-last`,
+
+                    method:
+                        "PUT",
+
+                    body: {
+
+                        items:
+                            items,
+
+                        cash:
+                            cash
+
+                    }
+
+                });
+
+
+                invoiceForPrint =
+                    updatedInvoice;
+
+
+                editingInvoice =
+                    null;
+
+
+                document
+                    .getElementById(
+                        "invoiceEditModal"
+                    )
+                    ?.classList.remove(
+                        "show"
+                    );
+
+
+                await loadSupplierInvoices();
+
+
+                filteredSupplierInvoices =
+                    [...supplierInvoices];
+
+
+                renderSummary();
+
+                updateStats();
+
+                renderInvoice(
+                    updatedInvoice
+                );
+
+
+                alert(
+                    "Internet connection was lost. Invoice changes were saved offline and will synchronize when internet returns."
+                );
+
+            }
+            catch (offlineError) {
+
+                console.error(
+                    "Offline invoice fallback failed:",
+                    offlineError
+                );
+
+
+                alert(
+                    "Failed to save invoice changes offline."
+                );
+
+            }
+
+        }
+        else {
+
+            alert(
+                error.message ||
+                "Unable to update invoice."
+            );
+
+        }
+
+    }
+    finally {
+
+        const saveBtn =
+            document.getElementById(
+                "saveInvoiceEdit"
+            );
+
+
+        if (saveBtn) {
+
+            saveBtn.disabled =
+                false;
+
+            saveBtn.textContent =
+                "Save Changes";
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// PRINT SUPPLIER SUMMARY
+// ============================================================
+
+function printSupplierSummary() {
+
+    if (!supplier) {
+
+        alert(
+            "Supplier information is not loaded."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        !supplierInvoices ||
+        supplierInvoices.length ===
+        0
+    ) {
+
+        alert(
+            "No supplier invoice records found."
+        );
+
+        return;
+
+    }
+
+
+    const summary =
+        filteredSupplierInvoices.length
+            ? filteredSupplierInvoices
+            : supplierInvoices;
+
+
+    if (!summary.length) {
+
+        alert(
+            "No invoice records found."
+        );
+
+        return;
+
+    }
+
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=1200,height=900"
+        );
+
+
+    if (!printWindow) {
+
+        alert(
+            "Please allow popups to print the supplier statement."
+        );
+
+        return;
+
+    }
+
+
+    const supplierName =
+        supplier.companyName ||
+        "-";
+
+
+    const supplierIdValue =
+        supplier.id ||
+        supplierId ||
+        "-";
+
+
+    let openingBalance =
+        Number(
+            supplier.openingBalance ??
+            0
+        );
+
+
+    if (
+        supplier.openingBalance ===
+            undefined ||
+        supplier.openingBalance ===
+            null
+    ) {
+
+        if (
+            summary.length > 0
+        ) {
+
+            const first =
+                [...summary]
+                    .sort(
+                        (a, b) =>
+                            new Date(a.date) -
+                            new Date(b.date)
+                    )[0];
+
+
+            openingBalance =
+                Number(
+                    first.balance ||
+                    0
+                ) -
+                Number(
+                    first.amount ??
+                    first.netTotal ??
+                    first.subtotal ??
+                    0
+                ) +
+                Number(
+                    first.commission ||
+                    0
+                ) +
+                Number(
+                    first.cash ||
+                    0
+                );
+
+        }
+
+    }
+
+
+    const sortedSummary =
+        [...summary]
+            .sort(
+                (a, b) =>
+                    new Date(a.date) -
+                    new Date(b.date)
+            );
+
+
+    const rows =
+        sortedSummary
+            .map(
+                (
+                    invoice,
+                    index
+                ) => {
+
+                    const date =
+                        invoice.date
+                            ? new Date(
+                                invoice.date
+                            ).toLocaleDateString(
+                                "en-GB",
+                                {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric"
+                                }
+                            )
+                            : "-";
+
+
+                    const amount =
+                        Number(
+                            invoice.amount ??
+                            invoice.netTotal ??
+                            invoice.subtotal ??
+                            0
+                        );
+
+
+                    const commission =
+                        Number(
+                            invoice.commission ||
+                            0
+                        );
+
+
+                    const advance =
+                        Number(
+                            invoice.cash ||
+                            0
+                        );
+
+
+                    const balance =
+                        Number(
+                            invoice.balance ||
+                            0
+                        );
+
+
+                    const invoiceNo =
+                        invoice.invoiceNo ||
+                        invoice.id ||
+                        invoice.invoiceId ||
+                        "-";
+
+
+                    const totalQuantity =
+                        invoice.totalQuantity !==
+                        undefined
+                            ? Number(
+                                invoice.totalQuantity ||
+                                0
+                            )
+                            : (
+                                invoice.items ||
+                                []
+                            ).reduce(
+                                (
+                                    total,
+                                    item
+                                ) =>
+                                    total +
+                                    Number(
+                                        item.quantity ||
+                                        0
+                                    ),
+                                0
+                            );
+
+
+                    return `
+
+                        <tr>
+
+                            <td class="center">
+                                ${index + 1}
+                            </td>
+
+                            <td class="center">
+                                ${date}
+                            </td>
+
+                            <td class="center">
+                                ${escapeHTML(
+                                    String(
+                                        invoiceNo
+                                    )
+                                )}
+                            </td>
+
+                            <td>
+                                Purchase of Ice Cream
+                            </td>
+
+                            <td class="number">
+                                ${totalQuantity.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
+
+                            <td class="number">
+                                ${amount.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
+
+                            <td class="number">
+                                ${commission.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
+
+                            <td class="number">
+                                ${advance.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
+
+                            <td class="number balance-cell">
+                                ${balance.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
+
+
+    const totalItems =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) => {
+
+                if (
+                    invoice.totalQuantity !==
+                    undefined
+                ) {
+
+                    return (
+                        sum +
+                        Number(
+                            invoice.totalQuantity ||
+                            0
+                        )
+                    );
+
+                }
+
+
+                return (
+                    sum +
+                    (
+                        invoice.items ||
+                        []
+                    ).reduce(
+                        (
+                            itemSum,
+                            item
+                        ) =>
+                            itemSum +
+                            Number(
+                                item.quantity ||
+                                0
+                            ),
+                        0
+                    )
+                );
+
+            },
+            0
+        );
+
+
+    const totalAmount =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.amount ??
+                    invoice.netTotal ??
+                    invoice.subtotal ??
+                    0
+                ),
+            0
+        );
+
+
+    const totalCommission =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.commission ||
+                    0
+                ),
+            0
+        );
+
+
+    const totalAdvance =
+        sortedSummary.reduce(
+            (
+                sum,
+                invoice
+            ) =>
+                sum +
+                Number(
+                    invoice.cash ||
+                    0
+                ),
+            0
+        );
+
+
+    const finalBalance =
+        Number(
+            sortedSummary[
+                sortedSummary.length -
+                1
+            ]?.balance ||
+            0
+        );
+
+
+    printWindow.document.write(`
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>
+    Supplier Statement -
+    ${escapeHTML(supplierName)}
+</title>
+
+<style>
+
+@page {
+
+    size: A4 landscape;
+
+    margin: 12mm;
+
+}
+
+
+* {
+
+    box-sizing: border-box;
+
+}
+
+
+body {
+
+    margin: 0;
+
+    padding: 0;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    color: #000;
+
+    background: #fff;
+
+    font-size: 10px;
+
+}
+
+
+.statement {
+
+    width: 100%;
+
+}
+
+
+.header {
+
+    text-align: center;
+
+    margin-bottom: 12px;
+
+}
+
+
+.company-name {
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    margin-bottom: 4px;
+
+}
+
+
+.company-address {
+
+    font-size: 9px;
+
+    line-height: 1.4;
+
+}
+
+
+.statement-title {
+
+    font-size: 16px;
+
+    font-weight: bold;
+
+    margin-top: 8px;
+
+    text-decoration: underline;
+
+}
+
+
+.supplier-name {
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    margin-top: 4px;
+
+}
+
+
+.info {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin: 8px 0;
+
+}
+
+
+.info-left {
+
+    font-weight: bold;
+
+}
+
+
+.opening-balance {
+
+    border: 1px solid #000;
+
+    padding: 5px 12px;
+
+    font-size: 12px;
+
+    font-weight: bold;
+
+}
+
+
+table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    table-layout: fixed;
+
+}
+
+
+th,
+td {
+
+    border: 1px solid #555;
+
+    padding: 4px 5px;
+
+    vertical-align: middle;
+
+}
+
+
+th {
+
+    text-align: center;
+
+    font-weight: bold;
+
+    background: #f2f2f2;
+
+}
+
+
+.center {
+
+    text-align: center;
+
+}
+
+
+.number {
+
+    text-align: right;
+
+    white-space: nowrap;
+
+}
+
+
+.balance-cell {
+
+    font-weight: bold;
+
+}
+
+
+.total-row td {
+
+    font-weight: bold;
+
+    border-top: 2px solid #000;
+
+}
+
+
+.footer {
+
+    margin-top: 20px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+}
+
+
+.signature {
+
+    width: 180px;
+
+    text-align: center;
+
+}
+
+
+.signature-line {
+
+    border-top: 1px solid #000;
+
+    margin-bottom: 5px;
+
+}
+
+
+.page-number {
+
+    text-align: center;
+
+    margin-top: 15px;
+
+    font-size: 9px;
+
+}
+
+
+.col-no {
+    width: 4%;
+}
+
+.col-date {
+    width: 9%;
+}
+
+.col-invoice {
+    width: 8%;
+}
+
+.col-particular {
+    width: 23%;
+}
+
+.col-items {
+    width: 8%;
+}
+
+.col-amount {
+    width: 11%;
+}
+
+.col-commission {
+    width: 12%;
+}
+
+.col-advance {
+    width: 11%;
+}
+
+.col-balance {
+    width: 14%;
+}
+
+
+@media print {
+
+    body {
+
+        -webkit-print-color-adjust:
+            exact;
+
+        print-color-adjust:
+            exact;
+
+    }
+
+    thead {
+
+        display: table-header-group;
+
+    }
+
+    tr {
+
+        page-break-inside: avoid;
+
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div class="statement">
+
+
+    <div class="header">
+
+        <div class="company-name">
+            AJWA ICE CREAM
+        </div>
+
+
+        <div class="company-address">
+
+            Head Office: New Ring Road Near Madni Colony
+            Back side Zantara Town Peshawar
+
+            <br>
+
+            Tel # 091-2601784
+
+            &nbsp;&nbsp;
+
+            Mobile # 0345-9101300 /
+            0317-1234570
+
+            <br>
+
+            Peshawar Pakistan
+
+        </div>
+
+
+        <div class="statement-title">
+            SUPPLIER STATEMENT / HISTORY
+        </div>
+
+
+        <div class="supplier-name">
+            ${escapeHTML(supplierName)}
+        </div>
+
+    </div>
+
+
+    <div class="info">
+
+        <div class="info-left">
+
+            Supplier ID:
+            ${escapeHTML(
+                String(supplierIdValue)
+            )}
+
+            &nbsp;&nbsp;&nbsp;
+
+            Total Transactions:
+            ${sortedSummary.length}
+
+        </div>
+
+
+        <div class="opening-balance">
+
+            Opening Balance:
+            Rs.
+            ${openingBalance.toLocaleString(
+                "en-PK"
+            )}
+
+        </div>
+
+    </div>
+
+
+    <table>
+
+
+        <colgroup>
+
+            <col class="col-no">
+
+            <col class="col-date">
+
+            <col class="col-invoice">
+
+            <col class="col-particular">
+
+            <col class="col-items">
+
+            <col class="col-amount">
+
+            <col class="col-commission">
+
+            <col class="col-advance">
+
+            <col class="col-balance">
+
+        </colgroup>
+
+
+        <thead>
+
+            <tr>
+
+                <th>S. No</th>
+
+                <th>Date</th>
+
+                <th>Invoice<br>No</th>
+
+                <th>Particulars</th>
+
+                <th>No's of<br>Items</th>
+
+                <th>Amount</th>
+
+                <th>Commission/Discount</th>
+
+                <th>Advance Payment</th>
+
+                <th>Balance Amount</th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            <tr>
+
+                <td class="center">
+                    1
+                </td>
+
+                <td></td>
+
+                <td></td>
+
+                <td>
+                    <strong>
+                        Opening Balance
+                    </strong>
+                </td>
+
+                <td></td>
+
+                <td class="number">
+                    -
+                </td>
+
+                <td class="number">
+                    -
+                </td>
+
+                <td class="number">
+                    -
+                </td>
+
+                <td class="number balance-cell">
+                    ${openingBalance.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+            </tr>
+
+
+            ${rows}
+
+
+            <tr class="total-row">
+
+                <td
+                    colspan="4"
+                    class="number"
+                >
+                    TOTAL
+                </td>
+
+                <td class="number">
+                    ${totalItems.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+                <td class="number">
+                    ${totalAmount.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+                <td class="number">
+                    ${totalCommission.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+                <td class="number">
+                    ${totalAdvance.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+                <td class="number">
+                    ${finalBalance.toLocaleString(
+                        "en-PK"
+                    )}
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+
+    <div class="footer">
+
+
+        <div class="signature">
+
+            <div class="signature-line"></div>
+
+            Prepared By
+
+            <br>
+
+            Accounts Clerk
+
+        </div>
+
+
+        <div class="signature">
+
+            <div class="signature-line"></div>
+
+            Verified By
+
+            <br>
+
+            Manager Accounts
+
+        </div>
+
+
+        <div class="signature">
+
+            <div class="signature-line"></div>
+
+            Approved By
+
+            <br>
+
+            MD/HoO
+
+        </div>
+
+
+    </div>
+
+
+    <div class="page-number">
+        Page 1 of 1
+    </div>
+
+
+</div>
+
+
+<script>
+
+window.onload = function() {
+
+    window.print();
+
+};
+
+window.onafterprint = function() {
+
+    window.close();
+
+};
+
+<\/script>
+
+
+</body>
+
+</html>
+
+    `);
+
+
+    printWindow.document.close();
+
+}
+
+
+// ============================================================
+// PRINT LINK / INVOICE
+// ============================================================
+
+function setupButtons() {
+
+    const purchaseButton =
+        document.getElementById(
+            "purchaseStockBtn"
+        );
+
+
+    if (purchaseButton) {
+
+        purchaseButton.addEventListener(
+            "click",
+            () => {
+
+                window.location.href =
+                    `purchase-stocks.html?supplierId=${supplierId}`;
+
+            }
+        );
+
+    }
+
+
+    const addPurchaseButton =
+        document.getElementById(
+            "addPurchaseBtn"
+        );
+
+
+    if (addPurchaseButton) {
+
+        addPurchaseButton.addEventListener(
+            "click",
+            () => {
+
+                window.location.href =
+                    `purchase-stocks.html?supplierId=${supplierId}`;
+
+            }
+        );
+
+    }
+
+
+    const addProductButton =
+        document.getElementById(
+            "addProductBtn"
+        );
+
+
+    if (addProductButton) {
+
+        addProductButton.addEventListener(
+            "click",
+            () => {
+
+                window.location.href =
+                    `Products.html?supplierId=${supplierId}`;
+
+            }
+        );
+
+    }
+
+
+    const printLink =
+        document.getElementById(
+            "printLink"
+        );
+
+
+    if (printLink) {
+
+        printLink.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+
+                if (!invoiceForPrint) {
+
+                    alert(
+                        "Please select an invoice first."
+                    );
+
+                    return;
+
+                }
+
+
+                printRealInvoice(
+                    invoiceForPrint
+                );
+
+            }
+        );
+
+    }
+
+
+    const fullscreenLink =
+        document.getElementById(
+            "fullscreenLink"
+        );
+
+
+    if (fullscreenLink) {
+
+        fullscreenLink.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+
+                const invoicePanel =
+                    document.querySelector(
+                        ".invoice-panel"
+                    );
+
+
+                if (
+                    invoicePanel &&
+                    invoicePanel.requestFullscreen
+                ) {
+
+                    invoicePanel.requestFullscreen();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    document
+        .getElementById(
+            "PrintSummary"
+        )
+        ?.addEventListener(
+            "click",
+            () => {
+
+                printSupplierSummary();
+
+            }
+        );
+
+}
+
+
+// ============================================================
 // REAL INVOICE PRINT
 // ============================================================
 
-function printRealInvoice(invoice) {
+function printRealInvoice(
+    invoice
+) {
 
     if (!invoice) {
 
@@ -1674,95 +6455,110 @@ function printRealInvoice(invoice) {
 
 
     const items =
-        invoice.items || [];
+        Array.isArray(
+            invoice.items
+        )
+            ? invoice.items
+            : [];
 
 
     const itemsRows =
-        items.map(
-            (item, index) => {
+        items
+            .map(
+                (
+                    item,
+                    index
+                ) => {
 
-                const quantity =
-                    Number(
-                        item.quantity || 0
-                    );
-
-
-                const returned =
-                    Number(
-                        item.returnedQuantity ??
-                        item.returnQuantity ??
-                        0
-                    );
+                    const quantity =
+                        Number(
+                            item.quantity || 0
+                        );
 
 
-                const net =
-                    quantity -
-                    returned;
+                    const returned =
+                        getReturnQuantity(
+                            item
+                        );
 
 
-                const price =
-                    Number(
-                        item.price || 0
-                    );
+                    const net =
+                        Math.max(
+                            quantity -
+                            returned,
+                            0
+                        );
 
 
-                const amount =
-                    item.amount !== undefined
-                        ? Number(
-                            item.amount || 0
-                        )
-                        : net * price;
+                    const price =
+                        Number(
+                            item.price || 0
+                        );
 
 
-                return `
+                    const amount =
+                        item.amount !==
+                            undefined
+                            ? Number(
+                                item.amount || 0
+                            )
+                            : net * price;
 
-                    <tr>
 
-                        <td>
-                            ${index + 1}
-                        </td>
+                    return `
 
-                        <td>
-                            ${escapeHTML(
-                                item.productName || "-"
-                            )}
-                        </td>
+                        <tr>
 
-                        <td>
-                            ${price.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
+                            <td>
+                                ${index + 1}
+                            </td>
 
-                        <td>
-                            ${quantity}
-                        </td>
+                            <td>
+                                ${escapeHTML(
+                                    item.productName ||
+                                    "-"
+                                )}
+                            </td>
 
-                        <td>
-                            ${returned}
-                        </td>
+                            <td>
+                                ${price.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
 
-                        <td>
-                            ${net}
-                        </td>
+                            <td>
+                                ${quantity}
+                            </td>
 
-                        <td>
-                            ${amount.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
+                            <td>
+                                ${returned}
+                            </td>
 
-                    </tr>
+                            <td>
+                                ${net}
+                            </td>
 
-                `;
+                            <td>
+                                ${amount.toLocaleString(
+                                    "en-PK"
+                                )}
+                            </td>
 
-            }
-        ).join("");
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
 
 
     const totalQuantity =
         items.reduce(
-            (total, item) =>
+            (
+                total,
+                item
+            ) =>
                 total +
                 Number(
                     item.quantity || 0
@@ -1773,20 +6569,24 @@ function printRealInvoice(invoice) {
 
     const totalReturned =
         items.reduce(
-            (total, item) =>
+            (
+                total,
+                item
+            ) =>
                 total +
-                Number(
-                    item.returnedQuantity ??
-                    item.returnQuantity ??
-                    0
+                getReturnQuantity(
+                    item
                 ),
             0
         );
 
 
     const totalNet =
-        totalQuantity -
-        totalReturned;
+        Math.max(
+            totalQuantity -
+            totalReturned,
+            0
+        );
 
 
     const subtotal =
@@ -1843,16 +6643,20 @@ function printRealInvoice(invoice) {
 
 <title>
     Invoice ${escapeHTML(
-        String(invoice.id || "")
+        String(
+            invoice.id || ""
+        )
     )}
 </title>
-
 
 <style>
 
 @page {
+
     size: A4;
+
     margin: 15mm;
+
 }
 
 
@@ -2139,14 +6943,12 @@ body {
 
 }
 
-
 </style>
 
 </head>
 
 
 <body>
-
 
 <div class="invoice">
 
@@ -2179,11 +6981,10 @@ body {
 
 
         <div class="invoice-title">
-            INVOICE
+            PURCHASE INVOICE
         </div>
 
     </div>
-
 
 
     <table class="info-table">
@@ -2196,10 +6997,10 @@ body {
 
             <td class="info-value">
                 ${escapeHTML(
-                    supplier?.companyName || "-"
+                    supplier?.companyName ||
+                    "-"
                 )}
             </td>
-
 
             <td class="info-label">
                 Inv No.
@@ -2207,7 +7008,10 @@ body {
 
             <td class="info-value">
                 ${escapeHTML(
-                    String(invoice.id || "-")
+                    String(
+                        invoice.id ||
+                        "-"
+                    )
                 )}
             </td>
 
@@ -2223,7 +7027,6 @@ body {
             <td class="info-value">
                 ${invoiceDate}
             </td>
-
 
             <td class="info-label">
                 Supplier ID
@@ -2242,7 +7045,6 @@ body {
         </tr>
 
     </table>
-
 
 
     <table class="items-table">
@@ -2306,11 +7108,9 @@ body {
     </table>
 
 
-
     <div class="totals-container">
 
         <table class="totals-table">
-
 
             <tr>
 
@@ -2330,7 +7130,12 @@ body {
             <tr>
 
                 <td>
-                    Commission ${invoice.dynamicComission*100}%
+                    Commission ${
+                        Number(
+                            invoice.dynamicComission ||
+                            0
+                        ) * 100
+                    }%
                 </td>
 
                 <td>
@@ -2395,7 +7200,8 @@ body {
 
                 <td>
                     ${(
-                        netTotal - cash
+                        netTotal -
+                        cash
                     ).toLocaleString(
                         "en-PK"
                     )}
@@ -2433,11 +7239,9 @@ body {
 
             </tr>
 
-
         </table>
 
     </div>
-
 
 
     <div class="signatures">
@@ -2487,14 +7291,12 @@ body {
 
         </div>
 
-
     </div>
 
 
     <div class="page-number">
         Page 1 of 1
     </div>
-
 
 </div>
 
@@ -2506,7 +7308,6 @@ window.onload = function() {
     window.print();
 
 };
-
 
 window.onafterprint = function() {
 
@@ -2525,2508 +7326,6 @@ window.onafterprint = function() {
 
 
     printWindow.document.close();
-
-}
-
-
-// ============================================================
-// PRODUCTS TABLE
-// ============================================================
-
-function renderProducts() {
-
-    if (!supplierProductsTableBody)
-        return;
-
-
-    supplierProductsTableBody.innerHTML =
-        "";
-
-
-    const products =
-        filteredSupplierProducts;
-
-
-    if (!products.length) {
-
-        supplierProductsTableBody.innerHTML = `
-
-            <tr>
-
-                <td
-                    colspan="7"
-                    style="
-                        text-align:center;
-                        padding:30px;
-                    "
-                >
-
-                    No products found.
-
-                </td>
-
-            </tr>
-
-        `;
-
-        return;
-
-    }
-
-
-    products.forEach(
-        product => {
-
-            const row =
-                document.createElement(
-                    "tr"
-                );
-
-
-            row.innerHTML = `
-
-                <td>
-
-                    ${escapeHTML(
-                        String(
-                            product.id || "-"
-                        )
-                    )}
-
-                </td>
-
-
-                <td>
-
-                    ${escapeHTML(
-                        product.name || "-"
-                    )}
-
-                </td>
-
-
-                <td>
-
-                    ${escapeHTML(
-                        product.company || "-"
-                    )}
-
-                </td>
-
-
-                <td>
-
-                    ${formatMoney(
-                        product.purchasePrice
-                    )}
-
-                </td>
-
-
-                <td>
-
-                    ${formatMoney(
-                        product.salePrice
-                    )}
-
-                </td>
-
-
-                <td>
-
-                    ${escapeHTML(
-                        product.category || "-"
-                    )}
-
-                </td>
-
-
-                <td>
-
-                    <button
-                        class="view-product-btn"
-                        data-id="${escapeAttribute(
-                            String(
-                                product.id || ""
-                            )
-                        )}"
-                    >
-
-                        View
-
-                    </button>
-
-                </td>
-
-            `;
-
-
-            supplierProductsTableBody
-                .appendChild(row);
-
-        }
-    );
-
-
-    document
-        .querySelectorAll(
-            ".view-product-btn"
-        )
-        .forEach(
-            button => {
-
-                button.addEventListener(
-                    "click",
-                    event => {
-
-                        event.stopPropagation();
-
-
-                        const id =
-                            Number(
-                                button.dataset.id
-                            );
-
-
-                        const product =
-                            supplierProducts.find(
-                                p =>
-                                    Number(
-                                        p.id
-                                    ) === id
-                            );
-
-
-                        if (product) {
-
-                            showProductDetails(
-                                product
-                            );
-
-                        }
-
-                    }
-                );
-
-            }
-        );
-
-
-    /*
-     * Only automatically show the first
-     * product when no product has been
-     * displayed yet.
-     */
-
-    if (
-        products.length &&
-        !document.getElementById(
-            "spDetailName"
-        )?.textContent
-    ) {
-
-        showProductDetails(
-            products[0]
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// PRODUCT DETAILS
-// ============================================================
-
-function showProductDetails(product) {
-
-    const detailName =
-        document.getElementById(
-            "spDetailName"
-        );
-
-
-    const detailIdShort =
-        document.getElementById(
-            "spDetailIdShort"
-        );
-
-
-    const detailFullName =
-        document.getElementById(
-            "spDetailFullName"
-        );
-
-
-    const detailCompany =
-        document.getElementById(
-            "spDetailCompany"
-        );
-
-
-    const detailCategory =
-        document.getElementById(
-            "spDetailCategory"
-        );
-
-
-    const detailId =
-        document.getElementById(
-            "spDetailId"
-        );
-
-
-    const detailDescription =
-        document.getElementById(
-            "spDetailDescription"
-        );
-
-
-    const detailPurchasePrice =
-        document.getElementById(
-            "spDetailPurchasePrice"
-        );
-
-
-    const detailSalePrice =
-        document.getElementById(
-            "spDetailSalePrice"
-        );
-
-
-    const detailProfit =
-        document.getElementById(
-            "spDetailProfit"
-        );
-
-
-    const detailStock =
-        document.getElementById(
-            "spDetailStock"
-        );
-
-
-    if (detailName) {
-
-        detailName.textContent =
-            product.name || "-";
-
-    }
-
-
-    if (detailIdShort) {
-
-        detailIdShort.textContent =
-            `Id:${product.id || "-"}`;
-
-    }
-
-
-    if (detailFullName) {
-
-        detailFullName.textContent =
-            product.name || "-";
-
-    }
-
-
-    if (detailCompany) {
-
-        detailCompany.textContent =
-            product.company || "-";
-
-    }
-
-
-    if (detailCategory) {
-
-        detailCategory.textContent =
-            product.category || "-";
-
-    }
-
-
-    if (detailId) {
-
-        detailId.textContent =
-            product.id || "-";
-
-    }
-
-
-    if (detailDescription) {
-
-        detailDescription.textContent =
-            product.description || "-";
-
-    }
-
-
-    const purchasePrice =
-        Number(
-            product.purchasePrice || 0
-        );
-
-
-    const salePrice =
-        Number(
-            product.salePrice || 0
-        );
-
-
-    if (detailPurchasePrice) {
-
-        detailPurchasePrice.textContent =
-            `Rs.${formatMoney(
-                purchasePrice
-            )}`;
-
-    }
-
-
-    if (detailSalePrice) {
-
-        detailSalePrice.textContent =
-            `Rs.${formatMoney(
-                salePrice
-            )}`;
-
-    }
-
-
-    const profit =
-        salePrice -
-        purchasePrice;
-
-
-    if (detailProfit) {
-
-        detailProfit.textContent =
-            `Rs.${formatMoney(
-                profit
-            )}`;
-
-    }
-
-
-    /*
-     * Support both the old typo "qunatity"
-     * and correct "quantity".
-     */
-
-    const stock =
-        Number(
-            product.quantity ??
-            product.qunatity ??
-            0
-        );
-
-
-    if (detailStock) {
-
-        detailStock.innerHTML = `
-
-            ${stock.toLocaleString("en-PK")}
-
-            <span class="units">
-                units
-            </span>
-
-        `;
-
-    }
-
-}
-
-
-// ============================================================
-// UPDATE STATISTICS
-// ============================================================
-
-function updateStats() {
-
-    const statNumbers =
-        document.querySelectorAll(
-            ".stat-number"
-        );
-
-
-    if (!statNumbers.length)
-        return;
-
-
-    const outstanding =
-        Number(
-            supplier?.outstandingBalance ||
-            0
-        );
-
-
-    const totalPurchases =
-        supplierInvoices.reduce(
-            (sum, invoice) =>
-                sum +
-                Number(
-                    invoice.netTotal ??
-                    invoice.subtotal ??
-                    invoice.amount ??
-                    0
-                ),
-            0
-        );
-
-
-    const currentMonth =
-        new Date().getMonth();
-
-
-    const currentYear =
-        new Date().getFullYear();
-
-
-    const monthlyPurchases =
-        supplierInvoices
-            .filter(
-                invoice => {
-
-                    const date =
-                        new Date(
-                            invoice.date
-                        );
-
-
-                    return (
-                        date.getMonth() ===
-                            currentMonth &&
-                        date.getFullYear() ===
-                            currentYear
-                    );
-
-                }
-            )
-            .reduce(
-                (sum, invoice) =>
-                    sum +
-                    Number(
-                        invoice.netTotal ??
-                        invoice.subtotal ??
-                        invoice.amount ??
-                        0
-                    ),
-                0
-            );
-
-
-    /*
-     * IMPORTANT:
-     *
-     * Do NOT use K/M.
-     *
-     * Show complete numbers on cards.
-     */
-
-    if (statNumbers[0]) {
-
-        statNumbers[0].textContent =
-            `Rs.${formatMoney(
-                outstanding
-            )}`;
-
-    }
-
-
-    if (statNumbers[1]) {
-
-        statNumbers[1].textContent =
-            `Rs.${formatMoney(
-                totalPurchases
-            )}`;
-
-    }
-
-
-    if (statNumbers[2]) {
-
-        statNumbers[2].textContent =
-            `Rs.${formatMoney(
-                monthlyPurchases
-            )}`;
-
-    }
-
-
-    if (statNumbers[3]) {
-
-        statNumbers[3].textContent =
-            supplierProducts.length
-                .toLocaleString("en-PK");
-
-    }
-
-
-    if (
-        statNumbers[4] &&
-        supplier.lastPayment
-    ) {
-
-        statNumbers[4].textContent =
-            `Rs.${formatMoney(
-                supplier.lastPayment.amount ||
-                0
-            )}`;
-
-
-        const lastPaymentSub =
-            statNumbers[4]
-                .parentElement
-                ?.querySelector(
-                    ".stat-sub"
-                );
-
-
-        if (lastPaymentSub) {
-
-            lastPaymentSub.textContent =
-                formatDate(
-                    supplier.lastPayment.date
-                );
-
-        }
-
-    }
-
-}
-
-
-// ============================================================
-// PRINT SUPPLIER SUMMARY
-// ============================================================
-
-function printSupplierSummary() {
-
-    if (!supplier) {
-
-        alert(
-            "Supplier information is not loaded."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        !supplierInvoices ||
-        supplierInvoices.length === 0
-    ) {
-
-        alert(
-            "No supplier invoice records found."
-        );
-
-        return;
-
-    }
-
-
-    /*
-     * Use currently filtered invoices.
-     *
-     * If search is active, only the matching
-     * invoices will be printed.
-     */
-
-    const summary =
-        filteredSupplierInvoices.length
-            ? filteredSupplierInvoices
-            : supplierInvoices;
-
-
-    if (!summary.length) {
-
-        alert(
-            "No invoice records found."
-        );
-
-        return;
-
-    }
-
-
-    const printWindow =
-        window.open(
-            "",
-            "_blank",
-            "width=1200,height=900"
-        );
-
-
-    if (!printWindow) {
-
-        alert(
-            "Please allow popups to print the supplier statement."
-        );
-
-        return;
-
-    }
-
-
-    const supplierName =
-        supplier.companyName || "-";
-
-
-    const supplierIdValue =
-        supplier.id ||
-        supplierId ||
-        "-";
-
-
-    /*
-     * Opening balance.
-     */
-
-    let openingBalance =
-        Number(
-            supplier.openingBalance ?? 0
-        );
-
-
-    if (
-        supplier.openingBalance === undefined ||
-        supplier.openingBalance === null
-    ) {
-
-        if (summary.length > 0) {
-
-            const first =
-                summary[0];
-
-
-            openingBalance =
-                Number(
-                    first.balance || 0
-                )
-                -
-                Number(
-                    first.amount ||
-                    first.subtotal ||
-                    0
-                )
-                +
-                Number(
-                    first.commission || 0
-                )
-                +
-                Number(
-                    first.cash || 0
-                );
-
-        }
-
-    }
-
-
-    /*
-     * Sort by date.
-     */
-
-    const sortedSummary =
-        [...summary].sort(
-            (a, b) => {
-
-                return (
-                    new Date(a.date) -
-                    new Date(b.date)
-                );
-
-            }
-        );
-
-
-    /*
-     * Create rows.
-     */
-
-    const rows =
-        sortedSummary.map(
-            (invoice, index) => {
-
-                const date =
-                    invoice.date
-                        ? new Date(
-                            invoice.date
-                        ).toLocaleDateString(
-                            "en-GB",
-                            {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric"
-                            }
-                        )
-                        : "-";
-
-
-                const amount =
-                    Number(
-                        invoice.amount ??
-                        invoice.netTotal ??
-                        invoice.subtotal ??
-                        0
-                    );
-
-
-                const commission =
-                    Number(
-                        invoice.commission ||
-                        0
-                    );
-
-
-                const advance =
-                    Number(
-                        invoice.cash ||
-                        0
-                    );
-
-
-                const balance =
-                    Number(
-                        invoice.balance ||
-                        0
-                    );
-
-
-                const invoiceNo =
-                    invoice.invoiceNo ||
-                    invoice.id ||
-                    invoice.invoiceId ||
-                    "-";
-
-
-                const totalQuantity =
-                    invoice.totalQuantity !==
-                    undefined
-                        ? Number(
-                            invoice.totalQuantity ||
-                            0
-                        )
-                        : (
-                            invoice.items ||
-                            []
-                        ).reduce(
-                            (
-                                total,
-                                item
-                            ) =>
-                                total +
-                                Number(
-                                    item.quantity ||
-                                    0
-                                ),
-                            0
-                        );
-
-
-                return `
-
-                    <tr>
-
-                        <td class="center">
-                            ${index + 1}
-                        </td>
-
-
-                        <td class="center">
-                            ${date}
-                        </td>
-
-
-                        <td class="center">
-                            ${escapeHTML(
-                                String(
-                                    invoiceNo
-                                )
-                            )}
-                        </td>
-
-
-                        <td>
-                            Purchase of Ice Cream
-                        </td>
-
-
-                        <td class="number">
-                            ${totalQuantity.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
-
-
-                        <td class="number">
-                            ${amount.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
-
-
-                        <td class="number">
-                            ${commission.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
-
-
-                        <td class="number">
-                            ${advance.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
-
-
-                        <td class="number balance-cell">
-                            ${balance.toLocaleString(
-                                "en-PK"
-                            )}
-                        </td>
-
-                    </tr>
-
-                `;
-
-            }
-        ).join("");
-
-
-    /*
-     * Totals.
-     */
-
-    const totalItems =
-        sortedSummary.reduce(
-            (sum, invoice) => {
-
-                if (
-                    invoice.totalQuantity !==
-                    undefined
-                ) {
-
-                    return (
-                        sum +
-                        Number(
-                            invoice.totalQuantity ||
-                            0
-                        )
-                    );
-
-                }
-
-
-                return (
-                    sum +
-                    (
-                        invoice.items ||
-                        []
-                    ).reduce(
-                        (
-                            itemSum,
-                            item
-                        ) =>
-                            itemSum +
-                            Number(
-                                item.quantity ||
-                                0
-                            ),
-                        0
-                    )
-                );
-
-            },
-            0
-        );
-
-
-    const totalAmount =
-        sortedSummary.reduce(
-            (sum, invoice) =>
-                sum +
-                Number(
-                    invoice.amount ??
-                    invoice.netTotal ??
-                    invoice.subtotal ??
-                    0
-                ),
-            0
-        );
-
-
-    const totalCommission =
-        sortedSummary.reduce(
-            (sum, invoice) =>
-                sum +
-                Number(
-                    invoice.commission ||
-                    0
-                ),
-            0
-        );
-
-
-    const totalAdvance =
-        sortedSummary.reduce(
-            (sum, invoice) =>
-                sum +
-                Number(
-                    invoice.cash ||
-                    0
-                ),
-            0
-        );
-
-
-    const finalBalance =
-        Number(
-            sortedSummary[
-                sortedSummary.length - 1
-            ]?.balance || 0
-        );
-
-
-    printWindow.document.write(`
-
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
-<meta charset="UTF-8">
-
-
-<title>
-    Supplier Statement -
-    ${escapeHTML(supplierName)}
-</title>
-
-
-<style>
-
-@page {
-
-    size: A4 landscape;
-
-    margin: 12mm;
-
-}
-
-
-* {
-
-    box-sizing: border-box;
-
-}
-
-
-body {
-
-    margin: 0;
-
-    padding: 0;
-
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
-    color: #000;
-
-    background: #fff;
-
-    font-size: 10px;
-
-}
-
-
-.statement {
-
-    width: 100%;
-
-}
-
-
-.header {
-
-    text-align: center;
-
-    margin-bottom: 12px;
-
-}
-
-
-.company-name {
-
-    font-size: 20px;
-
-    font-weight: bold;
-
-    margin-bottom: 4px;
-
-}
-
-
-.company-address {
-
-    font-size: 9px;
-
-    line-height: 1.4;
-
-}
-
-
-.statement-title {
-
-    font-size: 16px;
-
-    font-weight: bold;
-
-    margin-top: 8px;
-
-    text-decoration: underline;
-
-}
-
-
-.supplier-name {
-
-    font-size: 14px;
-
-    font-weight: bold;
-
-    margin-top: 4px;
-
-}
-
-
-.info {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    margin: 8px 0;
-
-}
-
-
-.info-left {
-
-    font-weight: bold;
-
-}
-
-
-.opening-balance {
-
-    border: 1px solid #000;
-
-    padding: 5px 12px;
-
-    font-size: 12px;
-
-    font-weight: bold;
-
-}
-
-
-table {
-
-    width: 100%;
-
-    border-collapse: collapse;
-
-    table-layout: fixed;
-
-}
-
-
-th,
-td {
-
-    border: 1px solid #555;
-
-    padding: 4px 5px;
-
-    vertical-align: middle;
-
-}
-
-
-th {
-
-    text-align: center;
-
-    font-weight: bold;
-
-    background: #f2f2f2;
-
-}
-
-
-.center {
-
-    text-align: center;
-
-}
-
-
-.number {
-
-    text-align: right;
-
-    white-space: nowrap;
-
-}
-
-
-.balance-cell {
-
-    font-weight: bold;
-
-}
-
-
-.total-row td {
-
-    font-weight: bold;
-
-    border-top: 2px solid #000;
-
-}
-
-
-.footer {
-
-    margin-top: 20px;
-
-    display: flex;
-
-    justify-content: space-between;
-
-}
-
-
-.signature {
-
-    width: 180px;
-
-    text-align: center;
-
-}
-
-
-.signature-line {
-
-    border-top: 1px solid #000;
-
-    margin-bottom: 5px;
-
-}
-
-
-.page-number {
-
-    text-align: center;
-
-    margin-top: 15px;
-
-    font-size: 9px;
-
-}
-
-
-.col-no {
-
-    width: 4%;
-
-}
-
-
-.col-date {
-
-    width: 9%;
-
-}
-
-
-.col-invoice {
-
-    width: 8%;
-
-}
-
-
-.col-particular {
-
-    width: 23%;
-
-}
-
-
-.col-items {
-
-    width: 8%;
-
-}
-
-
-.col-amount {
-
-    width: 11%;
-
-}
-
-
-.col-commission {
-
-    width: 12%;
-
-}
-
-
-.col-advance {
-
-    width: 11%;
-
-}
-
-
-.col-balance {
-
-    width: 14%;
-
-}
-
-
-@media print {
-
-    body {
-
-        -webkit-print-color-adjust:
-            exact;
-
-        print-color-adjust:
-            exact;
-
-    }
-
-
-    thead {
-
-        display: table-header-group;
-
-    }
-
-
-    tr {
-
-        page-break-inside: avoid;
-
-    }
-
-}
-
-
-</style>
-
-</head>
-
-
-<body>
-
-
-<div class="statement">
-
-
-    <!-- HEADER -->
-
-    <div class="header">
-
-
-        <div class="company-name">
-
-            AJWA ICE CREAM
-
-        </div>
-
-
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            &nbsp;&nbsp;
-
-            Mobile # 0345-9101300 /
-            0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-
-        <div class="statement-title">
-
-            SUPPLIER STATEMENT / HISTORY
-
-        </div>
-
-
-        <div class="supplier-name">
-
-            ${escapeHTML(
-                supplierName
-            )}
-
-        </div>
-
-    </div>
-
-
-
-    <!-- SUPPLIER INFORMATION -->
-
-    <div class="info">
-
-
-        <div class="info-left">
-
-            Supplier ID:
-            ${escapeHTML(
-                String(
-                    supplierIdValue
-                )
-            )}
-
-            &nbsp;&nbsp;&nbsp;
-
-            Total Transactions:
-            ${sortedSummary.length}
-
-        </div>
-
-
-        <div class="opening-balance">
-
-            Opening Balance:
-            Rs.
-            ${openingBalance.toLocaleString(
-                "en-PK"
-            )}
-
-        </div>
-
-    </div>
-
-
-
-    <!-- SUMMARY TABLE -->
-
-    <table>
-
-
-        <colgroup>
-
-            <col class="col-no">
-
-            <col class="col-date">
-
-            <col class="col-invoice">
-
-            <col class="col-particular">
-
-            <col class="col-items">
-
-            <col class="col-amount">
-
-            <col class="col-commission">
-
-            <col class="col-advance">
-
-            <col class="col-balance">
-
-        </colgroup>
-
-
-        <thead>
-
-            <tr>
-
-                <th>
-                    S. No
-                </th>
-
-
-                <th>
-                    Date
-                </th>
-
-
-                <th>
-                    Invoice<br>No
-                </th>
-
-
-                <th>
-                    Particulars
-                </th>
-
-
-                <th>
-                    No's of<br>Items
-                </th>
-
-
-                <th>
-                    Amount
-                </th>
-
-
-                <th>
-                    Commission/Discount
-                </th>
-
-
-                <th>
-                    Advance Payment
-                </th>
-
-
-                <th>
-                    Balance Amount
-                </th>
-
-            </tr>
-
-        </thead>
-
-
-        <tbody>
-
-
-            <!-- OPENING BALANCE -->
-
-            <tr>
-
-
-                <td class="center">
-                    1
-                </td>
-
-
-                <td></td>
-
-
-                <td></td>
-
-
-                <td>
-
-                    <strong>
-                        Opening Balance
-                    </strong>
-
-                </td>
-
-
-                <td></td>
-
-
-                <td class="number">
-                    -
-                </td>
-
-
-                <td class="number">
-                    -
-                </td>
-
-
-                <td class="number">
-                    -
-                </td>
-
-
-                <td class="number balance-cell">
-
-                    ${openingBalance.toLocaleString(
-                        "en-PK"
-                    )}
-
-                </td>
-
-
-            </tr>
-
-
-            ${rows}
-
-
-            <!-- TOTAL -->
-
-            <tr class="total-row">
-
-
-                <td
-                    colspan="4"
-                    class="number"
-                >
-
-                    TOTAL
-
-                </td>
-
-
-                <td class="number">
-
-                    ${totalItems.toLocaleString(
-                        "en-PK"
-                    )}
-
-                </td>
-
-
-                <td class="number">
-
-                    ${totalAmount.toLocaleString(
-                        "en-PK"
-                    )}
-
-                </td>
-
-
-                <td class="number">
-
-                    ${totalCommission.toLocaleString(
-                        "en-PK"
-                    )}
-
-                </td>
-
-
-                <td class="number">
-
-                    ${totalAdvance.toLocaleString(
-                        "en-PK"
-                    )}
-
-                </td>
-
-
-                <td class="number">
-
-                    ${finalBalance.toLocaleString(
-                        "en-PK"
-                    )}
-
-                </td>
-
-
-            </tr>
-
-
-        </tbody>
-
-
-    </table>
-
-
-
-    <!-- FOOTER -->
-
-    <div class="footer">
-
-
-        <div class="signature">
-
-
-            <div class="signature-line"></div>
-
-
-            Prepared By
-
-            <br>
-
-
-            Accounts Clerk
-
-
-        </div>
-
-
-
-        <div class="signature">
-
-
-            <div class="signature-line"></div>
-
-
-            Verified By
-
-            <br>
-
-
-            Manager Accounts
-
-
-        </div>
-
-
-
-        <div class="signature">
-
-
-            <div class="signature-line"></div>
-
-
-            Approved By
-
-            <br>
-
-
-            MD/HoO
-
-
-        </div>
-
-
-    </div>
-
-
-
-    <div class="page-number">
-
-        Page 1 of 1
-
-    </div>
-
-
-</div>
-
-
-
-<script>
-
-window.onload = function() {
-
-    window.print();
-
-};
-
-
-window.onafterprint = function() {
-
-    window.close();
-
-};
-
-<\/script>
-
-
-</body>
-
-</html>
-
-    `);
-
-
-    printWindow.document.close();
-
-}
-
-
-// ============================================================
-// EDIT BUTTON
-// ============================================================
-
-function createEditButton() {
-
-    const header =
-        document.querySelector(
-            ".info-panel h4"
-        );
-
-
-    if (!header) return;
-
-
-    if (
-        document.getElementById(
-            "editSupplierBtn"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const button =
-        document.createElement(
-            "button"
-        );
-
-
-    button.id =
-        "editSupplierBtn";
-
-
-    button.textContent =
-        "Edit Supplier";
-
-
-    button.className =
-        "edit-supplier-btn";
-
-
-    button.addEventListener(
-        "click",
-        openEditSupplierModal
-    );
-
-
-    header.style.display =
-        "flex";
-
-
-    header.style.justifyContent =
-        "space-between";
-
-
-    header.style.alignItems =
-        "center";
-
-
-    header.appendChild(
-        button
-    );
-
-}
-
-
-// ============================================================
-// EDIT SUPPLIER MODAL
-// ============================================================
-
-function openEditSupplierModal() {
-
-    const oldModal =
-        document.getElementById(
-            "editSupplierModal"
-        );
-
-
-    if (oldModal) {
-
-        oldModal.remove();
-
-    }
-
-
-    const modal =
-        document.createElement(
-            "div"
-        );
-
-
-    modal.id =
-        "editSupplierModal";
-
-
-    modal.className =
-        "supplier-modal-overlay";
-
-
-    const currentStatus =
-        getSupplierStatusText(
-            supplier.status
-        );
-
-
-    modal.innerHTML = `
-
-        <div class="supplier-modal">
-
-
-            <div class="supplier-modal-header">
-
-
-                <h2>
-                    Edit Supplier
-                </h2>
-
-
-                <button
-                    type="button"
-                    id="closeSupplierModal"
-                    class="modal-close"
-                >
-
-                    &times;
-
-                </button>
-
-
-            </div>
-
-
-
-            <form id="editSupplierForm">
-
-
-                <div class="form-grid">
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Company Name
-                        </label>
-
-
-                        <input
-                            type="text"
-                            name="companyName"
-                            value="${escapeAttribute(
-                                supplier.companyName || ""
-                            )}"
-                            required
-                        >
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Contact Person
-                        </label>
-
-
-                        <input
-                            type="text"
-                            name="contactPerson"
-                            value="${escapeAttribute(
-                                supplier.contactPerson || ""
-                            )}"
-                        >
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Phone
-                        </label>
-
-
-                        <input
-                            type="text"
-                            name="phone"
-                            value="${escapeAttribute(
-                                supplier.phone || ""
-                            )}"
-                        >
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            WhatsApp
-                        </label>
-
-
-                        <input
-                            type="text"
-                            name="whatsapp"
-                            value="${escapeAttribute(
-                                supplier.whatsapp || ""
-                            )}"
-                        >
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Email
-                        </label>
-
-
-                        <input
-                            type="email"
-                            name="email"
-                            value="${escapeAttribute(
-                                supplier.email || ""
-                            )}"
-                        >
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            City
-                        </label>
-
-
-                        <input
-                            type="text"
-                            name="city"
-                            value="${escapeAttribute(
-                                supplier.city || ""
-                            )}"
-                        >
-
-                    </div>
-
-
-
-                    <div class="form-group full">
-
-                        <label>
-                            Address
-                        </label>
-
-
-                        <textarea
-                            name="address"
-                            rows="3"
-                        >${escapeHTML(
-                            supplier.address || ""
-                        )}</textarea>
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Status
-                        </label>
-
-
-                        <select name="status">
-
-
-                            <option
-                                value="Active"
-                                ${
-                                    currentStatus ===
-                                    "Active"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-
-                                Active
-
-                            </option>
-
-
-                            <option
-                                value="Inactive"
-                                ${
-                                    currentStatus ===
-                                    "Inactive"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-
-                                Inactive
-
-                            </option>
-
-
-                        </select>
-
-                    </div>
-
-
-
-                    <div class="form-group">
-
-                        <label>
-                            Picture / Logo URL
-                        </label>
-
-
-                        <input
-                            type="text"
-                            name="logo"
-                            value="${escapeAttribute(
-                                supplier.logo || ""
-                            )}"
-                            placeholder="https://..."
-                        >
-
-                    </div>
-
-
-                </div>
-
-
-
-                <div class="immutable-fields">
-
-
-                    <strong>
-                        Supplier ID:
-                    </strong>
-
-
-                    ${escapeHTML(
-                        String(
-                            supplier.id || supplierId
-                        )
-                    )}
-
-
-                    <span>
-
-                        ID and financial information
-                        cannot be edited here.
-
-                    </span>
-
-
-                </div>
-
-
-
-                <div class="modal-actions">
-
-
-                    <button
-                        type="button"
-                        id="cancelSupplierEdit"
-                        class="cancel-btn"
-                    >
-
-                        Cancel
-
-                    </button>
-
-
-
-                    <button
-                        type="submit"
-                        class="save-btn"
-                    >
-
-                        Save Changes
-
-                    </button>
-
-
-                </div>
-
-
-            </form>
-
-
-        </div>
-
-    `;
-
-
-    document.body.appendChild(
-        modal
-    );
-
-
-    document
-        .getElementById(
-            "closeSupplierModal"
-        )
-        ?.addEventListener(
-            "click",
-            closeEditSupplierModal
-        );
-
-
-    document
-        .getElementById(
-            "cancelSupplierEdit"
-        )
-        ?.addEventListener(
-            "click",
-            closeEditSupplierModal
-        );
-
-
-    modal.addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target === modal
-            ) {
-
-                closeEditSupplierModal();
-
-            }
-
-        }
-    );
-
-
-    document
-        .getElementById(
-            "editSupplierForm"
-        )
-        ?.addEventListener(
-            "submit",
-            updateSupplier
-        );
-
-}
-
-
-// ============================================================
-// UPDATE SUPPLIER
-// ============================================================
-
-async function updateSupplier(event) {
-
-    event.preventDefault();
-
-
-    const form =
-        event.target;
-
-
-    const formData =
-        new FormData(form);
-
-
-    const updateData = {};
-
-
-    /*
-     * Normal fields.
-     */
-
-    for (
-        const [key, value]
-        of formData.entries()
-    ) {
-
-        updateData[key] =
-            String(value).trim();
-
-    }
-
-
-    /*
-     * IMPORTANT FIX:
-     *
-     * MongoDB schema expects Boolean.
-     *
-     * Do NOT send:
-     *
-     * status: "Active"
-     *
-     * Send:
-     *
-     * status: true
-     */
-
-    updateData.status =
-        getSupplierStatusBoolean(
-            updateData.status
-        );
-
-
-    /*
-     * Original values.
-     */
-
-    const originalValues = {
-
-        companyName:
-            supplier.companyName || "",
-
-        contactPerson:
-            supplier.contactPerson || "",
-
-        phone:
-            supplier.phone || "",
-
-        whatsapp:
-            supplier.whatsapp || "",
-
-        email:
-            supplier.email || "",
-
-        city:
-            supplier.city || "",
-
-        address:
-            supplier.address || "",
-
-        status:
-            getSupplierStatusBoolean(
-                supplier.status
-            ),
-
-        logo:
-            supplier.logo || ""
-
-    };
-
-
-    /*
-     * Find changed fields.
-     */
-
-    const changedData = {};
-
-
-    Object.keys(updateData)
-        .forEach(
-            field => {
-
-                if (
-                    field === "status"
-                ) {
-
-                    if (
-                        updateData.status !==
-                        originalValues.status
-                    ) {
-
-                        changedData.status =
-                            updateData.status;
-
-                    }
-
-                    return;
-
-                }
-
-
-                if (
-                    String(
-                        updateData[field]
-                    ) !==
-                    String(
-                        originalValues[field]
-                    )
-                ) {
-
-                    changedData[field] =
-                        updateData[field];
-
-                }
-
-            }
-        );
-
-
-    /*
-     * Nothing changed.
-     */
-
-    if (
-        Object.keys(
-            changedData
-        ).length === 0
-    ) {
-
-        alert(
-            "No changes were made."
-        );
-
-        closeEditSupplierModal();
-
-        return;
-
-    }
-
-
-    try {
-
-        const saveButton =
-            form.querySelector(
-                ".save-btn"
-            );
-
-
-        if (saveButton) {
-
-            saveButton.disabled =
-                true;
-
-            saveButton.textContent =
-                "Saving...";
-
-        }
-
-
-        const response =
-            await fetch(
-                `${API}/suppliers/${supplierId}`,
-                {
-
-                    method: "PATCH",
-                    credentials:'include',
-                    headers: {
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body:
-                        JSON.stringify(
-                            changedData
-                        )
-
-                }
-            );
-
-
-        const result =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                result.message ||
-                "Unable to update supplier"
-            );
-
-        }
-
-
-        /*
-         * Replace local supplier.
-         */
-
-        supplier =
-            result.data ||
-            result.supplier ||
-            result;
-
-
-        /*
-         * Refresh page data.
-         */
-
-        renderSupplierInformation();
-
-
-        await loadSupplierInvoices();
-
-        await loadSupplierProducts();
-
-
-        filteredSupplierInvoices =
-            [...supplierInvoices];
-
-
-        filteredSupplierProducts =
-            [...supplierProducts];
-
-
-        renderSummary();
-
-        renderProducts();
-
-        updateStats();
-
-
-        closeEditSupplierModal();
-
-
-        alert(
-            "Supplier updated successfully."
-        );
-
-    }
-    catch (error) {
-
-        console.error(
-            "Update supplier error:",
-            error
-        );
-
-
-        alert(
-            error.message ||
-            "Failed to update supplier."
-        );
-
-
-        const saveButton =
-            form.querySelector(
-                ".save-btn"
-            );
-
-
-        if (saveButton) {
-
-            saveButton.disabled =
-                false;
-
-            saveButton.textContent =
-                "Save Changes";
-
-        }
-
-    }
-
-}
-
-
-// ============================================================
-// CLOSE EDIT MODAL
-// ============================================================
-
-function closeEditSupplierModal() {
-
-    const modal =
-        document.getElementById(
-            "editSupplierModal"
-        );
-
-
-    if (modal) {
-
-        modal.remove();
-
-    }
 
 }
 
@@ -5063,8 +7362,8 @@ function setupTabs() {
                 () => {
 
                     tabs.forEach(
-                        t =>
-                            t.classList.remove(
+                        item =>
+                            item.classList.remove(
                                 "active"
                             )
                     );
@@ -5137,145 +7436,6 @@ function setupTabs() {
 
         }
     );
-
-}
-
-
-// ============================================================
-// BUTTONS
-// ============================================================
-
-function setupButtons() {
-
-    const purchaseButton =
-        document.getElementById(
-            "purchaseStockBtn"
-        );
-
-
-    if (purchaseButton) {
-
-        purchaseButton.addEventListener(
-            "click",
-            () => {
-
-                window.location.href =
-                    `purchase-stocks.html?supplierId=${supplierId}`;
-
-            }
-        );
-
-    }
-
-
-    const addPurchaseButton =
-        document.getElementById(
-            "addPurchaseBtn"
-        );
-
-
-    if (addPurchaseButton) {
-
-        addPurchaseButton.addEventListener(
-            "click",
-            () => {
-
-                window.location.href =
-                    `purchase-stocks.html?supplierId=${supplierId}`;
-
-            }
-        );
-
-    }
-
-
-    const addProductButton =
-        document.getElementById(
-            "addProductBtn"
-        );
-
-
-    if (addProductButton) {
-
-        addProductButton.addEventListener(
-            "click",
-            () => {
-
-                window.location.href =
-                    `Products.html?supplierId=${supplierId}`;
-
-            }
-        );
-
-    }
-
-
-    /*
-     * Supplier statement print.
-     */
-
-    const printLink =
-        document.getElementById(
-            "printLink"
-        );
-
-
-    if (printLink) {
-
-        printLink.addEventListener(
-            "click",
-            event => {
-
-                event.preventDefault();
-  printRealInvoice(
-                    invoiceForPrint
-                );
-                
-
-            }
-        );
-
-    }
-
-
-    /*
-     * Fullscreen invoice.
-     */
-
-    const fullscreenLink =
-        document.getElementById(
-            "fullscreenLink"
-        );
-
-
-    if (fullscreenLink) {
-
-        fullscreenLink.addEventListener(
-            "click",
-            event => {
-
-                event.preventDefault();
-
-
-                const invoice =
-                    document.querySelector(
-                        ".invoice-panel"
-                    );
-
-
-                if (
-                    invoice &&
-                    invoice.requestFullscreen
-                ) {
-
-                    invoice.requestFullscreen();
-
-                }
-
-            }
-        );
-
-    }
 
 }
 
@@ -5363,15 +7523,13 @@ function setupDate() {
         );
 
 
-    if (!datePill) return;
-
-
-    const today =
-        new Date();
+    if (!datePill) {
+        return;
+    }
 
 
     datePill.textContent =
-        today.toLocaleDateString(
+        new Date().toLocaleDateString(
             "en-GB",
             {
                 day: "2-digit",
@@ -5403,13 +7561,13 @@ function showLoading() {
 // FORMAT MONEY
 // ============================================================
 
-function formatMoney(value) {
+function formatMoney(
+    value
+) {
 
-    const number =
-        Number(value || 0);
-
-
-    return number.toLocaleString(
+    return Number(
+        value || 0
+    ).toLocaleString(
         "en-PK"
     );
 
@@ -5417,17 +7575,22 @@ function formatMoney(value) {
 
 
 // ============================================================
-// DATE FORMAT
+// FORMAT DATE
 // ============================================================
 
-function formatDate(date) {
+function formatDate(
+    date
+) {
 
-    if (!date)
+    if (!date) {
         return "-";
+    }
 
 
     const d =
-        new Date(date);
+        new Date(
+            date
+        );
 
 
     if (
@@ -5454,27 +7617,45 @@ function formatDate(date) {
 
 
 // ============================================================
+// GET RETURN QUANTITY
+// ============================================================
+
+function getReturnQuantity(
+    item
+) {
+
+    return Number(
+        item?.returnQuantity ??
+        item?.returnedQuantity ??
+        0
+    ) || 0;
+
+}
+
+
+// ============================================================
 // HTML SECURITY
 // ============================================================
 
-function escapeHTML(value) {
+function escapeHTML(
+    value
+) {
 
-    return String(value ?? "")
+    return String(
+        value ?? ""
+    )
         .replace(
             /[&<>"']/g,
-            char => ({
-
-                "&": "&amp;",
-
-                "<": "&lt;",
-
-                ">": "&gt;",
-
-                '"': "&quot;",
-
-                "'": "&#039;"
-
-            })[char]
+            character =>
+                ({
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    '"': "&quot;",
+                    "'": "&#039;"
+                })[
+                    character
+                ]
         );
 
 }
@@ -5484,11 +7665,12 @@ function escapeHTML(value) {
 // ATTRIBUTE SECURITY
 // ============================================================
 
-function escapeAttribute(value) {
+function escapeAttribute(
+    value
+) {
 
-    return escapeHTML(value);
+    return escapeHTML(
+        value
+    );
 
 }
-document.getElementById('PrintSummary').addEventListener("click",()=>{
-printSupplierSummary();
-})

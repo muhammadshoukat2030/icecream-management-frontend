@@ -1,100 +1,323 @@
-// javascript
 // ===========================================================
-// Purchase Stocks Admin Page - Script
-// Purchase stock is ADDED to inventory when invoice is created
+// Purchase Stocks Admin Page
 // ===========================================================
-const API= "https://icecream-management-backend.vercel.app";
-// ================= DATA =================
+// Purchase stock is added to inventory when invoice is created.
+// Offline changes are stored in IndexedDB and only the original
+// POST /invoices operation is added to the global syncQueue.
+// ===========================================================
+
+
+// ===========================================================
+// GLOBAL API
+// ===========================================================
+
+const API =
+    window.APP_CONFIG.API;
+
+
+// ===========================================================
+// DATA
+// ===========================================================
 
 let suppliers = [];
+
 let currentSupplierId = null;
+
 let products = [];
+
 let purchasedItems = [];
-let arrears;
-let entercomission=0.2;
+
+let arrears = 0;
+
+let entercomission = 0.2;
+
 let adminUser;
-getLocalStorageUser=()=>{
-if (!localStorage.getItem('user')){
-      window.location.href = 'login.html';
+
+
+// ===========================================================
+// AUTH
+// ===========================================================
+
+getLocalStorageUser = () => {
+
+    if (
+        !localStorage.getItem("user")
+    ) {
+
+        window.location.href =
+            "login.html";
+
         return;
 
-}
+    }
 
- adminUser=JSON.parse(localStorage.getItem('user'));
-console.log(adminUser.email)
 
-}
+    adminUser =
+        JSON.parse(
+            localStorage.getItem("user")
+        );
+
+
+    console.log(
+        adminUser.email
+    );
+
+};
+
 
 getLocalStorageUser();
-document.getElementById('admin').textContent=adminUser.email;
+
+
+if (adminUser) {
+
+    document.getElementById(
+        "admin"
+    ).textContent =
+        adminUser.email;
+
+}
+
+
 // ===========================================================
 // SUPPLIERS
 // ===========================================================
 
 async function fetchSuppliers() {
 
+    // =======================================================
+    // LOAD CACHE FIRST
+    // =======================================================
+
     try {
 
-        const res = await fetch(
-            `${API}/suppliers`,
-            {
-        credentials: 'include'
-    }
+        const cachedSuppliers =
+            await getAllFromOfflineDB(
+                "suppliers"
+            );
+
+
+        suppliers =
+            cachedSuppliers.map(
+                (s, index) => ({
+
+                    id:
+                        Number(
+                            s.id ??
+                            s.supplier_id ??
+                            index + 1
+                        ),
+
+                    name:
+                        s.companyName ??
+                        s.supplier_name ??
+                        s.name ??
+                        "Unknown",
+
+                    status:
+                        s.status ??
+                        "Active",
+
+                    phone:
+                        s.phone ??
+                        s.contact ??
+                        "",
+
+                    address:
+                        s.address ??
+                        "",
+
+                    outstandingBalance:
+                        Number(
+                            s.outstandingBalance ??
+                            0
+                        )
+
+                })
+            );
+
+
+        console.log(
+            "Suppliers from IndexedDB:",
+            suppliers
         );
-         if (res.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        if (!res.ok) {
-            throw new Error("Failed to load suppliers");
+
+
+        if (
+            suppliers.length > 0
+        ) {
+
+            renderSupplierDropdown();
+
+
+            setSupplier(
+                suppliers[0].id
+            );
+
         }
 
-        const data = await res.json();
+    }
 
-        suppliers = (Array.isArray(data) ? data : []).map((s, index) => ({
+    catch (error) {
 
-            id: Number(s.id ?? s.supplier_id ?? index + 1),
+        console.error(
+            "Supplier cache load failed:",
+            error
+        );
 
-            name:
-                s.companyName ??
-                s.supplier_name ??
-                s.name ??
-                "Unknown",
+    }
 
-            status:
-                s.status ??
-                "Active",
 
-            phone:
-                s.phone ??
-                s.contact ??
-                "",
+    // =======================================================
+    // OFFLINE
+    // =======================================================
 
-            address:
-                s.address ??
-                "",
-            outstandingBalance:Number(s.outstandingBalance??0)
+    if (
+        !navigator.onLine
+    ) {
 
-        }));
+        console.log(
+            "Offline. Using cached suppliers."
+        );
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // FETCH FRESH SUPPLIERS
+    // =======================================================
+
+    try {
+
+        const res =
+            await fetch(
+                `${API}/suppliers`,
+                {
+                    credentials: "include"
+                }
+            );
+
+
+        if (
+            res.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (!res.ok) {
+
+            throw new Error(
+                "Failed to load suppliers"
+            );
+
+        }
+
+
+        const data =
+            await res.json();
+
+
+        const freshSuppliers =
+            Array.isArray(data)
+                ? data
+                : [];
+
+
+        // ===================================================
+        // CACHE RAW SUPPLIER OBJECTS
+        // ===================================================
+
+        await clearOfflineStore(
+            "suppliers"
+        );
+
+
+        await saveManyToOfflineDB(
+            "suppliers",
+            freshSuppliers
+        );
+
+
+        // ===================================================
+        // NORMALIZE FOR THIS PAGE
+        // ===================================================
+
+        suppliers =
+            freshSuppliers.map(
+                (s, index) => ({
+
+                    id:
+                        Number(
+                            s.id ??
+                            s.supplier_id ??
+                            index + 1
+                        ),
+
+                    name:
+                        s.companyName ??
+                        s.supplier_name ??
+                        s.name ??
+                        "Unknown",
+
+                    status:
+                        s.status ??
+                        "Active",
+
+                    phone:
+                        s.phone ??
+                        s.contact ??
+                        "",
+
+                    address:
+                        s.address ??
+                        "",
+
+                    outstandingBalance:
+                        Number(
+                            s.outstandingBalance ??
+                            0
+                        )
+
+                })
+            );
+
+
+        console.log(
+            "Fresh suppliers:",
+            suppliers
+        );
 
 
         renderSupplierDropdown();
 
 
-        if (suppliers.length > 0) {
+        if (
+            suppliers.length > 0
+        ) {
 
-            setSupplier(suppliers[0].id);
+            setSupplier(
+                suppliers[0].id
+            );
 
         }
 
     }
+
     catch (error) {
 
         console.error(
-            "Failed to load suppliers:",
+            "Failed to load fresh suppliers:",
             error
         );
 
+        // Cache remains available.
     }
 
 }
@@ -106,71 +329,260 @@ async function fetchSuppliers() {
 
 async function fetchProducts() {
 
+    // =======================================================
+    // LOAD CACHE FIRST
+    // =======================================================
+
     try {
 
-        const res = await fetch(
-            `${API}/products`,
-            {
-        credentials: 'include'
-    }
+        const cachedProducts =
+            await getAllFromOfflineDB(
+                "products"
+            );
+
+
+        products =
+            cachedProducts.map(
+                (p, index) => ({
+
+                    id:
+                        Number(
+                            p.id ??
+                            p.product_id ??
+                            index + 1
+                        ),
+
+                    name:
+                        p.productName ??
+                        p.name ??
+                        p.product_name ??
+                        "Unknown",
+
+                    size:
+                        p.size ??
+                        "",
+
+                    category:
+                        p.category ??
+                        "Other",
+
+                    price:
+                        Number(
+                            p.purchasePrice ??
+                            p.price ??
+                            0
+                        ),
+
+                    stock:
+                        Number(
+                            p.stock ??
+                            p.qunatity ??
+                            p.quantity ??
+                            0
+                        ),
+
+                    company:
+                        p.company ??
+                        "",
+
+                    lastPurchase:
+                        p.lastPurchase ??
+                        ""
+
+                })
+            );
+
+
+        console.log(
+            "Products from IndexedDB:",
+            products
         );
-             if (res.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
-        if (!res.ok) {
-            throw new Error("Failed to load products");
-        }
-
-        const data = await res.json();
-
-        console.log("Products API:", data);
-
-
-        products = (data.products || []).map((p, index) => ({
-
-            id:
-                Number(
-                    p.id ??
-                    p.product_id ??
-                    index + 1
-                ),
-
-            name:
-                p.name ??
-                p.product_name ??
-                "Unknown",
-
-            size:
-                p.size ??
-                "",
-
-            category:
-                p.category ??
-                "Other",
-
-            price:
-                Number(
-                    p.purchasePrice ??
-                    p.price ??
-                    0
-                ),
-
-            // IMPORTANT:
-            // Your backend uses "quantity"
-            stock:
-                Number(
-                    p.qunatity ??
-                    p.stock ??
-                    0
-                )
-
-        }));
 
 
         renderProductGrid();
 
     }
+
+    catch (error) {
+
+        console.error(
+            "Product cache load failed:",
+            error
+        );
+
+    }
+
+
+    // =======================================================
+    // OFFLINE
+    // =======================================================
+
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Using cached products."
+        );
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // FETCH FRESH PRODUCTS
+    // =======================================================
+
+    try {
+
+        const res =
+            await fetch(
+                `${API}/products`,
+                {
+                    credentials: "include"
+                }
+            );
+
+
+        if (
+            res.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (!res.ok) {
+
+            throw new Error(
+                "Failed to load products"
+            );
+
+        }
+
+
+        const data =
+            await res.json();
+
+
+        console.log(
+            "Products API:",
+            data
+        );
+
+
+        products =
+            (data.products || []).map(
+                (p, index) => ({
+
+                    id:
+                        Number(
+                            p.id ??
+                            p.product_id ??
+                            index + 1
+                        ),
+
+                    name:
+                        p.name ??
+                        p.product_name ??
+                        "Unknown",
+
+                    size:
+                        p.size ??
+                        "",
+
+                    category:
+                        p.category ??
+                        "Other",
+
+                    price:
+                        Number(
+                            p.purchasePrice ??
+                            p.price ??
+                            0
+                        ),
+
+                    stock:
+                        Number(
+                            p.qunatity ??
+                            p.stock ??
+                            p.quantity ??
+                            0
+                        ),
+
+                    company:
+                        p.company ??
+                        "",
+
+                    lastPurchase:
+                        p.lastPurchase ??
+                        ""
+
+                })
+            );
+
+
+        // ===================================================
+        // CACHE MAPPED PRODUCT OBJECTS
+        // ===================================================
+
+        await clearOfflineStore(
+            "products"
+        );
+
+
+        await saveManyToOfflineDB(
+            "products",
+            products.map(
+                product => ({
+
+                    id:
+                        product.id,
+
+                    productName:
+                        product.name,
+
+                    brand:
+                        product.company,
+
+                    company:
+                        product.company,
+
+                    purchasePrice:
+                        product.price,
+
+                    salePrice:
+                        product.salePrice ?? 0,
+
+                    category:
+                        product.category,
+
+                    description:
+                        product.description ?? "",
+
+                    stock:
+                        product.stock,
+
+                    commissionApplicable:
+                        product.commissionApplicable,
+
+                    lastPurchase:
+                        product.lastPurchase
+
+                })
+            )
+        );
+
+
+        renderProductGrid();
+
+    }
+
     catch (error) {
 
         console.error(
@@ -183,8 +595,38 @@ async function fetchProducts() {
 }
 
 
-fetchSuppliers();
-fetchProducts();
+// ===========================================================
+// INITIALIZE PAGE
+// ===========================================================
+//
+// Load the normal page data first.
+//
+// Then synchronize invoices:
+//
+// FIRST DEVICE SYNC
+// -> GET /invoices
+// -> all invoices
+//
+// LATER SYNCS
+// -> GET /invoices?since=...
+// -> all new invoices since last sync
+//
+// ===========================================================
+
+async function initializePurchaseStockPage() {
+
+    await Promise.all([
+        fetchSuppliers(),
+        fetchProducts()
+    ]);
+
+
+    await syncInvoicesToOfflineDB();
+
+}
+
+
+initializePurchaseStockPage();
 
 
 // ===========================================================
@@ -193,12 +635,17 @@ fetchProducts();
 
 function updateDate() {
 
-    const date = new Date();
+    const date =
+        new Date();
 
     const datePill =
-        document.getElementById("datePill");
+        document.getElementById(
+            "datePill"
+        );
+
 
     if (!datePill) return;
+
 
     datePill.textContent =
         date.toLocaleDateString(
@@ -226,72 +673,113 @@ function renderSupplierDropdown() {
             "supplierDropdown"
         );
 
+
     if (!dropdown) return;
+
 
     dropdown.innerHTML = "";
 
 
-    suppliers.forEach(supplier => {
+    suppliers.forEach(
+        supplier => {
 
-        const option =
-            document.createElement("div");
-
-        option.className =
-            "salesman-option";
-
-        option.dataset.id =
-            supplier.id;
+            const option =
+                document.createElement(
+                    "div"
+                );
 
 
-        option.innerHTML = `
-
-            <div class="supplier-logo">
-                ${supplier.name.charAt(0)}
-            </div>
-
-            <div class="salesman-info">
-
-                <p class="salesman-name-row">
-
-                    <span>
-                        ${supplier.name}
-                    </span>
-
-                    <span class="active-pill">
-                        ${supplier.status}
-                    </span>
-
-                </p>
-
-                <p class="salesman-sub">
-                    ${supplier.phone} . ${supplier.address}
-                </p>
-
-            </div>
-
-        `;
+            option.className =
+                "salesman-option";
 
 
-        dropdown.appendChild(option);
+            option.dataset.id =
+                supplier.id;
 
-    });
+
+            option.innerHTML = `
+
+                <div class="supplier-logo">
+                    ${supplier.name.charAt(0)}
+                </div>
+
+
+                <div class="salesman-info">
+
+                    <p class="salesman-name-row">
+
+                        <span>
+                            ${supplier.name}
+                        </span>
+
+                        <span class="active-pill">
+                            ${supplier.status}
+                        </span>
+
+                    </p>
+
+
+                    <p class="salesman-sub">
+                        ${supplier.phone} . ${supplier.address}
+                    </p>
+
+                </div>
+
+            `;
+
+
+            dropdown.appendChild(
+                option
+            );
+
+        }
+    );
 
 }
 
+
+// ===========================================================
+// SELECT SUPPLIER
+// ===========================================================
 
 function setSupplier(id) {
 
     const supplier =
         suppliers.find(
-            s => Number(s.id) === Number(id)
+            s =>
+                Number(s.id) ===
+                Number(id)
         );
-arrears = Number(supplier.outstandingBalance) || 0;
-console.log(supplier.outstandingBalance)
-    if (!supplier) return;
+
+
+    if (!supplier) {
+
+        console.error(
+            "Supplier not found:",
+            id
+        );
+
+        return;
+
+    }
+
+
+    arrears =
+        Number(
+            supplier.outstandingBalance
+        ) || 0;
 
 
     currentSupplierId =
-        Number(supplier.id);
+        Number(
+            supplier.id
+        );
+
+
+    console.log(
+        "Selected supplier:",
+        supplier
+    );
 
 
     const logo =
@@ -299,10 +787,12 @@ console.log(supplier.outstandingBalance)
             "supplierLogo"
         );
 
+
     const name =
         document.getElementById(
             "supplierName"
         );
+
 
     const sub =
         document.getElementById(
@@ -332,14 +822,22 @@ console.log(supplier.outstandingBalance)
             `${supplier.phone} . ${supplier.address}`;
 
     }
-updateSubtotal()
+
+
+    updateSubtotal();
+
 }
 
+
+// ===========================================================
+// SUPPLIER EVENTS
+// ===========================================================
 
 const supplierSelect =
     document.getElementById(
         "supplierSelect"
     );
+
 
 const supplierDropdown =
     document.getElementById(
@@ -347,7 +845,10 @@ const supplierDropdown =
     );
 
 
-if (supplierSelect && supplierDropdown) {
+if (
+    supplierSelect &&
+    supplierDropdown
+) {
 
     supplierSelect.addEventListener(
         "click",
@@ -370,11 +871,14 @@ if (supplierSelect && supplierDropdown) {
                     ".salesman-option"
                 );
 
+
             if (!option) return;
 
 
             setSupplier(
-                Number(option.dataset.id)
+                Number(
+                    option.dataset.id
+                )
             );
 
 
@@ -430,10 +934,12 @@ function iceCreamThumbSvg() {
                     fill="#f4dcb8"
                 />
 
+
                 <path
                     d="M20 26a12 8 0 0 1 24 0"
                     fill="#7a4a2b"
                 />
+
 
                 <circle
                     cx="26"
@@ -442,12 +948,14 @@ function iceCreamThumbSvg() {
                     fill="#e9c9a3"
                 />
 
+
                 <circle
                     cx="32"
                     cy="13"
                     r="4.5"
                     fill="#e9c9a3"
                 />
+
 
                 <circle
                     cx="38"
@@ -476,6 +984,7 @@ function renderProductGrid() {
             "productGrid"
         );
 
+
     if (!grid) return;
 
 
@@ -483,6 +992,7 @@ function renderProductGrid() {
         document.getElementById(
             "productSearch"
         );
+
 
     const categoryInput =
         document.getElementById(
@@ -492,7 +1002,8 @@ function renderProductGrid() {
 
     const search =
         (
-            searchInput?.value || ""
+            searchInput?.value ||
+            ""
         )
         .trim()
         .toLowerCase();
@@ -506,108 +1017,123 @@ function renderProductGrid() {
     grid.innerHTML = "";
 
 
-    products.forEach(product => {
+    products.forEach(
+        product => {
 
-        if (
-            search &&
-            !product.name
-                .toLowerCase()
-                .includes(search) &&
-            !String(product.id)
-                .includes(search)
-        ) {
+            if (
+                search &&
+                !product.name
+                    .toLowerCase()
+                    .includes(search) &&
+                !String(product.id)
+                    .includes(search)
+            ) {
 
-            return;
+                return;
 
-        }
-
-
-        if (
-            category !== "All Categories" &&
-            product.category !== category
-        ) {
-
-            return;
-
-        }
+            }
 
 
-        const card =
-            document.createElement("div");
+            if (
+                category !== "All Categories" &&
+                product.category !== category
+            ) {
 
-        card.className =
-            "product-card";
+                return;
+
+            }
 
 
-        card.innerHTML = `
+            const card =
+                document.createElement(
+                    "div"
+                );
 
-            <div class="product-thumb-wrap">
 
-                <div class="product-thumb">
+            card.className =
+                "product-card";
 
-                    ${iceCreamThumbSvg()}
 
-                    <span class="live-dot"></span>
+            card.innerHTML = `
+
+                <div class="product-thumb-wrap">
+
+                    <div class="product-thumb">
+
+                        ${iceCreamThumbSvg()}
+
+                        <span class="live-dot"></span>
+
+                    </div>
+
+
+                    <div class="product-title">
+
+                        <p>
+                            ${product.name}
+                        </p>
+
+
+                        <p>
+                            ${product.size}
+                        </p>
+
+                    </div>
 
                 </div>
 
-                <div class="product-title">
 
-                    <p>
-                        ${product.name}
-                    </p>
+                <div class="product-meta">
 
-                    <p>
-                        ${product.size}
-                    </p>
+                    <span>
+                        Price
+                    </span>
+
+
+                    <span>
+                        Rs. ${product.price.toLocaleString()}
+                    </span>
 
                 </div>
 
-            </div>
+
+                <div class="product-meta">
+
+                    <span>
+                        Stock
+                    </span>
 
 
-            <div class="product-meta">
+                    <span>
+                        ${product.stock}
+                    </span>
 
-                <span>
-                    Price
-                </span>
-
-                <span>
-                    Rs. ${product.price.toLocaleString()}
-                </span>
-
-            </div>
+                </div>
 
 
-            <div class="product-meta">
+                <button
+                    class="product-add-btn"
+                    data-id="${product.id}"
+                >
+                    + Add
+                </button>
 
-                <span>
-                    Stock
-                </span>
-
-                <span>
-                    ${product.stock}
-                </span>
-
-            </div>
+            `;
 
 
-            <button
-                class="product-add-btn"
-                data-id="${product.id}"
-            >
-                + Add
-            </button>
+            grid.appendChild(
+                card
+            );
 
-        `;
-
-
-        grid.appendChild(card);
-
-    });
+        }
+    );
 
 }
 
+
+// ===========================================================
+// PRODUCT GRID EVENTS
+// ===========================================================
 
 const productGrid =
     document.getElementById(
@@ -626,11 +1152,14 @@ if (productGrid) {
                     ".product-add-btn"
                 );
 
+
             if (!button) return;
 
 
             addProductToPurchaseList(
-                Number(button.dataset.id)
+                Number(
+                    button.dataset.id
+                )
             );
 
         }
@@ -640,7 +1169,9 @@ if (productGrid) {
 
 
 document
-    .getElementById("productSearch")
+    .getElementById(
+        "productSearch"
+    )
     ?.addEventListener(
         "input",
         renderProductGrid
@@ -648,7 +1179,9 @@ document
 
 
 document
-    .getElementById("categoryFilter")
+    .getElementById(
+        "categoryFilter"
+    )
     ?.addEventListener(
         "change",
         renderProductGrid
@@ -656,25 +1189,29 @@ document
 
 
 // ===========================================================
-// ADD PRODUCT
+// ADD PRODUCT TO PURCHASE LIST
 // ===========================================================
 
-function addProductToPurchaseList(productId) {
+function addProductToPurchaseList(
+    productId
+) {
 
     const product =
         products.find(
-            p => p.id === productId
+            p =>
+                p.id ===
+                productId
         );
+
 
     if (!product) return;
 
 
-    // If product already exists,
-    // increase its purchase quantity.
     const existing =
         purchasedItems.find(
             item =>
-                item.productId === productId
+                item.productId ===
+                productId
         );
 
 
@@ -683,6 +1220,7 @@ function addProductToPurchaseList(productId) {
         existing.qty += 1;
 
     }
+
     else {
 
         purchasedItems.push({
@@ -720,6 +1258,7 @@ function renderPurchaseTable() {
             "purchaseTableBody"
         );
 
+
     if (!tbody) return;
 
 
@@ -741,26 +1280,34 @@ function renderPurchaseTable() {
 
 
             const quantity =
-                Number(item.qty) || 0;
+                Number(
+                    item.qty
+                ) || 0;
 
 
             const returned =
-                Number(item.ret) || 0;
+                Number(
+                    item.ret
+                ) || 0;
 
 
             const net =
                 Math.max(
-                    quantity - returned,
+                    quantity -
+                    returned,
                     0
                 );
 
 
             const amount =
-                net * item.price;
+                net *
+                item.price;
 
 
             const row =
-                document.createElement("tr");
+                document.createElement(
+                    "tr"
+                );
 
 
             row.innerHTML = `
@@ -787,7 +1334,7 @@ function renderPurchaseTable() {
                         class="qty-input"
                         data-index="${index}"
                         value="${item.qty}"
-                        >
+                    >
 
                 </td>
 
@@ -836,9 +1383,11 @@ function renderPurchaseTable() {
                                 points="3 6 5 6 21 6"
                             ></polyline>
 
+
                             <path
                                 d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
                             ></path>
+
 
                             <line
                                 x1="10"
@@ -846,6 +1395,7 @@ function renderPurchaseTable() {
                                 x2="10"
                                 y2="17"
                             ></line>
+
 
                             <line
                                 x1="14"
@@ -863,7 +1413,9 @@ function renderPurchaseTable() {
             `;
 
 
-            tbody.appendChild(row);
+            tbody.appendChild(
+                row
+            );
 
         }
     );
@@ -875,7 +1427,7 @@ function renderPurchaseTable() {
 
 
 // ===========================================================
-// TABLE INPUT
+// PURCHASE TABLE INPUT
 // ===========================================================
 
 const purchaseTableBody =
@@ -896,7 +1448,9 @@ if (purchaseTableBody) {
                 );
 
 
-            if (isNaN(index)) return;
+            if (
+                Number.isNaN(index)
+            ) return;
 
 
             const item =
@@ -906,9 +1460,9 @@ if (purchaseTableBody) {
             if (!item) return;
 
 
-            // =========================
-            // PURCHASE QUANTITY
-            // =========================
+            // =================================================
+            // QUANTITY
+            // =================================================
 
             if (
                 event.target.classList.contains(
@@ -923,7 +1477,9 @@ if (purchaseTableBody) {
 
 
                 if (
-                    !Number.isFinite(quantity) ||
+                    !Number.isFinite(
+                        quantity
+                    ) ||
                     quantity < 1
                 ) {
 
@@ -942,9 +1498,9 @@ if (purchaseTableBody) {
             }
 
 
-            // =========================
-            // RETURN QUANTITY
-            // =========================
+            // =================================================
+            // RETURN
+            // =================================================
 
             if (
                 event.target.classList.contains(
@@ -958,7 +1514,9 @@ if (purchaseTableBody) {
                     ) || 0;
 
 
-                if (returned < 0) {
+                if (
+                    returned < 0
+                ) {
 
                     returned = 0;
 
@@ -966,7 +1524,8 @@ if (purchaseTableBody) {
 
 
                 if (
-                    returned > item.qty
+                    returned >
+                    Number(item.qty || 0)
                 ) {
 
                     alert(
@@ -975,7 +1534,9 @@ if (purchaseTableBody) {
 
 
                     returned =
-                        item.qty;
+                        Number(
+                            item.qty || 0
+                        );
 
                 }
 
@@ -990,14 +1551,16 @@ if (purchaseTableBody) {
             }
 
 
-            updateIssueRow(index);
+            updateIssueRow(
+                index
+            );
 
         }
     );
 
 
     // =======================================================
-    // DELETE ROW
+    // DELETE PURCHASE ROW
     // =======================================================
 
     purchaseTableBody.addEventListener(
@@ -1019,7 +1582,9 @@ if (purchaseTableBody) {
                 );
 
 
-            if (isNaN(index)) return;
+            if (
+                Number.isNaN(index)
+            ) return;
 
 
             purchasedItems.splice(
@@ -1037,13 +1602,16 @@ if (purchaseTableBody) {
 
 
 // ===========================================================
-// UPDATE ROW
+// UPDATE PURCHASE ROW
 // ===========================================================
 
-function updateIssueRow(index) {
+function updateIssueRow(
+    index
+) {
 
     const item =
         purchasedItems[index];
+
 
     if (!item) return;
 
@@ -1057,7 +1625,10 @@ function updateIssueRow(index) {
 
 
     const amount =
-        net * Number(item.price || 0);
+        net *
+        Number(
+            item.price || 0
+        );
 
 
     const netElement =
@@ -1100,37 +1671,57 @@ function updateIssueRow(index) {
 function updateSubtotal() {
 
     let quantity = 0;
+
     let returns = 0;
+
     let net = 0;
+
     let amount = 0;
 
 
-    purchasedItems.forEach(item => {
+    purchasedItems.forEach(
+        item => {
 
-        const qty =
-            Number(item.qty) || 0;
-
-        const ret =
-            Number(item.ret) || 0;
-
-        const itemNet =
-            Math.max(
-                qty - ret,
-                0
-            );
+            const qty =
+                Number(
+                    item.qty
+                ) || 0;
 
 
-        quantity += qty;
+            const ret =
+                Number(
+                    item.ret
+                ) || 0;
 
-        returns += ret;
 
-        net += itemNet;
+            const itemNet =
+                Math.max(
+                    qty -
+                    ret,
+                    0
+                );
 
-        amount +=
-            itemNet *
-            Number(item.price || 0);
 
-    });
+            quantity +=
+                qty;
+
+
+            returns +=
+                ret;
+
+
+            net +=
+                itemNet;
+
+
+            amount +=
+                itemNet *
+                Number(
+                    item.price || 0
+                );
+
+        }
+    );
 
 
     const subtotalQty =
@@ -1138,15 +1729,18 @@ function updateSubtotal() {
             "subtotalQty"
         );
 
+
     const subtotalReturn =
         document.getElementById(
             "subtotalReturn"
         );
 
+
     const subtotalNet =
         document.getElementById(
             "subtotalNet"
         );
+
 
     const subtotalAmount =
         document.getElementById(
@@ -1174,7 +1768,9 @@ function updateSubtotal() {
             amount.toLocaleString();
 
 
-    updateTotals(amount);
+    updateTotals(
+        amount
+    );
 
 }
 
@@ -1183,9 +1779,13 @@ function updateSubtotal() {
 // TOTAL CALCULATION
 // ===========================================================
 
-function updateTotals(subTotal) {
+function updateTotals(
+    subTotal
+) {
 
-    const commission = subTotal*entercomission;
+    const commission =
+        subTotal *
+        entercomission;
 
 
     const discount =
@@ -1215,11 +1815,16 @@ function updateTotals(subTotal) {
         cash;
 
 
-   
+    const arrearsValue =
+        Number(
+            arrears
+        ) || 0;
 
- const arrearsValue = Number(arrears) || 0;
 
-const balance = currentBill + arrearsValue;
+    const balance =
+        currentBill +
+        arrearsValue;
+
 
     const elements = {
 
@@ -1244,28 +1849,335 @@ const balance = currentBill + arrearsValue;
     };
 
 
-    Object.entries(elements)
-        .forEach(
-            ([id, value]) => {
+    Object.entries(
+        elements
+    )
+    .forEach(
+        ([id, value]) => {
 
-                const element =
-                    document.getElementById(
-                        id
+            const element =
+                document.getElementById(
+                    id
+                );
+
+
+            if (!element) return;
+
+
+            element.textContent =
+                Number(
+                    value
+                )
+                .toLocaleString();
+
+        }
+    );
+
+}
+
+
+// ===========================================================
+// LOCAL PURCHASE CALCULATIONS
+// ===========================================================
+//
+// This function changes only IndexedDB.
+//
+// It does NOT add anything to syncQueue.
+//
+// The backend will perform its own authoritative updates
+// when POST /invoices is synchronized.
+// ===========================================================
+
+async function applyPurchaseLocally(
+    invoice
+) {
+
+    // =======================================================
+    // UPDATE PRODUCTS
+    // =======================================================
+
+    const localProducts =
+        await getAllFromOfflineDB(
+            "products"
+        );
+
+
+    const updatedProducts =
+        localProducts.map(
+            product => {
+
+                const invoiceItem =
+                    invoice.items.find(
+                        item =>
+                            Number(
+                                item.productId
+                            ) ===
+                            Number(
+                                product.id
+                            )
                     );
 
-                if (!element) return;
+
+                if (!invoiceItem) {
+
+                    return product;
+
+                }
 
 
-                element.textContent =
-                    Number(value)
-                        .toLocaleString();
+                const quantity =
+                    Number(
+                        invoiceItem.quantity
+                    ) || 0;
+
+
+                const returnedQuantity =
+                    Number(
+                        invoiceItem.returnedQuantity
+                    ) || 0;
+
+
+                const netQuantity =
+                    Math.max(
+                        quantity -
+                        returnedQuantity,
+                        0
+                    );
+
+
+                return {
+
+                    ...product,
+
+                    stock:
+                        (
+                            Number(
+                                product.stock
+                            ) || 0
+                        ) +
+                        netQuantity,
+
+                    lastPurchase:
+                        new Date().toISOString()
+
+                };
 
             }
         );
 
+
+    if (
+        updatedProducts.length > 0
+    ) {
+
+        await saveManyToOfflineDB(
+            "products",
+            updatedProducts
+        );
+
+    }
+
+
+    // =======================================================
+    // UPDATE SUPPLIER
+    // =======================================================
+
+    const localSuppliers =
+        await getAllFromOfflineDB(
+            "suppliers"
+        );
+
+
+    const supplierId =
+        Number(
+            invoice.partyId
+        );
+
+
+    const updatedSuppliers =
+        localSuppliers.map(
+            supplier => {
+
+                if (
+                    Number(
+                        supplier.id
+                    ) !==
+                    supplierId
+                ) {
+
+                    return supplier;
+
+                }
+
+
+                const existingMonthlyPurchases =
+                    Number(
+                        supplier.monthlyPurchases
+                    ) || 0;
+
+
+                return {
+
+                    ...supplier,
+
+                    outstandingBalance:
+                        Number(
+                            invoice.balance
+                        ) || 0,
+
+                    monthlyPurchases:
+                        existingMonthlyPurchases +
+                        (
+                            Number(
+                                invoice.netTotal
+                            ) || 0
+                        ),
+
+                    lastPayment: {
+
+                        amount:
+                            Number(
+                                invoice.netTotal
+                            ) || 0,
+
+                        date:
+                            new Date(
+                                invoice.date
+                            ).toISOString()
+
+                    }
+
+                };
+
+            }
+        );
+
+
+    if (
+        updatedSuppliers.length > 0
+    ) {
+
+        await saveManyToOfflineDB(
+            "suppliers",
+            updatedSuppliers
+        );
+
+    }
+
+
+    // =======================================================
+    // UPDATE PAGE STATE
+    // =======================================================
+
+    products =
+        updatedProducts.map(
+            product => ({
+
+                id:
+                    Number(
+                        product.id
+                    ),
+
+                name:
+                    product.productName ??
+                    product.name ??
+                    "Unknown",
+
+                size:
+                    product.size ??
+                    "",
+
+                category:
+                    product.category ??
+                    "Other",
+
+                price:
+                    Number(
+                        product.purchasePrice ??
+                        product.price ??
+                        0
+                    ),
+
+                stock:
+                    Number(
+                        product.stock ??
+                        0
+                    ),
+
+                company:
+                    product.company ??
+                    "",
+
+                lastPurchase:
+                    product.lastPurchase ??
+                    ""
+
+            })
+        );
+
+
+    suppliers =
+        updatedSuppliers.map(
+            supplier => ({
+
+                id:
+                    Number(
+                        supplier.id
+                    ),
+
+                name:
+                    supplier.companyName ??
+                    supplier.name ??
+                    "Unknown",
+
+                status:
+                    supplier.status ??
+                    "Active",
+
+                phone:
+                    supplier.phone ??
+                    "",
+
+                address:
+                    supplier.address ??
+                    "",
+
+                outstandingBalance:
+                    Number(
+                        supplier.outstandingBalance
+                    ) || 0
+
+            })
+        );
+
+
+    const selectedSupplier =
+        suppliers.find(
+            supplier =>
+                Number(
+                    supplier.id
+                ) ===
+                supplierId
+        );
+
+
+    if (
+        selectedSupplier
+    ) {
+
+        arrears =
+            Number(
+                selectedSupplier.outstandingBalance
+            ) || 0;
+
+    }
+
+
+    renderProductGrid();
+
 }
 
-// javascript
+
 // ===========================================================
 // PURCHASE INVOICE PRINTING
 // ===========================================================
@@ -1277,7 +2189,9 @@ let invoiceWaitingForPrint = null;
 // PRINT PURCHASE A4 INVOICE
 // ===========================================================
 
-function printPurchaseRealInvoice(invoice) {
+function printPurchaseRealInvoice(
+    invoice
+) {
 
     const printWindow =
         window.open(
@@ -1286,6 +2200,7 @@ function printPurchaseRealInvoice(invoice) {
             "width=900,height=1000"
         );
 
+
     if (!printWindow) {
 
         alert(
@@ -1293,11 +2208,14 @@ function printPurchaseRealInvoice(invoice) {
         );
 
         return;
+
     }
 
 
     const invoiceDate =
-        new Date(invoice.date).toLocaleDateString(
+        new Date(
+            invoice.date
+        ).toLocaleDateString(
             "en-GB",
             {
                 day: "2-digit",
@@ -1312,19 +2230,27 @@ function printPurchaseRealInvoice(invoice) {
             (item, index) => {
 
                 const quantity =
-                    Number(item.quantity) || 0;
+                    Number(
+                        item.quantity
+                    ) || 0;
+
 
                 const returned =
-                    Number(item.returnedQuantity) || 0;
+                    Number(
+                        item.returnedQuantity
+                    ) || 0;
+
 
                 const net =
                     Math.max(
-                        quantity - returned,
+                        quantity -
+                        returned,
                         0
                     );
 
 
                 return `
+
                     <tr>
 
                         <td>
@@ -1336,7 +2262,9 @@ function printPurchaseRealInvoice(invoice) {
                         </td>
 
                         <td>
-                            ${Number(item.price).toLocaleString()}
+                            ${Number(
+                                item.price
+                            ).toLocaleString()}
                         </td>
 
                         <td>
@@ -1352,21 +2280,27 @@ function printPurchaseRealInvoice(invoice) {
                         </td>
 
                         <td>
-                            ${Number(item.amount).toLocaleString()}
+                            ${Number(
+                                item.amount
+                            ).toLocaleString()}
                         </td>
 
                     </tr>
+
                 `;
 
             }
-        ).join("");
+        )
+        .join("");
 
 
     const totalQuantity =
         invoice.items.reduce(
             (total, item) =>
                 total +
-                Number(item.quantity || 0),
+                Number(
+                    item.quantity || 0
+                ),
             0
         );
 
@@ -1375,7 +2309,9 @@ function printPurchaseRealInvoice(invoice) {
         invoice.items.reduce(
             (total, item) =>
                 total +
-                Number(item.returnedQuantity || 0),
+                Number(
+                    item.returnedQuantity || 0
+                ),
             0
         );
 
@@ -1385,8 +2321,12 @@ function printPurchaseRealInvoice(invoice) {
             (total, item) =>
                 total +
                 Math.max(
-                    Number(item.quantity || 0) -
-                    Number(item.returnedQuantity || 0),
+                    Number(
+                        item.quantity || 0
+                    ) -
+                    Number(
+                        item.returnedQuantity || 0
+                    ),
                     0
                 ),
             0
@@ -1403,7 +2343,9 @@ function printPurchaseRealInvoice(invoice) {
 
 <meta charset="UTF-8">
 
-<title>Purchase Invoice ${invoice.id}</title>
+<title>
+    Purchase Invoice ${invoice.id}
+</title>
 
 <style>
 
@@ -1417,289 +2359,165 @@ function printPurchaseRealInvoice(invoice) {
 }
 
 body {
-
     margin: 0;
-
     padding: 0;
-
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
+    font-family: Arial, Helvetica, sans-serif;
     color: #000;
-
     background: white;
-
     font-size: 12px;
-
 }
 
 .invoice {
-
     width: 100%;
-
     max-width: 780px;
-
     margin: auto;
-
 }
 
-
-/* ================= HEADER ================= */
-
 .header {
-
     text-align: center;
-
     margin-bottom: 10px;
-
 }
 
 .company-name {
-
     font-size: 25px;
-
     font-weight: bold;
-
     margin-bottom: 5px;
-
 }
 
 .company-address {
-
     font-size: 11px;
-
     line-height: 1.5;
-
 }
 
 .invoice-title {
-
     font-size: 18px;
-
     font-weight: bold;
-
     text-decoration: underline;
-
     margin-top: 10px;
-
 }
 
-
-/* ================= SUPPLIER INFO ================= */
-
 .info-table {
-
     width: 100%;
-
     border-collapse: collapse;
-
     margin-top: 8px;
-
     margin-bottom: 8px;
-
 }
 
 .info-table td {
-
     border: 1px solid #999;
-
     padding: 6px;
-
 }
 
 .info-label {
-
     font-weight: bold;
-
     width: 18%;
-
 }
 
 .info-value {
-
     width: 32%;
-
 }
 
-
-/* ================= ITEMS ================= */
-
 .items-table {
-
     width: 100%;
-
     border-collapse: collapse;
-
     margin-top: 5px;
-
 }
 
 .items-table th,
 .items-table td {
-
     border: 1px solid #999;
-
     padding: 5px 4px;
-
     text-align: center;
-
 }
 
 .items-table th {
-
     font-weight: bold;
-
     background: #f5f5f5;
-
 }
 
 .items-table td:nth-child(2) {
-
     text-align: left;
-
 }
-
-
-/* ================= SUBTOTAL ================= */
 
 .subtotal-row td {
-
     font-weight: bold;
-
 }
 
-
-/* ================= TOTALS ================= */
-
 .totals-container {
-
     display: flex;
-
     justify-content: flex-end;
-
     margin-top: 10px;
-
 }
 
 .totals-table {
-
     width: 50%;
-
     border-collapse: collapse;
-
 }
 
 .totals-table td {
-
     padding: 5px 8px;
-
     border-bottom: 1px solid #aaa;
-
 }
 
 .totals-table td:first-child {
-
     text-align: left;
-
     font-weight: bold;
-
 }
 
 .totals-table td:last-child {
-
     text-align: right;
-
     min-width: 120px;
-
 }
 
 .balance-row td {
-
     font-size: 14px;
-
     font-weight: bold;
-
     border-top: 2px solid #000;
-
 }
 
-
-/* ================= SIGNATURES ================= */
-
 .signatures {
-
     display: flex;
-
     justify-content: space-between;
-
     margin-top: 110px;
-
     text-align: center;
-
 }
 
 .signature {
-
     width: 30%;
-
 }
 
 .signature-line {
-
     border-top: 1px solid #000;
-
     margin-bottom: 6px;
-
 }
 
 .signature-title {
-
     font-weight: bold;
-
 }
 
 .page-number {
-
     text-align: center;
-
     margin-top: 25px;
-
     font-size: 10px;
-
 }
 
-
-/* ================= PRINT ================= */
-
 @media print {
-
     body {
-
         background: white;
-
     }
 
     .invoice {
-
         width: 100%;
-
     }
-
 }
 
 </style>
 
 </head>
 
-
 <body>
 
 <div class="invoice">
-
-
-    <!-- HEADER -->
 
     <div class="header">
 
@@ -1732,8 +2550,6 @@ body {
 
     </div>
 
-
-    <!-- SUPPLIER INFORMATION -->
 
     <table class="info-table">
 
@@ -1781,41 +2597,25 @@ body {
     </table>
 
 
-    <!-- ITEMS -->
-
     <table class="items-table">
 
         <thead>
 
             <tr>
 
-                <th>
-                    No.
-                </th>
+                <th>No.</th>
 
-                <th>
-                    Type of Goods
-                </th>
+                <th>Type of Goods</th>
 
-                <th>
-                    Price
-                </th>
+                <th>Price</th>
 
-                <th>
-                    Purchase
-                </th>
+                <th>Purchase</th>
 
-                <th>
-                    Return
-                </th>
+                <th>Return</th>
 
-                <th>
-                    Net
-                </th>
+                <th>Net</th>
 
-                <th>
-                    Amount
-                </th>
+                <th>Amount</th>
 
             </tr>
 
@@ -1846,7 +2646,9 @@ body {
                 </td>
 
                 <td>
-                    ${Number(invoice.subtotal).toLocaleString()}
+                    ${Number(
+                        invoice.subtotal
+                    ).toLocaleString()}
                 </td>
 
             </tr>
@@ -1856,126 +2658,88 @@ body {
     </table>
 
 
-    <!-- TOTALS -->
-
     <div class="totals-container">
 
         <table class="totals-table">
 
-
             <tr>
-
+                <td>Sub Total</td>
                 <td>
-                    Sub Total
+                    ${Number(
+                        invoice.subtotal
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.subtotal).toLocaleString()}
-                </td>
-
             </tr>
 
-
             <tr>
-
+                <td>Commission 20%</td>
                 <td>
-                    Commission 20%
+                    ${Number(
+                        invoice.commission
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.commission).toLocaleString()}
-                </td>
-
             </tr>
 
-
             <tr>
-
+                <td>Discount</td>
                 <td>
-                    Discount
+                    ${Number(
+                        invoice.discount
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.discount).toLocaleString()}
-                </td>
-
             </tr>
 
-
             <tr>
-
+                <td>Net Total</td>
                 <td>
-                    Net Total
+                    ${Number(
+                        invoice.netTotal
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.netTotal).toLocaleString()}
-                </td>
-
             </tr>
 
-
             <tr>
-
+                <td>Cash</td>
                 <td>
-                    Cash
+                    ${Number(
+                        invoice.cash
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.cash).toLocaleString()}
-                </td>
-
             </tr>
 
-
             <tr>
-
+                <td>Current Bill</td>
                 <td>
-                    Current Bill
+                    ${Number(
+                        invoice.currentBill
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.currentBill).toLocaleString()}
-                </td>
-
             </tr>
 
-
             <tr>
-
+                <td>Arrears</td>
                 <td>
-                    Arrears
+                    ${Number(
+                        invoice.arrears
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.arrears).toLocaleString()}
-                </td>
-
             </tr>
-
 
             <tr class="balance-row">
-
+                <td>Balance</td>
                 <td>
-                    Balance
+                    ${Number(
+                        invoice.balance
+                    ).toLocaleString()}
                 </td>
-
-                <td>
-                    ${Number(invoice.balance).toLocaleString()}
-                </td>
-
             </tr>
-
 
         </table>
 
     </div>
 
 
-    <!-- SIGNATURES -->
-
     <div class="signatures">
-
 
         <div class="signature">
 
@@ -2021,7 +2785,6 @@ body {
 
         </div>
 
-
     </div>
 
 
@@ -2029,26 +2792,20 @@ body {
         Page 1 of 1
     </div>
 
-
 </div>
 
 
 <script>
 
 window.onload = function() {
-
     window.print();
-
 };
 
 window.onafterprint = function() {
-
     window.close();
-
 };
 
 <\/script>
-
 
 </body>
 
@@ -2066,7 +2823,9 @@ window.onafterprint = function() {
 // PRINT PURCHASE THERMAL INVOICE
 // ===========================================================
 
-function printPurchaseThermalInvoice(invoice) {
+function printPurchaseThermalInvoice(
+    invoice
+) {
 
     const printWindow =
         window.open(
@@ -2088,7 +2847,9 @@ function printPurchaseThermalInvoice(invoice) {
 
 
     const invoiceDate =
-        new Date(invoice.date).toLocaleDateString(
+        new Date(
+            invoice.date
+        ).toLocaleDateString(
             "en-GB",
             {
                 day: "2-digit",
@@ -2102,7 +2863,9 @@ function printPurchaseThermalInvoice(invoice) {
         invoice.items.reduce(
             (total, item) =>
                 total +
-                Number(item.quantity || 0),
+                Number(
+                    item.quantity || 0
+                ),
             0
         );
 
@@ -2111,7 +2874,9 @@ function printPurchaseThermalInvoice(invoice) {
         invoice.items.reduce(
             (total, item) =>
                 total +
-                Number(item.returnedQuantity || 0),
+                Number(
+                    item.returnedQuantity || 0
+                ),
             0
         );
 
@@ -2121,8 +2886,12 @@ function printPurchaseThermalInvoice(invoice) {
             (total, item) =>
                 total +
                 Math.max(
-                    Number(item.quantity || 0) -
-                    Number(item.returnedQuantity || 0),
+                    Number(
+                        item.quantity || 0
+                    ) -
+                    Number(
+                        item.returnedQuantity || 0
+                    ),
                     0
                 ),
             0
@@ -2130,52 +2899,65 @@ function printPurchaseThermalInvoice(invoice) {
 
 
     const itemsRows =
-        invoice.items.map(
-            (item, index) => {
+        invoice.items
+            .map(
+                (item, index) => {
 
-                const quantity =
-                    Number(item.quantity || 0);
-
-                const returned =
-                    Number(item.returnedQuantity || 0);
-
-                const net =
-                    Math.max(
-                        quantity - returned,
-                        0
-                    );
+                    const quantity =
+                        Number(
+                            item.quantity || 0
+                        );
 
 
-                return `
+                    const returned =
+                        Number(
+                            item.returnedQuantity || 0
+                        );
 
-                    <tr>
 
-                        <td class="no">
-                            ${index + 1}
-                        </td>
+                    const net =
+                        Math.max(
+                            quantity -
+                            returned,
+                            0
+                        );
 
-                        <td class="product">
-                            ${item.productName}
-                        </td>
 
-                        <td class="qty">
-                            ${quantity}
-                        </td>
+                    return `
 
-                        <td class="price">
-                            ${Number(item.price).toLocaleString()}
-                        </td>
+                        <tr>
 
-                        <td class="amount">
-                            ${Number(item.amount).toLocaleString()}
-                        </td>
+                            <td class="no">
+                                ${index + 1}
+                            </td>
 
-                    </tr>
+                            <td class="product">
+                                ${item.productName}
+                            </td>
 
-                `;
+                            <td class="qty">
+                                ${quantity}
+                            </td>
 
-            }
-        ).join("");
+                            <td class="price">
+                                ${Number(
+                                    item.price
+                                ).toLocaleString()}
+                            </td>
+
+                            <td class="amount">
+                                ${Number(
+                                    item.amount
+                                ).toLocaleString()}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            )
+            .join("");
 
 
     printWindow.document.write(`
@@ -2195,320 +2977,187 @@ function printPurchaseThermalInvoice(invoice) {
 <style>
 
 @page {
-
     size: 80mm auto;
-
     margin: 0;
-
 }
 
 * {
-
     box-sizing: border-box;
-
 }
 
 html,
 body {
-
     width: 80mm;
-
     margin: 0;
-
     padding: 0;
-
 }
 
 body {
-
     font-family:
         Arial,
         Helvetica,
         sans-serif;
 
     color: #000;
-
     background: #fff;
-
     font-size: 11px;
-
     line-height: 1.3;
-
 }
 
 .receipt {
-
     width: 72mm;
-
     margin: 0 auto;
-
     padding: 4mm 0;
-
 }
 
-
-/* HEADER */
-
 .header {
-
     text-align: center;
-
     margin-bottom: 8px;
-
 }
 
 .company-name {
-
     font-size: 18px;
-
     font-weight: bold;
-
     margin-bottom: 3px;
-
 }
 
 .company-address {
-
     font-size: 9px;
-
     line-height: 1.3;
-
 }
 
 .invoice-title {
-
     font-size: 14px;
-
     font-weight: bold;
-
     margin-top: 7px;
-
     border-top: 1px dashed #000;
-
     border-bottom: 1px dashed #000;
-
     padding: 4px 0;
-
 }
 
-
-/* INFO */
-
 .info {
-
     margin-top: 7px;
-
     margin-bottom: 7px;
-
     font-size: 10px;
-
 }
 
 .info-row {
-
     display: flex;
-
     justify-content: space-between;
-
     margin-bottom: 2px;
-
 }
 
 .info-label {
-
     font-weight: bold;
-
 }
 
-
-/* ITEMS */
-
 .items-table {
-
     width: 100%;
-
     border-collapse: collapse;
-
     margin-top: 5px;
-
 }
 
 .items-table th {
-
     border-top: 1px dashed #000;
-
     border-bottom: 1px dashed #000;
-
     padding: 4px 1px;
-
     font-size: 9px;
-
 }
 
 .items-table td {
-
     padding: 4px 1px;
-
     vertical-align: top;
-
     font-size: 9px;
-
 }
 
 .no {
-
     width: 8%;
-
     text-align: left;
-
 }
 
 .product {
-
     width: 36%;
-
     text-align: left;
-
     word-break: break-word;
-
 }
 
 .qty {
-
     width: 12%;
-
     text-align: center;
-
 }
 
 .price {
-
     width: 20%;
-
     text-align: right;
-
 }
 
 .amount {
-
     width: 24%;
-
     text-align: right;
-
 }
 
-
-/* SUBTOTAL */
-
 .subtotal {
-
     border-top: 1px dashed #000;
-
     border-bottom: 1px dashed #000;
-
     padding: 5px 0;
-
     margin-top: 3px;
-
 }
 
 .subtotal-row {
-
     display: flex;
-
     justify-content: space-between;
-
     margin-bottom: 2px;
-
 }
 
-
-/* TOTALS */
-
 .totals {
-
     margin-top: 7px;
-
 }
 
 .total-row {
-
     display: flex;
-
     justify-content: space-between;
-
     padding: 2px 0;
-
 }
 
 .total-label {
-
     text-align: left;
-
 }
 
 .total-value {
-
     text-align: right;
-
 }
 
 .balance {
-
     border-top: 1px solid #000;
-
     border-bottom: 1px solid #000;
-
     font-size: 13px;
-
     font-weight: bold;
-
     padding: 5px 0;
-
     margin-top: 3px;
-
 }
 
-
-/* FOOTER */
-
 .footer {
-
     text-align: center;
-
     margin-top: 12px;
-
     border-top: 1px dashed #000;
-
     padding-top: 7px;
-
     font-size: 9px;
-
 }
 
 .thank-you {
-
     font-weight: bold;
-
     font-size: 11px;
-
     margin-bottom: 3px;
-
 }
-
 
 @media print {
 
     body {
-
         width: 80mm;
-
     }
 
     .receipt {
-
         width: 72mm;
-
     }
 
 }
@@ -2522,7 +3171,6 @@ body {
 
 <div class="receipt">
 
-
     <div class="header">
 
         <div class="company-name">
@@ -2532,6 +3180,7 @@ body {
         <div class="company-address">
 
             Head Office: New Ring Road Near Madni Colony
+
             Back side Zantara Town Peshawar
 
             <br>
@@ -2693,7 +3342,6 @@ body {
 
     <div class="totals">
 
-
         <div class="total-row">
 
             <span class="total-label">
@@ -2701,7 +3349,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.subtotal).toLocaleString()}
+                Rs. ${Number(
+                    invoice.subtotal
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2714,7 +3364,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.commission).toLocaleString()}
+                Rs. ${Number(
+                    invoice.commission
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2727,7 +3379,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.discount).toLocaleString()}
+                Rs. ${Number(
+                    invoice.discount
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2740,7 +3394,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.netTotal).toLocaleString()}
+                Rs. ${Number(
+                    invoice.netTotal
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2753,7 +3409,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.cash).toLocaleString()}
+                Rs. ${Number(
+                    invoice.cash
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2766,7 +3424,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.currentBill).toLocaleString()}
+                Rs. ${Number(
+                    invoice.currentBill
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2779,7 +3439,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.arrears).toLocaleString()}
+                Rs. ${Number(
+                    invoice.arrears
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2792,7 +3454,9 @@ body {
             </span>
 
             <span class="total-value">
-                Rs. ${Number(invoice.balance).toLocaleString()}
+                Rs. ${Number(
+                    invoice.balance
+                ).toLocaleString()}
             </span>
 
         </div>
@@ -2814,26 +3478,20 @@ body {
 
     </div>
 
-
 </div>
 
 
 <script>
 
 window.onload = function() {
-
     window.print();
-
 };
 
 window.onafterprint = function() {
-
     window.close();
-
 };
 
 <\/script>
-
 
 </body>
 
@@ -2851,18 +3509,25 @@ window.onafterprint = function() {
 // PRINT SELECTION MODAL
 // ===========================================================
 
-function openPurchasePrintInvoiceModal(invoice) {
+function openPurchasePrintInvoiceModal(
+    invoice
+) {
 
-    invoiceWaitingForPrint = invoice;
+    invoiceWaitingForPrint =
+        invoice;
+
 
     const modal =
         document.getElementById(
             "printInvoiceModal"
         );
 
+
     if (modal) {
 
-        modal.classList.add("show");
+        modal.classList.add(
+            "show"
+        );
 
     }
 
@@ -2876,13 +3541,18 @@ function closePurchasePrintInvoiceModal() {
             "printInvoiceModal"
         );
 
+
     if (modal) {
 
-        modal.classList.remove("show");
+        modal.classList.remove(
+            "show"
+        );
 
     }
 
-    invoiceWaitingForPrint = null;
+
+    invoiceWaitingForPrint =
+        null;
 
 }
 
@@ -2892,13 +3562,16 @@ function closePurchasePrintInvoiceModal() {
 // ===========================================================
 
 document
-    .getElementById("printThermalBtn")
+    .getElementById(
+        "printThermalBtn"
+    )
     ?.addEventListener(
         "click",
         () => {
 
-            if (!invoiceWaitingForPrint)
-                return;
+            if (
+                !invoiceWaitingForPrint
+            ) return;
 
 
             const invoice =
@@ -2921,13 +3594,16 @@ document
 // ===========================================================
 
 document
-    .getElementById("printRealBtn")
+    .getElementById(
+        "printRealBtn"
+    )
     ?.addEventListener(
         "click",
         () => {
 
-            if (!invoiceWaitingForPrint)
-                return;
+            if (
+                !invoiceWaitingForPrint
+            ) return;
 
 
             const invoice =
@@ -2950,7 +3626,9 @@ document
 // ===========================================================
 
 document
-    .getElementById("closePrintModal")
+    .getElementById(
+        "closePrintModal"
+    )
     ?.addEventListener(
         "click",
         closePurchasePrintInvoiceModal
@@ -2958,7 +3636,9 @@ document
 
 
 document
-    .getElementById("cancelPrintBtn")
+    .getElementById(
+        "cancelPrintBtn"
+    )
     ?.addEventListener(
         "click",
         closePurchasePrintInvoiceModal
@@ -2970,7 +3650,9 @@ document
 // ===========================================================
 
 document
-    .getElementById("printInvoiceModal")
+    .getElementById(
+        "printInvoiceModal"
+    )
     ?.addEventListener(
         "click",
         event => {
@@ -3005,7 +3687,8 @@ if (createInvoiceBtn) {
         async () => {
 
             if (
-                purchasedItems.length === 0
+                purchasedItems.length ===
+                0
             ) {
 
                 alert(
@@ -3017,7 +3700,9 @@ if (createInvoiceBtn) {
             }
 
 
-            if (!currentSupplierId) {
+            if (
+                !currentSupplierId
+            ) {
 
                 alert(
                     "Please select a supplier."
@@ -3028,20 +3713,30 @@ if (createInvoiceBtn) {
             }
 
 
-            // Validate quantities
+            // =================================================
+            // VALIDATE
+            // =================================================
+
             for (
                 const item
                 of purchasedItems
             ) {
 
                 const qty =
-                    Number(item.qty) || 0;
+                    Number(
+                        item.qty
+                    ) || 0;
+
 
                 const ret =
-                    Number(item.ret) || 0;
+                    Number(
+                        item.ret
+                    ) || 0;
 
 
-                if (qty < 1) {
+                if (
+                    qty < 1
+                ) {
 
                     alert(
                         "Purchase quantity must be at least 1."
@@ -3052,7 +3747,9 @@ if (createInvoiceBtn) {
                 }
 
 
-                if (ret < 0) {
+                if (
+                    ret < 0
+                ) {
 
                     alert(
                         "Return quantity cannot be negative."
@@ -3063,7 +3760,9 @@ if (createInvoiceBtn) {
                 }
 
 
-                if (ret > qty) {
+                if (
+                    ret > qty
+                ) {
 
                     alert(
                         "Return quantity cannot be greater than purchased quantity."
@@ -3093,7 +3792,7 @@ if (createInvoiceBtn) {
                     )?.textContent || "",
 
                 date:
-                    new Date(),
+                    new Date().toISOString(),
 
                 items:
                     purchasedItems.map(
@@ -3113,7 +3812,8 @@ if (createInvoiceBtn) {
                                     item.productId,
 
                                 productName:
-                                    product?.name || "",
+                                    product?.name ||
+                                    "",
 
                                 quantity:
                                     Number(
@@ -3132,10 +3832,16 @@ if (createInvoiceBtn) {
 
                                 amount:
                                     (
-                                        Number(item.qty) -
-                                        Number(item.ret || 0)
+                                        Number(
+                                            item.qty
+                                        ) -
+                                        Number(
+                                            item.ret || 0
+                                        )
                                     ) *
-                                    Number(item.price)
+                                    Number(
+                                        item.price
+                                    )
 
                             };
 
@@ -3145,19 +3851,29 @@ if (createInvoiceBtn) {
 
                 subtotal:
                     Number(
-                        document.getElementById(
-                            "subTotal"
-                        )?.textContent
-                            .replace(/,/g, "")
+                        document
+                            .getElementById(
+                                "subTotal"
+                            )
+                            ?.textContent
+                            .replace(
+                                /,/g,
+                                ""
+                            )
                     ) || 0,
 
 
                 commission:
                     Number(
-                        document.getElementById(
-                            "commision"
-                        )?.textContent
-                            .replace(/,/g, "")
+                        document
+                            .getElementById(
+                                "commision"
+                            )
+                            ?.textContent
+                            .replace(
+                                /,/g,
+                                ""
+                            )
                     ) || 0,
 
 
@@ -3171,10 +3887,15 @@ if (createInvoiceBtn) {
 
                 netTotal:
                     Number(
-                        document.getElementById(
-                            "NetTotal"
-                        )?.textContent
-                            .replace(/,/g, "")
+                        document
+                            .getElementById(
+                                "NetTotal"
+                            )
+                            ?.textContent
+                            .replace(
+                                /,/g,
+                                ""
+                            )
                     ) || 0,
 
 
@@ -3188,30 +3909,48 @@ if (createInvoiceBtn) {
 
                 currentBill:
                     Number(
-                        document.getElementById(
-                            "currentBill"
-                        )?.textContent
-                            .replace(/,/g, "")
+                        document
+                            .getElementById(
+                                "currentBill"
+                            )
+                            ?.textContent
+                            .replace(
+                                /,/g,
+                                ""
+                            )
                     ) || 0,
 
 
                 arrears:
                     Number(
-                        document.getElementById(
-                            "Arrears"
-                        )?.textContent
-                            .replace(/,/g, "")
+                        document
+                            .getElementById(
+                                "Arrears"
+                            )
+                            ?.textContent
+                            .replace(
+                                /,/g,
+                                ""
+                            )
                     ) || 0,
 
 
                 balance:
                     Number(
-                        document.getElementById(
-                            "balance"
-                        )?.textContent
-                            .replace(/,/g, "")
+                        document
+                            .getElementById(
+                                "balance"
+                            )
+                            ?.textContent
+                            .replace(
+                                /,/g,
+                                ""
+                            )
                     ) || 0,
-                    dynamicComission:entercomission
+
+
+                dynamicComission:
+                    entercomission
 
             };
 
@@ -3228,18 +3967,76 @@ if (createInvoiceBtn) {
                     true;
 
 
+                // =================================================
+                // OFFLINE
+                // =================================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
+                    await applyPurchaseLocally(
+                        invoice
+                    );
+
+
+                    // Only the original server operation
+                    // is placed into the global queue.
+                    await addToSyncQueue({
+
+                        endpoint:
+                            "/invoices",
+
+                        method:
+                            "POST",
+
+                        body:
+                            invoice
+
+                    });
+
+
+                    alert(
+                        "Purchase invoice saved offline. Stock and supplier balances were updated locally and it will synchronize when internet returns."
+                    );
+
+
+                    openPurchasePrintInvoiceModal(
+                        invoice
+                    );
+
+
+                    purchasedItems = [];
+
+
+                    renderPurchaseTable();
+
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // ONLINE
+                // =================================================
+
                 const res =
                     await fetch(
                         `${API}/invoices`,
-                   
                         {
 
                             method:
                                 "POST",
-                            credentials: "include",
+
+                            credentials:
+                                "include",
+
                             headers: {
+
                                 "Content-Type":
                                     "application/json"
+
                             },
 
                             body:
@@ -3248,18 +4045,28 @@ if (createInvoiceBtn) {
                                 )
 
                         }
-                       
                     );
 
-                     if (res.status === 401) {
-        window.location.href = 'login.html'
-        return ;
-    }
+
+                if (
+                    res.status === 401
+                ) {
+
+                    window.location.href =
+                        "login.html";
+
+                    return;
+
+                }
+
+
                 const result =
                     await res.json();
 
 
-                if (!res.ok) {
+                if (
+                    !res.ok
+                ) {
 
                     throw new Error(
                         result.message ||
@@ -3269,40 +4076,53 @@ if (createInvoiceBtn) {
                 }
 
 
-           
-alert(
-    "Purchase invoice created successfully. Stock has been increased."
-);
-
-console.log(
-    "Server response:",
-    result
-);
+                console.log(
+                    "Server response:",
+                    result
+                );
 
 
-// =========================================
-// SHOW PRINT OPTIONS
-// =========================================
+                // =================================================
+                // ONLINE SUCCESS
+                // =================================================
+                //
+                // Backend is authoritative.
+                //
+                // We also save the successfully-created invoice
+                // locally because the POST response does not
+                // return the complete invoice object.
+                // =================================================
 
-openPurchasePrintInvoiceModal(invoice);
-
-
-// =========================================
-// DO NOT RELOAD HERE
-// =========================================
-//
-// The invoice has already been saved
-// and stock has already been updated
-// by the backend.
-//
-// The user can now choose:
-// Thermal Bill OR A4 Invoice.
-//
-// =========================================
+                await saveToOfflineDB(
+                    "invoices",
+                    invoice
+                );
 
 
+                // Refresh authoritative product/supplier
+                // state from backend.
+                await fetchSuppliers();
+
+                await fetchProducts();
+
+
+                alert(
+                    "Purchase invoice created successfully. Stock has been increased."
+                );
+
+
+                openPurchasePrintInvoiceModal(
+                    invoice
+                );
+
+
+                purchasedItems = [];
+
+
+                renderPurchaseTable();
 
             }
+
             catch (error) {
 
                 console.error(
@@ -3311,12 +4131,81 @@ openPurchasePrintInvoiceModal(invoice);
                 );
 
 
-                alert(
-                    error.message ||
-                    "Failed to create purchase invoice."
-                );
+                // =================================================
+                // NETWORK LOST DURING REQUEST
+                // =================================================
+
+                if (
+                    !navigator.onLine
+                ) {
+
+                    try {
+
+                        await applyPurchaseLocally(
+                            invoice
+                        );
+
+
+                        await addToSyncQueue({
+
+                            endpoint:
+                                "/invoices",
+
+                            method:
+                                "POST",
+
+                            body:
+                                invoice
+
+                        });
+
+
+                        alert(
+                            "Internet connection was lost. Purchase invoice was saved offline and will synchronize when internet returns."
+                        );
+
+
+                        openPurchasePrintInvoiceModal(
+                            invoice
+                        );
+
+
+                        purchasedItems = [];
+
+
+                        renderPurchaseTable();
+
+                    }
+
+                    catch (
+                        offlineError
+                    ) {
+
+                        console.error(
+                            "Offline invoice fallback error:",
+                            offlineError
+                        );
+
+
+                        alert(
+                            "Failed to save purchase invoice offline."
+                        );
+
+                    }
+
+                }
+
+                else {
+
+                    alert(
+                        error.message ||
+                        "Failed to create purchase invoice."
+                    );
+
+                }
 
             }
+
             finally {
 
                 createInvoiceBtn.disabled =
@@ -3335,7 +4224,9 @@ openPurchasePrintInvoiceModal(invoice);
 // ===========================================================
 
 document
-    .getElementById("Discount")
+    .getElementById(
+        "Discount"
+    )
     ?.addEventListener(
         "input",
         updateSubtotal
@@ -3343,10 +4234,42 @@ document
 
 
 document
-    .getElementById("Cash")
+    .getElementById(
+        "Cash"
+    )
     ?.addEventListener(
         "input",
         updateSubtotal
+    );
+
+
+// ===========================================================
+// DYNAMIC COMMISSION
+// ===========================================================
+
+document
+    .getElementById(
+        "dynamicCommission"
+    )
+    ?.addEventListener(
+        "input",
+        event => {
+
+            entercomission =
+                Number(
+                    event.target.value
+                ) / 100;
+
+
+            console.log(
+                "dynamicCommission:",
+                entercomission
+            );
+
+
+            updateSubtotal();
+
+        }
     );
 
 
@@ -3366,10 +4289,12 @@ const sidebar =
         "sidebar"
     );
 
+
 const overlay =
     document.getElementById(
         "sidebarOverlay"
     );
+
 
 const menuToggle =
     document.getElementById(
@@ -3383,6 +4308,7 @@ function openSidebar() {
         sidebar.classList.add(
             "open"
         );
+
 
     if (overlay)
         overlay.classList.add(
@@ -3398,6 +4324,7 @@ function closeSidebar() {
         sidebar.classList.remove(
             "open"
         );
+
 
     if (overlay)
         overlay.classList.remove(
@@ -3422,6 +4349,7 @@ if (menuToggle) {
                 closeSidebar();
 
             }
+
             else {
 
                 openSidebar();
@@ -3483,10 +4411,3 @@ document
 
         }
     );
-
-    document.getElementById('dynamicCommission').addEventListener('input',(e)=>{
-        entercomission= Number(document.getElementById("dynamicCommission").value/100)
-    console.log('dynamicCommision:',entercomission)
-    updateSubtotal();
-
-    })

@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Purchase stocks</title>
+<link rel="stylesheet" href="shared-layout.css">
 <link rel="stylesheet" href="Purchase-stocks.css">
 </head>
 <body>
 
-<div class="layout">
+<div class="shell layout">
 
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div class="overlay sidebar-overlay" id="sidebarOverlay"></div>
 
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar">
@@ -69,15 +70,35 @@
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+        <button class="menu-toggle hamburger" id="menuToggle" aria-label="Toggle menu">
           <span></span><span></span><span></span>
         </button>
-        <h1>Purchase stocks</h1>
+        <div class="crumb">Purchase stocks</div>
       </div>
-      <div class="topbar-right">
-        <div class="date-pill" id="datePill">04 July,2026</div>
-        <div class="admin-pill"  id="admin"><span class="admin-avatar"></span> Admin</div>
-      </div>
+     <div class="topbar-right">
+
+        <div class="pill">
+
+            <span class="pill-text"
+                  id="datePill">
+                Today
+            </span>
+
+        </div>
+
+
+        <div class="pill admin">
+
+            <span class="avatar-dot"></span>
+
+            <span class="pill-text"
+                  id="admin">
+                Admin
+            </span>
+
+        </div>
+
+    </div>
     </div>
 
     <div class="content">
@@ -300,6 +321,9 @@
     </div>
 
 </div>
-<script src="Purchase-stocks.js"></script>
+<script src="config.js"></script>
+<script src="shared-layout.js"></script>
+<script src="offline-db.js"></script>
+<script src="purchase-stocks.js"></script>
 </body>
 </html>

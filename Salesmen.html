@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Salesmen — FrostyOps</title>
+<link rel="stylesheet" href="shared-layout.css">
 <link rel="stylesheet" href="Salesmen.css">
 </head>
 <body>
@@ -75,10 +76,30 @@
         </button>
         <div class="crumb">Salesmen</div>
       </div>
-      <div class="topbar-right">
-        <div class="pill"><span class="pill-text" id="datePill">04 July, 2026</span></div>
-        <div class="pill admin"  id="admin"><span class="avatar-dot"></span><span class="pill-text">Admin</span></div>
-      </div>
+         <div class="topbar-right">
+
+        <div class="pill">
+
+            <span class="pill-text"
+                  id="datePill">
+                Today
+            </span>
+
+        </div>
+
+
+        <div class="pill admin">
+
+            <span class="avatar-dot"></span>
+
+            <span class="pill-text"
+                  id="admin">
+                Admin
+            </span>
+
+        </div>
+
+    </div>
     </div>
 
     <div class="page">
@@ -151,9 +172,10 @@
     </div>
   </div>
 </div>
-
+<script src="config.js"></script>
+<script src="shared-layout.js"></script>
+<script src="offline-db.js"></script>
 <script src="salesmen.js"></script>
-
 
 </body>
 </html>
