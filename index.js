@@ -156,6 +156,36 @@ const todaySalesValueElement =
     );
 
 
+const commissionProfitElement =
+    document.getElementById(
+        "commissionProfit"
+    );
+
+
+const profitPeriodFilter =
+    document.getElementById(
+        "profitPeriodFilter"
+    );
+
+
+const profitCustomRange =
+    document.getElementById(
+        "profitCustomRange"
+    );
+
+
+const profitStartDate =
+    document.getElementById(
+        "profitStartDate"
+    );
+
+
+const profitEndDate =
+    document.getElementById(
+        "profitEndDate"
+    );
+
+
 const stockTableBody =
     document.getElementById(
         "Values"
@@ -180,9 +210,13 @@ const salesmenList =
 
 let dashboardInvoices = [];
 
+let dashboardAllInvoices = [];
+
 let dashboardSalesmen = [];
 
 let dashboardProducts = [];
+
+let dashboardExpenses = [];
 
 let activeAnalyticsPeriod =
     "weekly";
@@ -496,14 +530,21 @@ async function loadDashboard() {
         // SYNC INVOICES
         // =====================================================
 
-       if (navigator.onLine) {
+        if (navigator.onLine) {
 
-        await initialDatabaseSync();
+            await initialDatabaseSync();
 
-        await processSyncQueue();
+            await processSyncQueue();
 
-        await syncInvoicesToOfflineDB();
-    }
+            await syncInvoicesToOfflineDB();
+
+        }
+
+        // =====================================================
+// LOAD EXPENSES
+// =====================================================
+
+await loadDashboardExpenses();
 
 
         // =====================================================
@@ -548,14 +589,21 @@ async function loadDashboard() {
                 : [];
 
 
-        dashboardInvoices =
-            (
-                Array.isArray(
-                    invoices
-                )
-                    ? invoices
-                    : []
+        // =====================================================
+        // ALL INVOICES
+        // Used for commission and product profit calculation.
+        // =====================================================
+
+        dashboardAllInvoices =
+            Array.isArray(
+                invoices
             )
+                ? invoices
+                : [];
+
+
+        dashboardInvoices =
+            dashboardAllInvoices
                 .filter(
                     invoice =>
                         String(
@@ -645,6 +693,13 @@ async function loadDashboard() {
 
 
         // =====================================================
+        // TOTAL PROFIT
+        // =====================================================
+
+        updateDashboardProfit();
+
+
+        // =====================================================
         // STATS
         // =====================================================
 
@@ -706,6 +761,15 @@ async function loadDashboard() {
         console.error(
             "Dashboard loading error:",
             error
+        );
+
+
+        // =====================================================
+        // PROFIT FALLBACK
+        // =====================================================
+
+        renderCommissionProfit(
+            0
         );
 
 
@@ -919,6 +983,1425 @@ function calculateStats(
         todaySalesValue
 
     };
+
+}
+
+
+// ============================================================
+// CALCULATE COMMISSION PROFIT
+// ============================================================
+
+function calculateCommissionProfit(
+    invoices
+) {
+
+    const safeInvoices =
+        Array.isArray(
+            invoices
+        )
+            ? invoices
+            : [];
+
+
+    const supplierCommission =
+        safeInvoices
+            .filter(
+                invoice =>
+                    String(
+                        invoice?.type ||
+                        ""
+                    ).toLowerCase() ===
+                    "supplier"
+            )
+            .reduce(
+                (
+                    total,
+                    invoice
+                ) =>
+                    total +
+                    Number(
+                        invoice?.commission ||
+                        0
+                    ),
+                0
+            );
+
+
+    const salesmanCommission =
+        safeInvoices
+            .filter(
+                invoice =>
+                    String(
+                        invoice?.type ||
+                        ""
+                    ).toLowerCase() ===
+                    "salesman"
+            )
+            .reduce(
+                (
+                    total,
+                    invoice
+                ) =>
+                    total +
+                    Number(
+                        invoice?.commission ||
+                        0
+                    ),
+                0
+            );
+
+
+    return (
+        supplierCommission -
+        salesmanCommission
+    );
+
+}
+
+
+// ============================================================
+// CALCULATE PRODUCT PROFIT
+// ============================================================
+//
+// Product profit is calculated from salesman invoices.
+//
+// Formula:
+// (Sale Price - Purchase Price) * Net Quantity Sold
+//
+// Returns are deducted from the sold quantity.
+//
+// ============================================================
+
+function calculateProductProfit(
+    invoices,
+    products
+) {
+
+    const safeInvoices =
+        Array.isArray(
+            invoices
+        )
+            ? invoices
+            : [];
+
+
+    const safeProducts =
+        Array.isArray(
+            products
+        )
+            ? products
+            : [];
+
+
+    // ==========================================================
+    // PRODUCT PURCHASE PRICE LOOKUP
+    // ==========================================================
+
+    const productMap =
+        new Map();
+
+
+    safeProducts.forEach(
+        product => {
+
+            const productId =
+                product?.id;
+
+
+            if (
+                productId === null ||
+                productId === undefined
+            ) {
+
+                return;
+
+            }
+
+
+            productMap.set(
+                String(
+                    productId
+                ),
+                Number(
+                    product?.purchasePrice
+                ) || 0
+            );
+
+        }
+    );
+
+
+    // ==========================================================
+    // CALCULATE PRODUCT PROFIT
+    // ==========================================================
+
+    return safeInvoices
+        .filter(
+            invoice =>
+                String(
+                    invoice?.type ||
+                    ""
+                ).toLowerCase() ===
+                "salesman"
+        )
+        .reduce(
+            (
+                totalProfit,
+                invoice
+            ) => {
+
+                const items =
+                    Array.isArray(
+                        invoice?.items
+                    )
+                        ? invoice.items
+                        : [];
+
+
+                const invoiceProfit =
+                    items.reduce(
+                        (
+                            total,
+                            item
+                        ) => {
+
+                            const productId =
+                                item?.productId;
+
+
+                            const purchasePrice =
+                                productMap.get(
+                                    String(
+                                        productId
+                                    )
+                                ) || 0;
+
+
+                            const salePrice =
+                                Number(
+                                    item?.price
+                                ) || 0;
+
+
+                            const quantity =
+                                Number(
+                                    item?.quantity
+                                ) || 0;
+
+
+                            const returned =
+                                Number(
+                                    item?.returnQuantity ??
+                                    item?.returnedQuantity ??
+                                    0
+                                ) || 0;
+
+
+                            const netQuantity =
+                                Math.max(
+                                    quantity -
+                                    returned,
+                                    0
+                                );
+
+
+                            const profitPerUnit =
+                                salePrice -
+                                purchasePrice;
+
+
+                            return (
+                                total +
+                                (
+                                    profitPerUnit *
+                                    netQuantity
+                                )
+                            );
+
+                        },
+                        0
+                    );
+
+
+                return (
+                    totalProfit +
+                    invoiceProfit
+                );
+
+            },
+            0
+        );
+
+}
+
+
+// ============================================================
+// PROFIT DATE HELPERS
+// ============================================================
+//
+// These helpers keep the profit filter based on local calendar
+// dates and avoid timezone issues with YYYY-MM-DD values.
+//
+// ============================================================
+
+function parseProfitDate(
+    dateValue
+) {
+
+    if (!dateValue) {
+
+        return null;
+
+    }
+
+
+    // ==========================================================
+    // DATE-ONLY VALUE
+    // Example: "2026-09-20"
+    // Treat as local midnight.
+    // ==========================================================
+
+    if (
+        typeof dateValue ===
+        "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(
+            dateValue
+        )
+    ) {
+
+        const [
+            year,
+            month,
+            day
+        ] =
+            dateValue
+                .split("-")
+                .map(
+                    Number
+                );
+
+
+        const localDate =
+            new Date(
+                year,
+                month - 1,
+                day
+            );
+
+
+        return Number.isNaN(
+            localDate.getTime()
+        )
+            ? null
+            : localDate;
+
+    }
+
+
+    // ==========================================================
+    // FULL DATE / TIMESTAMP
+    // ==========================================================
+
+    const date =
+        new Date(
+            dateValue
+        );
+
+
+    return Number.isNaN(
+        date.getTime()
+    )
+        ? null
+        : date;
+
+}
+
+
+// ============================================================
+// CREATE LOCAL DATE FROM INPUT VALUE
+// ============================================================
+
+function createProfitInputDate(
+    value
+) {
+
+    if (!value) {
+
+        return null;
+
+    }
+
+
+    const [
+        year,
+        month,
+        day
+    ] =
+        value
+            .split("-")
+            .map(
+                Number
+            );
+
+
+    const date =
+        new Date(
+            year,
+            month - 1,
+            day
+        );
+
+
+    return Number.isNaN(
+        date.getTime()
+    )
+        ? null
+        : date;
+
+}
+
+
+// ============================================================
+// GET LAST MONTH START DATE
+// ============================================================
+
+function getPreviousMonthSameDay(
+    date
+) {
+
+    const year =
+        date.getFullYear();
+
+
+    const month =
+        date.getMonth();
+
+
+    const day =
+        date.getDate();
+
+
+    const targetMonthDate =
+        new Date(
+            year,
+            month,
+            1
+        );
+
+
+    targetMonthDate.setMonth(
+        targetMonthDate.getMonth() -
+        1
+    );
+
+
+    const lastDayOfTargetMonth =
+        new Date(
+            targetMonthDate.getFullYear(),
+            targetMonthDate.getMonth() + 1,
+            0
+        ).getDate();
+
+
+    targetMonthDate.setDate(
+        Math.min(
+            day,
+            lastDayOfTargetMonth
+        )
+    );
+
+
+    return targetMonthDate;
+
+}
+
+
+// ============================================================
+// GET PROFIT DATE RANGE
+// ============================================================
+
+function getProfitDateRange() {
+
+    const period =
+        profitPeriodFilter?.value ||
+        "thisMonth";
+
+
+    const today =
+        startOfDay(
+            new Date()
+        );
+
+
+    const tomorrow =
+        new Date(
+            today
+        );
+
+
+    tomorrow.setDate(
+        tomorrow.getDate() +
+        1
+    );
+
+
+    // ==========================================================
+    // TODAY
+    // ==========================================================
+
+    if (
+        period ===
+        "today"
+    ) {
+
+        return {
+
+            start:
+                today,
+
+            end:
+                tomorrow
+
+        };
+
+    }
+
+
+    // ==========================================================
+    // YESTERDAY
+    // ==========================================================
+
+    if (
+        period ===
+        "yesterday"
+    ) {
+
+        const start =
+            new Date(
+                today
+            );
+
+
+        start.setDate(
+            start.getDate() -
+            1
+        );
+
+
+        return {
+
+            start,
+
+            end:
+                today
+
+        };
+
+    }
+
+
+    // ==========================================================
+    // LAST 7 DAYS
+    // Today + previous 6 calendar days
+    // ==========================================================
+
+    if (
+        period ===
+        "7days"
+    ) {
+
+        const start =
+            new Date(
+                today
+            );
+
+
+        start.setDate(
+            start.getDate() -
+            6
+        );
+
+
+        return {
+
+            start,
+
+            end:
+                tomorrow
+
+        };
+
+    }
+
+
+    // ==========================================================
+    // THIS MONTH
+    // 1st day of current month -> tomorrow
+    // ==========================================================
+
+    if (
+        period ===
+        "thisMonth"
+    ) {
+
+        const start =
+            new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1
+            );
+
+
+        return {
+
+            start,
+
+            end:
+                tomorrow
+
+        };
+
+    }
+
+
+    // ==========================================================
+    // PREVIOUS MONTH
+    // 1st day -> last day of previous month
+    // ==========================================================
+
+    if (
+        period ===
+        "previousMonth"
+    ) {
+
+        const start =
+            new Date(
+                today.getFullYear(),
+                today.getMonth() -
+                1,
+                1
+            );
+
+
+        const end =
+            new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1
+            );
+
+
+        return {
+
+            start,
+
+            end
+
+        };
+
+    }
+
+
+    // ==========================================================
+    // CUSTOM RANGE
+    // ==========================================================
+
+    if (
+        period ===
+        "custom"
+    ) {
+
+        const start =
+            createProfitInputDate(
+                profitStartDate?.value
+            );
+
+
+        const selectedEnd =
+            createProfitInputDate(
+                profitEndDate?.value
+            );
+
+
+        if (
+            !start ||
+            !selectedEnd
+        ) {
+
+            return null;
+
+        }
+
+
+        // End date is inclusive.
+        const end =
+            new Date(
+                selectedEnd
+            );
+
+
+        end.setDate(
+            end.getDate() +
+            1
+        );
+
+
+        if (
+            start >= end
+        ) {
+
+            return null;
+
+        }
+
+
+        return {
+
+            start,
+
+            end
+
+        };
+
+    }
+
+
+    return null;
+
+}
+
+// ============================================================
+// FILTER PROFIT INVOICES
+// ============================================================
+
+function getProfitFilteredInvoices(
+    invoices
+) {
+
+    const safeInvoices =
+        Array.isArray(
+            invoices
+        )
+            ? invoices
+            : [];
+
+
+    const range =
+        getProfitDateRange();
+
+
+    if (!range) {
+
+        return [];
+
+    }
+
+
+    return safeInvoices.filter(
+        invoice => {
+
+            const invoiceDate =
+                parseProfitDate(
+                    invoice?.date
+                );
+
+
+            if (!invoiceDate) {
+
+                return false;
+
+            }
+
+
+            return (
+                invoiceDate >=
+                    range.start &&
+                invoiceDate <
+                    range.end
+            );
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// LOAD DASHBOARD EXPENSES
+// ============================================================
+//
+// Expenses are stored separately from normal invoices.
+//
+// Offline:
+// IndexedDB is used.
+//
+// Online:
+// Pending expense operations are synchronized first.
+// Then backend expenses are refreshed.
+//
+// If an expense operation is still pending after sync,
+// do NOT clear the local expense store.
+// This protects unsynchronized offline data.
+//
+
+async function loadDashboardExpenses() {
+
+    // ==========================================================
+    // LOAD LOCAL EXPENSES FIRST
+    // ==========================================================
+
+    let localExpenses = [];
+
+    try {
+
+        localExpenses =
+            await getAllFromOfflineDB(
+                "expenses"
+            );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Failed to load local dashboard expenses:",
+            error
+        );
+
+    }
+
+
+    dashboardExpenses =
+        Array.isArray(
+            localExpenses
+        )
+            ? localExpenses
+            : [];
+
+
+    // ==========================================================
+    // OFFLINE
+    // ==========================================================
+
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Dashboard is using local expenses."
+        );
+
+        return;
+
+    }
+
+
+    // ==========================================================
+    // CHECK WHETHER EXPENSE SYNC IS STILL PENDING
+    // ==========================================================
+
+    try {
+
+        const pendingQueue =
+            await getPendingSyncQueue();
+
+
+        const pendingExpenseOperations =
+            pendingQueue.filter(
+                operation => {
+
+                    const endpoint =
+                        String(
+                            operation?.endpoint ||
+                            ""
+                        );
+
+                    return endpoint ===
+                        "/expenses" ||
+
+                        endpoint.startsWith(
+                            "/expenses/"
+                        );
+
+                }
+            );
+
+
+        // ======================================================
+        // IF AN EXPENSE IS STILL UNSYNCHRONIZED,
+        // KEEP LOCAL DATA.
+        // ======================================================
+
+        if (
+            pendingExpenseOperations.length >
+            0
+        ) {
+
+            console.log(
+                "Pending expense operations remain. Keeping local expenses."
+            );
+
+            return;
+
+        }
+
+    }
+    catch (error) {
+
+        console.error(
+            "Failed to inspect pending expense operations:",
+            error
+        );
+
+        // Keep local expenses rather than risking
+        // overwriting them.
+        return;
+
+    }
+
+
+    // ==========================================================
+    // FETCH FRESH EXPENSES FROM BACKEND
+    // ==========================================================
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/expenses`,
+                {
+                    method: "GET",
+                    credentials: "include"
+                }
+            );
+
+
+        // ======================================================
+        // AUTHENTICATION EXPIRED
+        // ======================================================
+
+        if (
+            response.status ===
+            401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                `Dashboard expense fetch failed: ${response.status}`
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !Array.isArray(
+                data.expenses
+            )
+        ) {
+
+            throw new Error(
+                "Invalid dashboard expense response."
+            );
+
+        }
+
+
+        // ======================================================
+        // REPLACE LOCAL CACHE
+        // ======================================================
+
+        await clearOfflineStore(
+            "expenses"
+        );
+
+
+        if (
+            data.expenses.length >
+            0
+        ) {
+
+            await saveManyToOfflineDB(
+                "expenses",
+                data.expenses
+            );
+
+        }
+
+
+        dashboardExpenses =
+            [...data.expenses];
+
+
+        console.log(
+            "Dashboard expenses synchronized:",
+            dashboardExpenses
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Dashboard expense refresh failed. Using local expenses:",
+            error
+        );
+
+    }
+
+}
+
+// ============================================================
+// FILTER PROFIT EXPENSES
+// ============================================================
+//
+// Uses the exact same date range as the dashboard
+// profit invoice filter.
+//
+// ============================================================
+
+function getProfitFilteredExpenses(
+    expenses
+) {
+
+    const safeExpenses =
+        Array.isArray(
+            expenses
+        )
+            ? expenses
+            : [];
+
+
+    const range =
+        getProfitDateRange();
+
+
+    if (!range) {
+
+        return [];
+
+    }
+
+
+    return safeExpenses.filter(
+        expense => {
+
+            const expenseDate =
+                parseProfitDate(
+                    expense?.date
+                );
+
+
+            if (!expenseDate) {
+
+                return false;
+
+            }
+
+
+            return (
+                expenseDate >=
+                    range.start &&
+
+                expenseDate <
+                    range.end
+            );
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// CALCULATE TOTAL EXPENSES
+// ============================================================
+
+function calculateTotalExpenses(
+    expenses
+) {
+
+    const safeExpenses =
+        Array.isArray(
+            expenses
+        )
+            ? expenses
+            : [];
+
+
+    return safeExpenses.reduce(
+        (
+            total,
+            expense
+        ) => {
+
+            const amount =
+                Number(
+                    expense?.amount
+                ) || 0;
+
+
+            return (
+                total +
+                amount
+            );
+
+        },
+        0
+    );
+
+}
+
+// ============================================================
+// UPDATE DASHBOARD PROFIT
+// ============================================================
+
+// ============================================================
+// UPDATE DASHBOARD PROFIT
+// ============================================================
+//
+// Final formula:
+//
+// Product Profit
+// + Supplier Commission
+// - Salesman Commission
+// - Total Expenses
+//
+// = Net Company Profit
+//
+// Expenses use the exact same date filter
+// as the selected profit period.
+//
+// ============================================================
+
+function updateDashboardProfit() {
+
+    // ==========================================================
+    // FILTER INVOICES
+    // ==========================================================
+
+    const filteredInvoices =
+        getProfitFilteredInvoices(
+            dashboardAllInvoices
+        );
+
+
+    // ==========================================================
+    // FILTER EXPENSES
+    // ==========================================================
+
+    const filteredExpenses =
+        getProfitFilteredExpenses(
+            dashboardExpenses
+        );
+
+
+    // ==========================================================
+    // COMMISSION PROFIT
+    // ==========================================================
+
+    const commissionProfit =
+        calculateCommissionProfit(
+            filteredInvoices
+        );
+
+
+    // ==========================================================
+    // PRODUCT PROFIT
+    // ==========================================================
+
+    const productProfit =
+        calculateProductProfit(
+            filteredInvoices,
+            dashboardProducts
+        );
+
+
+    // ==========================================================
+    // TOTAL EXPENSES
+    // ==========================================================
+
+    const totalExpenses =
+        calculateTotalExpenses(
+            filteredExpenses
+        );
+
+
+    // ==========================================================
+    // FINAL NET COMPANY PROFIT
+    // ==========================================================
+
+    const totalProfit =
+        commissionProfit +
+        productProfit -
+        totalExpenses;
+
+
+    // ==========================================================
+    // LOGGING
+    // ==========================================================
+
+    console.log(
+        "Dashboard profit period:",
+        profitPeriodFilter?.value ||
+        "today"
+    );
+
+
+    console.log(
+        "Profit filtered invoices:",
+        filteredInvoices
+    );
+
+
+    console.log(
+        "Profit filtered expenses:",
+        filteredExpenses
+    );
+
+
+    console.log(
+        "Dashboard commission profit:",
+        commissionProfit
+    );
+
+
+    console.log(
+        "Dashboard product profit:",
+        productProfit
+    );
+
+
+    console.log(
+        "Dashboard total expenses:",
+        totalExpenses
+    );
+
+
+    console.log(
+        "Dashboard net company profit:",
+        totalProfit
+    );
+
+
+    // ==========================================================
+    // RENDER
+    // ==========================================================
+
+    renderCommissionProfit(
+        totalProfit
+    );
+
+}
+
+// ============================================================
+// INITIALIZE PROFIT FILTER
+// ============================================================
+
+function initializeProfitFilter() {
+
+    if (!profitPeriodFilter) {
+
+        console.warn(
+            "Profit period filter #profitPeriodFilter not found."
+        );
+
+        return;
+
+    }
+
+
+    // ==========================================================
+    // DEFAULT FILTER
+    // ==========================================================
+
+    if (
+        !profitPeriodFilter.value
+    ) {
+
+        profitPeriodFilter.value =
+            "today";
+
+    }
+
+
+    // ==========================================================
+    // INITIAL CUSTOM RANGE VISIBILITY
+    // ==========================================================
+
+    const updateCustomRangeVisibility =
+        () => {
+
+            const isCustom =
+                profitPeriodFilter.value ===
+                "custom";
+
+
+            if (profitCustomRange) {
+
+                profitCustomRange.style.display =
+                    isCustom
+                        ? "block"
+                        : "none";
+
+            }
+
+        };
+
+
+    updateCustomRangeVisibility();
+
+
+    // ==========================================================
+    // PERIOD CHANGE
+    // ==========================================================
+
+    profitPeriodFilter.addEventListener(
+        "change",
+        () => {
+
+            updateCustomRangeVisibility();
+
+
+            // For non-custom filters,
+            // calculate immediately.
+            if (
+                profitPeriodFilter.value !==
+                "custom"
+            ) {
+
+                updateDashboardProfit();
+
+                return;
+
+            }
+
+
+            // For custom range, wait until
+            // both dates have values.
+            if (
+                profitStartDate?.value &&
+                profitEndDate?.value
+            ) {
+
+                updateDashboardProfit();
+
+            }
+            else {
+
+                renderCommissionProfit(
+                    0
+                );
+
+            }
+
+        }
+    );
+
+
+    // ==========================================================
+    // CUSTOM START DATE
+    // ==========================================================
+
+    profitStartDate
+        ?.addEventListener(
+            "change",
+            () => {
+
+                if (
+                    profitPeriodFilter.value !==
+                    "custom"
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    !profitStartDate.value ||
+                    !profitEndDate?.value
+                ) {
+
+                    return;
+
+                }
+
+
+                updateDashboardProfit();
+
+            }
+        );
+
+
+    // ==========================================================
+    // CUSTOM END DATE
+    // ==========================================================
+
+    profitEndDate
+        ?.addEventListener(
+            "change",
+            () => {
+
+                if (
+                    profitPeriodFilter.value !==
+                    "custom"
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    !profitStartDate?.value ||
+                    !profitEndDate.value
+                ) {
+
+                    return;
+
+                }
+
+
+                updateDashboardProfit();
+
+            }
+        );
+
+}
+
+
+// ============================================================
+// RENDER COMMISSION PROFIT
+// ============================================================
+
+function renderCommissionProfit(
+    profit
+) {
+
+    if (!commissionProfitElement) {
+
+        return;
+
+    }
+
+
+    commissionProfitElement.textContent =
+        `PKR ${formatMoney(
+            profit
+        )}`;
 
 }
 
@@ -1658,8 +3141,6 @@ function renderRecentInvoices(
                     )}
                 </td>
 
-             
-
             `;
 
 
@@ -1809,7 +3290,8 @@ function renderTopSalesmen(
 
 
             if (
-                rank === 1
+                rank ===
+                1
             ) {
 
                 rankClass =
@@ -1817,7 +3299,8 @@ function renderTopSalesmen(
 
             }
             else if (
-                rank === 2
+                rank ===
+                2
             ) {
 
                 rankClass =
@@ -1825,7 +3308,8 @@ function renderTopSalesmen(
 
             }
             else if (
-                rank === 3
+                rank ===
+                3
             ) {
 
                 rankClass =
@@ -1855,7 +3339,6 @@ function renderTopSalesmen(
                     ${rank}
                 </div>
 
-
                 <div
                     class="top-salesman-avatar"
                 >
@@ -1863,7 +3346,6 @@ function renderTopSalesmen(
                         initials
                     )}
                 </div>
-
 
                 <div
                     class="top-salesman-main"
@@ -1881,7 +3363,6 @@ function renderTopSalesmen(
                             )}
                         </div>
 
-
                         <div
                             class="top-salesman-value"
                         >
@@ -1892,7 +3373,6 @@ function renderTopSalesmen(
                         </div>
 
                     </div>
-
 
                     <div
                         class="top-salesman-meta"
@@ -1911,7 +3391,6 @@ function renderTopSalesmen(
 
                         </span>
 
-
                         <span>
 
                             <i
@@ -1926,7 +3405,6 @@ function renderTopSalesmen(
                         </span>
 
                     </div>
-
 
                     <div
                         class="top-salesman-progress"
@@ -2610,7 +4088,8 @@ function updateAnalyticsSummary(
 
 
         if (
-            growth > 0
+            growth >
+            0
         ) {
 
             growthLabel.classList.add(
@@ -2623,7 +4102,8 @@ function updateAnalyticsSummary(
 
         }
         else if (
-            growth < 0
+            growth <
+            0
         ) {
 
             growthLabel.classList.add(
@@ -2904,7 +4384,8 @@ function renderSalesChart(
                 const x =
                     padding.left +
                     (
-                        data.points.length === 1
+                        data.points.length ===
+                        1
                             ? chartWidth / 2
                             : (
                                 index /
@@ -3226,7 +4707,8 @@ function renderSalesChart(
     // ========================================================
 
     if (
-        points.length > 0
+        points.length >
+        0
     ) {
 
         const last =
@@ -3746,6 +5228,13 @@ window.addEventListener(
 
     }
 );
+
+
+// ============================================================
+// PROFIT FILTER INITIALIZATION
+// ============================================================
+
+initializeProfitFilter();
 
 
 // ============================================================

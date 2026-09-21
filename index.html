@@ -286,7 +286,25 @@
 
         </a>
 
+        <a
+    class="navlink"
+    data-nav="expenses"
+    href="expenses.html"
+>
+    <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    >
+        <path d="M12 2v20"></path>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"></path>
+    </svg>
 
+    Expenses
+</a>
         <div class="navdivider"></div>
 
 
@@ -572,6 +590,119 @@
 
                 </div>
 
+                <!-- COMMISSION PROFIT -->
+
+<!-- COMMISSION / TOTAL PROFIT -->
+
+<div class="stat-card">
+
+    <div class="stat-icon">
+
+        <img src="assets/money 1.png"
+             alt="Total Profit">
+
+    </div>
+
+    <div style="min-width:0;">
+
+        <div class="stat-title">
+            Total Profit
+        </div>
+
+        <div class="stat-num"
+             id="commissionProfit">
+
+            PKR 0
+
+        </div>
+
+        <div class="stat-sub">
+          Product profit + net commission − expenses
+        </div>
+
+       <select
+    id="profitPeriodFilter"
+    style="
+        margin-top:6px;
+        width:100%;
+        max-width:170px;
+        padding:4px 6px;
+        font-size:11px;
+        border:1px solid #ddd;
+        border-radius:5px;
+        background:#fff;
+        color:#555;
+    "
+>
+
+    
+      <option value="thisMonth">
+        This Month
+    </option>
+    <option value="today">
+        Today
+    </option>
+
+    <option value="yesterday">
+        Yesterday
+    </option>
+
+    <option value="7days">
+        Last 7 Days
+    </option>
+
+    <option value="previousMonth">
+        Previous Month
+    </option>
+
+    <option value="custom">
+        Custom Range
+    </option>
+
+</select>
+
+
+        <div
+            id="profitCustomRange"
+            style="
+                display:none;
+                margin-top:6px;
+                width:100%;
+            "
+        >
+
+            <input
+                type="date"
+                id="profitStartDate"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    margin-bottom:4px;
+                    padding:4px 6px;
+                    font-size:11px;
+                    border:1px solid #ddd;
+                    border-radius:5px;
+                "
+            >
+
+            <input
+                type="date"
+                id="profitEndDate"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:4px 6px;
+                    font-size:11px;
+                    border:1px solid #ddd;
+                    border-radius:5px;
+                "
+            >
+
+        </div>
+
+    </div>
+
+</div>
             </div>
 
 

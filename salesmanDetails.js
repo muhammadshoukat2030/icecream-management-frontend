@@ -590,7 +590,7 @@ async function renderFromLocalInvoices() {
         renderLocalStats(
             salesmanInvoices
         );
-
+        filterSummary();
 
         // =====================================================
         // UPDATE CURRENT SALESMAN BALANCE FROM LATEST INVOICE
@@ -4522,192 +4522,229 @@ document
 // =========================================================
 // SUMMARY SEARCH
 // =========================================================
+document.getElementById("summaryDateFilter")?.addEventListener("change", () => {
+    const customRange = document.getElementById("customDateRange");
 
-document
-    .getElementById(
-        "summaryDateSearch"
-    )
-    ?.addEventListener(
-        "change",
-        filterSummary
-    );
+    if (customRange) {
+        customRange.style.display =
+            document.getElementById("summaryDateFilter")?.value === "custom"
+                ? "flex"
+                : "none";
+    }
 
+    filterSummary();
+});
 
-document
-    .getElementById(
-        "summaryInvoiceSearch"
-    )
-    ?.addEventListener(
-        "input",
-        filterSummary
-    );
+document.getElementById("summaryStartDate")?.addEventListener("change", filterSummary);
 
+document.getElementById("summaryEndDate")?.addEventListener("change", filterSummary);
+
+document.getElementById("summaryInvoiceSearch")?.addEventListener("input", filterSummary);
 
 // =========================================================
 // FILTER SUMMARY
 // =========================================================
 
+function getStartOfWeek(date) {
+    const result = new Date(date);
+    const day = result.getDay();
+
+    const diff = day === 0 ? -6 : 1 - day;
+
+    result.setHours(0, 0, 0, 0);
+    result.setDate(result.getDate() + diff);
+
+    return result;
+}
+
+function getStartOfMonth(date) {
+    const result = new Date(date);
+
+    result.setDate(1);
+    result.setHours(0, 0, 0, 0);
+
+    return result;
+}
+
+function getDateRange() {
+    const filterValue =
+        document.getElementById("summaryDateFilter")?.value || "today";
+
+    const now = new Date();
+
+    now.setHours(23, 59, 59, 999);
+
+    if (filterValue === "today") {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        return {
+            start,
+            end: now
+        };
+    }
+
+    if (filterValue === "week") {
+        return {
+            start: getStartOfWeek(new Date()),
+            end: now
+        };
+    }
+
+    if (filterValue === "month") {
+        return {
+            start: getStartOfMonth(new Date()),
+            end: now
+        };
+    }
+
+    if (filterValue === "custom") {
+        const startValue =
+            document.getElementById("summaryStartDate")?.value || "";
+
+        const endValue =
+            document.getElementById("summaryEndDate")?.value || "";
+
+        let start = null;
+        let end = null;
+
+        if (startValue) {
+            start = new Date(`${startValue}T00:00:00`);
+        }
+
+        if (endValue) {
+            end = new Date(`${endValue}T23:59:59.999`);
+        }
+
+        return {
+            start,
+            end
+        };
+    }
+
+    return {
+        start: null,
+        end: null
+    };
+}
+
+function getDateFilteredSummary() {
+    const { start, end } = getDateRange();
+
+    return currentSummary.filter(invoice => {
+        const invoiceDate = new Date(invoice.date);
+
+        if (Number.isNaN(invoiceDate.getTime())) {
+            return false;
+        }
+
+        if (start && invoiceDate < start) {
+            return false;
+        }
+
+        if (end && invoiceDate > end) {
+            return false;
+        }
+
+        return true;
+    });
+}
+
+function updateStatsFromDateRange(summary) {
+    const totalInvoices = summary.length;
+
+    const totalPayments = summary.reduce(
+        (sum, invoice) => sum + Number(invoice.cash || 0),
+        0
+    );
+
+    const totalIssued = summary.reduce(
+        (sum, invoice) => sum + Number(invoice.totalQuantity || 0),
+        0
+    );
+
+    const latestInvoice = [...summary].sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+    )[0];
+
+    const todayIssuedElement = document.getElementById("detTodayIssued");
+
+    const statElements = document.querySelectorAll(".stat-num");
+
+
+
+    if (todayIssuedElement) {
+        todayIssuedElement.textContent =
+            totalIssued.toLocaleString("en-PK");
+    }
+
+    if (statElements[2]) {
+        statElements[2].textContent =
+            totalInvoices.toLocaleString("en-PK");
+    }
+
+    if (statElements[3]) {
+        statElements[3].textContent =
+            totalPayments.toLocaleString("en-PK");
+    }
+}
+
 function filterSummary() {
+    const dateFiltered = getDateFilteredSummary();
 
-    const dateValue =
-        document.getElementById(
-            "summaryDateSearch"
-        )?.value || "";
-
+    updateStatsFromDateRange(dateFiltered);
 
     const invoiceValue =
         (
-            document.getElementById(
-                "summaryInvoiceSearch"
-            )?.value || ""
+            document.getElementById("summaryInvoiceSearch")?.value || ""
         )
-        .trim()
-        .toLowerCase();
+            .trim()
+            .toLowerCase();
 
+    const tableFiltered = invoiceValue
+        ? dateFiltered.filter(invoice =>
+              String(invoice.invoiceNo)
+                  .toLowerCase()
+                  .includes(invoiceValue)
+          )
+        : dateFiltered;
 
-    const filtered =
-        currentSummary.filter(
-            invoice => {
-
-                // =============================================
-                // DATE
-                // =============================================
-
-                let dateMatch =
-                    true;
-
-
-                if (
-                    dateValue
-                ) {
-
-                    const invoiceDate =
-                        new Date(
-                            invoice.date
-                        );
-
-
-                    const year =
-                        invoiceDate.getFullYear();
-
-
-                    const month =
-                        String(
-                            invoiceDate.getMonth() + 1
-                        )
-                        .padStart(
-                            2,
-                            "0"
-                        );
-
-
-                    const day =
-                        String(
-                            invoiceDate.getDate()
-                        )
-                        .padStart(
-                            2,
-                            "0"
-                        );
-
-
-                    const formattedDate =
-                        `${year}-${month}-${day}`;
-
-
-                    dateMatch =
-                        formattedDate ===
-                        dateValue;
-
-                }
-
-
-                // =============================================
-                // INVOICE
-                // =============================================
-
-                let invoiceMatch =
-                    true;
-
-
-                if (
-                    invoiceValue
-                ) {
-
-                    invoiceMatch =
-                        String(
-                            invoice.invoiceNo
-                        )
-                        .toLowerCase()
-                        .includes(
-                            invoiceValue
-                        );
-
-                }
-
-
-                return (
-                    dateMatch &&
-                    invoiceMatch
-                );
-
-            }
-        );
-
-
-    renderFilteredSummary(
-        filtered
-    );
-
+    renderFilteredSummary(tableFiltered);
 }
-
 
 // =========================================================
 // CLEAR SUMMARY SEARCH
 // =========================================================
 
-document
-    .getElementById(
-        "clearSummarySearch"
-    )
-    ?.addEventListener(
-        "click",
-        () => {
+document.getElementById("clearSummarySearch")?.addEventListener("click", () => {
+    const dateFilter = document.getElementById("summaryDateFilter");
+    const startInput = document.getElementById("summaryStartDate");
+    const endInput = document.getElementById("summaryEndDate");
+    const invoiceInput = document.getElementById("summaryInvoiceSearch");
+    const customRange = document.getElementById("customDateRange");
 
-            const dateInput =
-                document.getElementById(
-                    "summaryDateSearch"
-                );
+    if (dateFilter) {
+        dateFilter.value = "today";
+    }
 
+    if (startInput) {
+        startInput.value = "";
+    }
 
-            const invoiceInput =
-                document.getElementById(
-                    "summaryInvoiceSearch"
-                );
+    if (endInput) {
+        endInput.value = "";
+    }
 
+    if (invoiceInput) {
+        invoiceInput.value = "";
+    }
 
-            if (dateInput) {
+    if (customRange) {
+        customRange.style.display = "none";
+    }
 
-                dateInput.value =
-                    "";
-
-            }
-
-
-            if (invoiceInput) {
-
-                invoiceInput.value =
-                    "";
-
-            }
-
-
-            renderFilteredSummary(
-                currentSummary
-            );
-
-        }
-    );
+    filterSummary();
+});
 
 
 // =========================================================

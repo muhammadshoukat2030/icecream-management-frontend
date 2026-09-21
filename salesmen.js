@@ -186,28 +186,102 @@ async function loadSalesmen() {
     // OFFLINE
     // =======================================================
 
-    if (!navigator.onLine) {
+  if (!navigator.onLine) {
+
+    console.log(
+        "Offline mode. Using IndexedDB salesmen."
+    );
+
+
+    try {
+
+        const allInvoices =
+            await getAllFromOfflineDB(
+                "invoices"
+            );
+
+
+        const now =
+            new Date();
+
+
+        const startOfToday =
+            new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate()
+            );
+
+
+        const startOfTomorrow =
+            new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() + 1
+            );
+
+
+        todayDeliveries =
+            allInvoices.filter(
+                invoice => {
+
+                    if (
+                        invoice.type !==
+                        "salesman"
+                    ) {
+
+                        return false;
+
+                    }
+
+
+                    const invoiceDate =
+                        new Date(
+                            invoice.date
+                        );
+
+
+                    return (
+                        invoiceDate >=
+                            startOfToday &&
+                        invoiceDate <
+                            startOfTomorrow
+                    );
+
+                }
+            ).length;
+
 
         console.log(
-            "Offline mode. Using IndexedDB salesmen."
+            "Today deliveries calculated offline:",
+            todayDeliveries
         );
 
 
-        if (
-            salesmen.length === 0
-        ) {
+    }
+    catch (error) {
 
-            renderSalesmen(
-                [],
-                0
-            );
-
-        }
+        console.error(
+            "Offline today deliveries calculation error:",
+            error
+        );
 
 
-        return;
+        todayDeliveries =
+            0;
 
     }
+
+
+    renderSalesmen(
+        salesmen,
+        todayDeliveries
+    );
+
+
+    return;
+
+}
 
 
     // =======================================================

@@ -3,7 +3,7 @@
 // ============================================================
 
 const DB_NAME = "IceCreamManagementDB";
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 
 // ============================================================
 // STORE NAMES
@@ -15,6 +15,7 @@ const STORES = {
     PRODUCTS: "products",
     SALESMEN: "salesmen",
     INVOICES: "invoices",
+    EXPENSES: "expenses",
     SYNC_QUEUE: "syncQueue",
     SYNC_META: "syncMeta"
 };
@@ -99,6 +100,20 @@ function openOfflineDB() {
             ) {
                 db.createObjectStore(
                     STORES.INVOICES,
+                    {
+                        keyPath: "id"
+                    }
+                );
+            }
+
+            // Expenses
+            if (
+                !db.objectStoreNames.contains(
+                    STORES.EXPENSES
+                )
+            ) {
+                db.createObjectStore(
+                    STORES.EXPENSES,
                     {
                         keyPath: "id"
                     }
@@ -935,30 +950,32 @@ async function initialDatabaseSync() {
         // =====================================================
         // VALIDATE CATEGORIES
         // =====================================================
-if (
-    !Array.isArray(
-        categoriesData.data
-    )
-) {
 
-    throw new Error(
-        "Invalid categories response."
-    );
-}
+        if (
+            !Array.isArray(
+                categoriesData.data
+            )
+        ) {
+
+            throw new Error(
+                "Invalid categories response."
+            );
+        }
+
         // =====================================================
         // VALIDATE SUPPLIERS
         // =====================================================
 
-   if (
-    !Array.isArray(
-        suppliersData
-    )
-) {
+        if (
+            !Array.isArray(
+                suppliersData
+            )
+        ) {
 
-    throw new Error(
-        "Invalid suppliers response."
-    );
-}
+            throw new Error(
+                "Invalid suppliers response."
+            );
+        }
 
         // =====================================================
         // VALIDATE PRODUCTS
@@ -1018,14 +1035,16 @@ if (
 
         await Promise.all([
 
-        saveManyToOfflineDB(
-    STORES.CATEGORIES,
-    categoriesData.data
-),
-         saveManyToOfflineDB(
-    STORES.SUPPLIERS,
-    suppliersData
-),
+            saveManyToOfflineDB(
+                STORES.CATEGORIES,
+                categoriesData.data
+            ),
+
+            saveManyToOfflineDB(
+                STORES.SUPPLIERS,
+                suppliersData
+            ),
+
             saveManyToOfflineDB(
                 STORES.PRODUCTS,
                 productsData.products
@@ -1052,11 +1071,11 @@ if (
         console.log(
             "Initial database synchronization completed:",
             {
-               categories:
-    categoriesData.data.length,
+                categories:
+                    categoriesData.data.length,
 
-          suppliers:
-    suppliersData.length,
+                suppliers:
+                    suppliersData.length,
 
                 products:
                     productsData.products.length,
@@ -1546,3 +1565,90 @@ window.addEventListener(
 
     }
 );
+
+// ============================================================
+// REQUEST PERSISTENT STORAGE
+// ============================================================
+
+async function requestPersistentStorage() {
+
+    if (
+        !navigator.storage ||
+        !navigator.storage.persist
+    ) {
+
+        console.log(
+            "Persistent storage is not supported by this browser."
+        );
+
+        return;
+
+    }
+
+    try {
+
+        const alreadyPersisted =
+            await navigator.storage.persisted();
+
+        if (alreadyPersisted) {
+
+            console.log(
+                "FrostyOps storage is already persistent."
+            );
+
+            return;
+
+        }
+
+        const persisted =
+            await navigator.storage.persist();
+
+        console.log(
+            "FrostyOps persistent storage:",
+            persisted
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Persistent storage request failed:",
+            error
+        );
+
+    }
+
+}
+
+requestPersistentStorage();
+
+// ============================================================
+// SERVICE WORKER
+// ============================================================
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", () => {
+
+        navigator.serviceWorker
+            .register("/sw.js")
+            .then(registration => {
+
+                console.log(
+                    "FrostyOps Service Worker registered:",
+                    registration.scope
+                );
+
+            })
+            .catch(error => {
+
+                console.error(
+                    "FrostyOps Service Worker registration failed:",
+                    error
+                );
+
+            });
+
+    });
+
+}

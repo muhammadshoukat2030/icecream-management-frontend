@@ -99,43 +99,121 @@ class FrostyLayout {
     document.body.style.overflow = '';
   }
 
- setActiveNavFromUrl() {
-  const currentPath = window.location.pathname;
-  const currentFile = currentPath.split('/').pop() || 'index.html';
+setActiveNavFromUrl() {
 
-  this.navlinks.forEach(link => {
-    const href = link.getAttribute('href');
-    if (!href) return;
+    const normalizePath = (path) => {
 
-    const linkFile = href.split('/').pop();
+        return path
+            .replace(/\/+$/, "")
+            .replace(/\.html$/i, "")
+            .toLowerCase() || "/";
 
-    // Salesman Details belongs to the Salesmen section
-// Salesman Details belongs to the Salesmen section
-const isSalesmanDetails =
-  currentFile === 'SalesmanDetails.html' ||
-  currentFile === 'SalesmenDetails.html' ||
-  currentFile === 'salesman-details.html';
+    };
 
-// Supplier Details belongs to the Suppliers section
-const isSupplierDetails =
-  currentFile === 'SupplierDetails.html' ||
-  currentFile === 'SuppliersDetails.html' ||
-  currentFile === 'supplier-details.html' ||
-  currentFile === 'suppliers-details.html';
 
-const isMatch =
-  linkFile === currentFile ||
-  (currentFile === '' && linkFile === 'index.html') ||
-  (currentFile.includes('.html') && linkFile === currentFile) ||
-  (isSalesmanDetails && linkFile === 'Salesmen.html') ||
-  (isSupplierDetails && linkFile === 'suppliers.html');
+    const currentPath =
+        normalizePath(
+            window.location.pathname
+        );
 
-    if (isMatch) {
-      link.classList.add('active');
-    } else {
-      link.classList.remove('active');
-    }
-  });
+
+    const isSalesmanDetails =
+        currentPath === "/salesmandetails" ||
+        currentPath === "/salesmendetails" ||
+        currentPath === "/salesman-details";
+
+
+    const isSupplierDetails =
+        currentPath === "/supplierdetails" ||
+        currentPath === "/suppliersdetails" ||
+        currentPath === "/supplier-details" ||
+        currentPath === "/suppliers-details";
+
+
+    this.navlinks.forEach(link => {
+
+        const href =
+            link.getAttribute("href");
+
+
+        if (!href) {
+            return;
+        }
+
+
+        const linkUrl =
+            new URL(
+                href,
+                window.location.origin
+            );
+
+
+        const linkPath =
+            normalizePath(
+                linkUrl.pathname
+            );
+
+
+        let isMatch =
+            currentPath === linkPath;
+
+
+        // ----------------------------------------------------
+        // Dashboard
+        // / and /index.html are the same page
+        // ----------------------------------------------------
+
+        if (
+            currentPath === "/" &&
+            linkPath === "/index"
+        ) {
+
+            isMatch = true;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Salesman Details → Salesmen
+        // ----------------------------------------------------
+
+        if (
+            isSalesmanDetails &&
+            linkPath === "/salesmen"
+        ) {
+
+            isMatch = true;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Supplier Details → Suppliers
+        // ----------------------------------------------------
+
+        if (
+            isSupplierDetails &&
+            linkPath === "/suppliers"
+        ) {
+
+            isMatch = true;
+
+        }
+
+
+        if (isMatch) {
+
+            link.classList.add("active");
+
+        }
+        else {
+
+            link.classList.remove("active");
+
+        }
+
+    });
+
 }
   setActiveNav(element) {
     this.navlinks.forEach(link => link.classList.remove('active'));

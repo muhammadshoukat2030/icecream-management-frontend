@@ -507,20 +507,19 @@ async function loadSupplierDetails() {
         loadSupplierProducts()
     ]);
 
+filteredSupplierInvoices =
+    [...supplierInvoices];
 
-    filteredSupplierInvoices =
-        [...supplierInvoices];
+filteredSupplierProducts =
+    [...supplierProducts];
 
+filterSupplierInvoices(
+    document.getElementById(
+        "supplierInvoiceSearch"
+    )?.value || ""
+);
 
-    filteredSupplierProducts =
-        [...supplierProducts];
-
-
-    renderSummary();
-
-    renderProducts();
-
-    updateStats();
+renderProducts();
 
 }
 
@@ -1208,106 +1207,10 @@ function setupSearch() {
 
 function createInvoiceSearch() {
 
-    if (!summaryTableBody) {
-        return;
-    }
-
-
-    const table =
-        summaryTableBody.closest(
-            "table"
-        );
-
-
-    if (!table) {
-        return;
-    }
-
-
-    if (
-        document.getElementById(
-            "supplierInvoiceSearch"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const wrapper =
-        document.createElement(
-            "div"
-        );
-
-
-    wrapper.id =
-        "supplierInvoiceSearchWrapper";
-
-
-    wrapper.style.cssText = `
-        display:flex;
-        gap:10px;
-        align-items:center;
-        margin:12px 0;
-        flex-wrap:wrap;
-    `;
-
-
-    wrapper.innerHTML = `
-
-        <div style="
-            position:relative;
-            flex:1;
-            min-width:220px;
-        ">
-
-            <input
-                type="text"
-                id="supplierInvoiceSearch"
-                placeholder="Search invoice ID or date..."
-                autocomplete="off"
-                style="
-                    width:100%;
-                    padding:10px 14px;
-                    border:1px solid #d5d9df;
-                    border-radius:8px;
-                    outline:none;
-                    font-size:14px;
-                "
-            >
-
-        </div>
-
-
-        <button
-            type="button"
-            id="clearSupplierInvoiceSearch"
-            style="
-                padding:10px 15px;
-                border:1px solid #d5d9df;
-                background:#fff;
-                border-radius:8px;
-                cursor:pointer;
-            "
-        >
-            Clear
-        </button>
-
-    `;
-
-
-    table.parentElement.insertBefore(
-        wrapper,
-        table
-    );
-
-
     const searchInput =
         document.getElementById(
             "supplierInvoiceSearch"
         );
-
 
     const clearButton =
         document.getElementById(
@@ -1315,7 +1218,12 @@ function createInvoiceSearch() {
         );
 
 
-    searchInput?.addEventListener(
+    if (!searchInput) {
+        return;
+    }
+
+
+    searchInput.addEventListener(
         "input",
         () => {
 
@@ -1344,6 +1252,82 @@ function createInvoiceSearch() {
     );
 
 }
+
+document
+    .getElementById(
+        "supplierDateFilter"
+    )
+    ?.addEventListener(
+        "change",
+        () => {
+
+            const customRange =
+                document.getElementById(
+                    "supplierCustomDateRange"
+                );
+
+
+            const isCustom =
+                document.getElementById(
+                    "supplierDateFilter"
+                )?.value ===
+                "custom";
+
+
+            if (customRange) {
+
+                customRange.style.display =
+                    isCustom
+                        ? "flex"
+                        : "none";
+
+            }
+
+
+            filterSupplierInvoices(
+                document.getElementById(
+                    "supplierInvoiceSearch"
+                )?.value || ""
+            );
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "supplierStartDate"
+    )
+    ?.addEventListener(
+        "change",
+        () => {
+
+            filterSupplierInvoices(
+                document.getElementById(
+                    "supplierInvoiceSearch"
+                )?.value || ""
+            );
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "supplierEndDate"
+    )
+    ?.addEventListener(
+        "change",
+        () => {
+
+            filterSupplierInvoices(
+                document.getElementById(
+                    "supplierInvoiceSearch"
+                )?.value || ""
+            );
+
+        }
+    );
 
 
 // ============================================================
@@ -1489,6 +1473,262 @@ function createProductSearch() {
 
 }
 
+// ============================================================
+// SUPPLIER SUMMARY DATE FILTER
+// ============================================================
+
+function getSupplierStartOfWeek(date) {
+
+    const result =
+        new Date(date);
+
+    const day =
+        result.getDay();
+
+    const diff =
+        day === 0
+            ? -6
+            : 1 - day;
+
+    result.setHours(
+        0,
+        0,
+        0,
+        0
+    );
+
+    result.setDate(
+        result.getDate() + diff
+    );
+
+    return result;
+
+}
+
+
+function getSupplierStartOfMonth(date) {
+
+    const result =
+        new Date(date);
+
+    result.setDate(1);
+
+    result.setHours(
+        0,
+        0,
+        0,
+        0
+    );
+
+    return result;
+
+}
+
+
+function getSupplierDateRange() {
+
+    const filterValue =
+        document.getElementById(
+            "supplierDateFilter"
+        )?.value ||
+        "today";
+
+
+    const now =
+        new Date();
+
+
+    now.setHours(
+        23,
+        59,
+        59,
+        999
+    );
+
+
+    if (
+        filterValue ===
+        "today"
+    ) {
+
+        const start =
+            new Date();
+
+        start.setHours(
+            0,
+            0,
+            0,
+            0
+        );
+
+
+        return {
+            start,
+            end: now
+        };
+
+    }
+
+
+    if (
+        filterValue ===
+        "week"
+    ) {
+
+        return {
+
+            start:
+                getSupplierStartOfWeek(
+                    new Date()
+                ),
+
+            end:
+                now
+
+        };
+
+    }
+
+
+    if (
+        filterValue ===
+        "month"
+    ) {
+
+        return {
+
+            start:
+                getSupplierStartOfMonth(
+                    new Date()
+                ),
+
+            end:
+                now
+
+        };
+
+    }
+
+
+    if (
+        filterValue ===
+        "custom"
+    ) {
+
+        const startValue =
+            document.getElementById(
+                "supplierStartDate"
+            )?.value ||
+            "";
+
+
+        const endValue =
+            document.getElementById(
+                "supplierEndDate"
+            )?.value ||
+            "";
+
+
+        let start =
+            null;
+
+
+        let end =
+            null;
+
+
+        if (startValue) {
+
+            start =
+                new Date(
+                    `${startValue}T00:00:00`
+                );
+
+        }
+
+
+        if (endValue) {
+
+            end =
+                new Date(
+                    `${endValue}T23:59:59.999`
+                );
+
+        }
+
+
+        return {
+            start,
+            end
+        };
+
+    }
+
+
+    return {
+
+        start: null,
+        end: null
+
+    };
+
+}
+
+
+function getDateFilteredSupplierInvoices() {
+
+    const range =
+        getSupplierDateRange();
+
+
+    return supplierInvoices.filter(
+        invoice => {
+
+            const invoiceDate =
+                new Date(
+                    invoice.date
+                );
+
+
+            if (
+                Number.isNaN(
+                    invoiceDate.getTime()
+                )
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                range.start &&
+                invoiceDate <
+                    range.start
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                range.end &&
+                invoiceDate >
+                    range.end
+            ) {
+
+                return false;
+
+            }
+
+
+            return true;
+
+        }
+    );
+
+}
 
 // ============================================================
 // FILTER INVOICES
@@ -1506,16 +1746,28 @@ function filterSupplierInvoices(
             .toLowerCase();
 
 
+    // --------------------------------------------------------
+    // FIRST: APPLY DATE FILTER
+    // --------------------------------------------------------
+
+    const dateFilteredInvoices =
+        getDateFilteredSupplierInvoices();
+
+
+    // --------------------------------------------------------
+    // SECOND: APPLY INVOICE SEARCH
+    // --------------------------------------------------------
+
     if (!search) {
 
         filteredSupplierInvoices =
-            [...supplierInvoices];
+            [...dateFilteredInvoices];
 
     }
     else {
 
         filteredSupplierInvoices =
-            supplierInvoices.filter(
+            dateFilteredInvoices.filter(
                 invoice => {
 
                     const invoiceId =
@@ -1528,31 +1780,8 @@ function filterSupplierInvoices(
                             .toLowerCase();
 
 
-                    const date =
-                        formatDate(
-                            invoice.date
-                        )
-                            .toLowerCase();
-
-
-                    const rawDate =
-                        invoice.date
-                            ? String(
-                                invoice.date
-                            ).toLowerCase()
-                            : "";
-
-
-                    return (
-                        invoiceId.includes(
-                            search
-                        ) ||
-                        date.includes(
-                            search
-                        ) ||
-                        rawDate.includes(
-                            search
-                        )
+                    return invoiceId.includes(
+                        search
                     );
 
                 }
@@ -1560,11 +1789,11 @@ function filterSupplierInvoices(
 
     }
 
+updateStats();
 
-    renderSummary();
+renderSummary();
 
 }
-
 
 // ============================================================
 // FILTER PRODUCTS
@@ -2738,7 +2967,6 @@ function showProductDetails(
 // ============================================================
 // UPDATE STATISTICS
 // ============================================================
-
 function updateStats() {
 
     const statNumbers =
@@ -2752,129 +2980,133 @@ function updateStats() {
     }
 
 
+    // ========================================================
+    // OUTSTANDING BALANCE
+    // NEVER affected by date filter
+    // ========================================================
+
     const outstanding =
         Number(
-            supplier?.outstandingBalance ||
-            0
+            supplier?.outstandingBalance || 0
         );
-
-
-    const totalPurchases =
-        supplierInvoices.reduce(
-            (
-                sum,
-                invoice
-            ) =>
-                sum +
-                Number(
-                    invoice.netTotal ??
-                    invoice.subtotal ??
-                    invoice.amount ??
-                    0
-                ),
-            0
-        );
-
-
-    const currentMonth =
-        new Date().getMonth();
-
-
-    const currentYear =
-        new Date().getFullYear();
-
-
-    const monthlyPurchases =
-        supplierInvoices
-            .filter(
-                invoice => {
-
-                    const date =
-                        new Date(
-                            invoice.date
-                        );
-
-
-                    return (
-                        date.getMonth() ===
-                            currentMonth &&
-                        date.getFullYear() ===
-                            currentYear
-                    );
-
-                }
-            )
-            .reduce(
-                (
-                    sum,
-                    invoice
-                ) =>
-                    sum +
-                    Number(
-                        invoice.netTotal ??
-                        invoice.subtotal ??
-                        invoice.amount ??
-                        0
-                    ),
-                0
-            );
 
 
     if (statNumbers[0]) {
 
         statNumbers[0].textContent =
+            `Rs.${formatMoney(outstanding)}`;
+
+    }
+
+
+    // ========================================================
+    // GET CURRENT DATE FILTER
+    // ========================================================
+
+    const dateFilter =
+        document.getElementById(
+            "supplierDateFilter"
+        )?.value || "today";
+
+
+    const dateFilteredInvoices =
+        getDateFilteredSupplierInvoices();
+
+
+    console.log(
+        "Supplier date filter:",
+        dateFilter,
+        "Invoices:",
+        dateFilteredInvoices
+    );
+
+
+    // ========================================================
+    // PURCHASES FOR SELECTED DATE RANGE
+    // ========================================================
+
+    const selectedRangePurchases =
+        dateFilteredInvoices.reduce(
+            (
+                total,
+                invoice
+            ) => {
+
+                return (
+                    total +
+                    Number(
+                        invoice.netTotal ??
+                        invoice.subtotal ??
+                        invoice.amount ??
+                        0
+                    )
+                );
+
+            },
+            0
+        );
+
+
+    // ========================================================
+    // PURCHASES CARD
+    // ========================================================
+
+    const purchasesElement =
+        document.getElementById(
+            "supplierPurchases"
+        );
+
+
+    if (purchasesElement) {
+
+        purchasesElement.textContent =
             `Rs.${formatMoney(
-                outstanding
+                selectedRangePurchases
             )}`;
 
     }
 
 
-    if (statNumbers[1]) {
+    // ========================================================
+    // THIS MONTH CARD
+    // ========================================================
 
-        statNumbers[1].textContent =
-            `Rs.${formatMoney(
-                totalPurchases
-            )}`;
+   
 
-    }
 
+    // ========================================================
+    // PRODUCTS
+    // NEVER affected by date filter
+    // ========================================================
 
     if (statNumbers[2]) {
 
         statNumbers[2].textContent =
-            `Rs.${formatMoney(
-                monthlyPurchases
-            )}`;
+            supplierProducts.length.toLocaleString(
+                "en-PK"
+            );
 
     }
 
 
-    if (statNumbers[3]) {
-
-        statNumbers[3].textContent =
-            supplierProducts.length
-                .toLocaleString(
-                    "en-PK"
-                );
-
-    }
-
+    // ========================================================
+    // LAST PAYMENT
+    // NEVER affected by date filter
+    // ========================================================
 
     if (
-        statNumbers[4] &&
+        statNumbers[3] &&
         supplier?.lastPayment
     ) {
 
-        statNumbers[4].textContent =
+        statNumbers[3].textContent =
             `Rs.${formatMoney(
-                supplier.lastPayment.amount ||
-                0
+                supplier.lastPayment.amount || 0
             )}`;
 
 
         const lastPaymentSub =
-            statNumbers[4]
+            statNumbers[3]
                 .parentElement
                 ?.querySelector(
                     ".stat-sub"
@@ -2893,8 +3125,6 @@ function updateStats() {
     }
 
 }
-
-
 // ============================================================
 // CREATE EDIT BUTTON
 // ============================================================

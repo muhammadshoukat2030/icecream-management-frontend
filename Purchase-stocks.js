@@ -12,7 +12,7 @@
 // ===========================================================
 
 const API =
-    window.APP_CONFIG.API ;
+    window.APP_CONFIG.API;
 
 
 // ===========================================================
@@ -4246,7 +4246,10 @@ document
 // ===========================================================
 // DYNAMIC COMMISSION
 // ===========================================================
-
+document
+    .getElementById(
+        "dynamicCommission"
+    ).value=entercomission*100
 document
     .getElementById(
         "dynamicCommission"

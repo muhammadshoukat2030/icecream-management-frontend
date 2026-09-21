@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#5b4b8a">
+    <title>Expenses — FrostyOps</title>
+
+```
+<link rel="stylesheet" href="shared-layout.css">
+<link rel="stylesheet" href="expenses.css">
+```
+
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+
+```
+<div class="brand">
+
+    <div class="brand-badge">
+
+        <svg width="18"
+             height="18"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+
+            <circle cx="12" cy="12" r="1"></circle>
+
+            <path d="M12 1v6m0 6v6"></path>
+
+            <path d="M4.22 4.22l4.24 4.24"></path>
+
+            <path d="M13.54 13.54l4.24 4.24"></path>
+
+            <path d="M1 12h6m6 0h6"></path>
+
+            <path d="M4.22 19.78l4.24-4.24"></path>
+
+            <path d="M13.54 10.46l4.24-4.24"></path>
+
+        </svg>
+
+    </div>
+
+    <div>
+
+        <div class="brand-name">
+            FrostyOps
+        </div>
+
+        <div class="brand-sub">
+            Ice Cream Distribution
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================= NAVIGATION ================= -->
+
+<nav class="navlist">
+
+    <a class="navlink"
+       data-nav="dashboard"
+       href="index.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+
+            <path d="M3 11l9-8 9 8"></path>
+
+            <path d="M5 10v10h14V10"></path>
+
+        </svg>
+
+        Dashboard
+
+    </a>
+
+
+    <a class="navlink active"
+       data-nav="categories"
+       href="Categories.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+
+            <rect x="3"
+                  y="3"
+                  width="8"
+                  height="8"
+                  rx="1.5"></rect>
+
+            <rect x="13"
+                  y="3"
+                  width="8"
+                  height="8"
+                  rx="1.5"></rect>
+
+            <rect x="3"
+                  y="13"
+                  width="8"
+                  height="8"
+                  rx="1.5"></rect>
+
+            <rect x="13"
+                  y="13"
+                  width="8"
+                  height="8"
+                  rx="1.5"></rect>
+
+        </svg>
+
+        Categories
+
+    </a>
+
+
+    <a class="navlink"
+       data-nav="products"
+       href="Products.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+
+            <path d="M21 8l-9-5-9 5 9 5 9-5z"></path>
+
+            <path d="M3 8v8l9 5 9-5V8"></path>
+
+            <path d="M12 13v8"></path>
+
+        </svg>
+
+        Products
+
+    </a>
+
+
+    <a class="navlink"
+       data-nav="salesmen"
+       href="Salesmen.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+
+            <circle cx="12"
+                    cy="8"
+                    r="4"></circle>
+
+            <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"></path>
+
+        </svg>
+
+        Salesmen
+
+    </a>
+
+
+    <a class="navlink"
+       data-nav="suppliers"
+       href="suppliers.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+
+            <circle cx="8"
+                    cy="9"
+                    r="3"></circle>
+
+            <circle cx="17"
+                    cy="9"
+                    r="3"></circle>
+
+            <path d="M2 21c0-3.5 2.7-6 6-6s6 2.5 6 6"></path>
+
+            <path d="M11 21c0-3 2.4-5.5 5.5-5.5S22 18 22 21"></path>
+
+        </svg>
+
+        Suppliers
+
+    </a>
+
+
+    <a class="navlink"
+       data-nav="purchase"
+       href="purchase-stocks.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+
+            <path d="M20.6 7.5L12 12l-8.6-4.5"></path>
+
+            <path d="M12 12v9"></path>
+
+            <path d="M20.6 16.5L12 21l-8.6-4.5V7.5L12 3l8.6 4.5v9z"></path>
+
+        </svg>
+
+        Purchase Stocks
+
+    </a>
+
+
+    <a class="navlink"
+       data-nav="issue"
+       href="issueStocks.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+
+            <rect x="1"
+                  y="7"
+                  width="14"
+                  height="10"
+                  rx="1"></rect>
+
+            <path d="M15 10h3l4 4v3h-7"></path>
+
+            <circle cx="6"
+                    cy="19"
+                    r="1.6"></circle>
+
+            <circle cx="17.5"
+                    cy="19"
+                    r="1.6"></circle>
+
+        </svg>
+
+        Issue Stocks
+
+    </a>
+
+
+    <a class="navlink"
+       data-nav="inventory"
+       href="stockInventory.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+
+            <path d="M4 4v5h5"></path>
+
+            <path d="M4.6 15a8 8 0 1 0 2-9.4L4 9"></path>
+
+        </svg>
+
+        Stock Inventory
+
+    </a>
+
+    <a
+class="navlink"
+data-nav="expenses"
+href="expenses.html"
+```
+
+>
+
+```
+<svg
+```
+
+```
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+>
+    <path d="M12 2v20"></path>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"></path>
+</svg>
+
+Expenses
+```
+
+</a>
+
+```
+    <div class="navdivider"></div>
+
+
+    <a class="navlink"
+       data-nav="settings"
+       href="settings.html">
+
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+
+            <circle cx="12"
+                    cy="12"
+                    r="3"></circle>
+
+            <path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9c.4.3.9.5 1.5.5H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"></path>
+
+        </svg>
+
+        Settings
+
+    </a>
+
+</nav>
+```
+
+</aside>
+
+```
+<div class="main">
+
+    <div class="topbar">
+
+        <div class="topbar-left">
+
+            <button
+                class="hamburger"
+                id="hamburgerBtn"
+                type="button"
+                aria-label="Toggle navigation"
+            >
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <line
+                        x1="3"
+                        y1="6"
+                        x2="21"
+                        y2="6"
+                    ></line>
+
+                    <line
+                        x1="3"
+                        y1="12"
+                        x2="21"
+                        y2="12"
+                    ></line>
+
+                    <line
+                        x1="3"
+                        y1="18"
+                        x2="21"
+                        y2="18"
+                    ></line>
+                </svg>
+            </button>
+
+            <div class="crumb">
+                Expenses
+            </div>
+
+        </div>
+
+        <div class="topbar-right">
+
+            <div class="pill">
+                <span
+                    class="pill-text"
+                    id="currentDate"
+                >
+                    Today
+                </span>
+            </div>
+
+            <div class="pill admin">
+                <span class="avatar-dot"></span>
+
+                <span
+                    class="pill-text"
+                    id="admin"
+                >
+                    Admin
+                </span>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="page">
+
+        <div class="content expenses-content">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <h1>
+                        Company Expenses
+                    </h1>
+
+                    <p>
+                        Track salaries, raw materials, bills, gas, maintenance and other business costs.
+                    </p>
+
+                </div>
+
+                <div
+                    class="sync-status"
+                    id="syncStatus"
+                >
+                    Local data
+                </div>
+
+            </div>
+
+
+            <section class="expense-stats">
+
+                <div class="expense-stat-card">
+
+                    <div class="expense-stat-label">
+                        Total Expenses
+                    </div>
+
+                    <div
+                        class="expense-stat-value"
+                        id="totalExpenses"
+                    >
+                        PKR 0
+                    </div>
+
+                    <div
+                        class="expense-stat-sub"
+                        id="totalExpensesLabel"
+                    >
+                        Selected period
+                    </div>
+
+                </div>
+
+
+                <div class="expense-stat-card">
+
+                    <div class="expense-stat-label">
+                        Worker Salaries
+                    </div>
+
+                    <div
+                        class="expense-stat-value"
+                        id="salaryExpenses"
+                    >
+                        PKR 0
+                    </div>
+
+                    <div class="expense-stat-sub">
+                        Selected period
+                    </div>
+
+                </div>
+
+
+                <div class="expense-stat-card">
+
+                    <div class="expense-stat-label">
+                        Other Expenses
+                    </div>
+
+                    <div
+                        class="expense-stat-value"
+                        id="otherExpenses"
+                    >
+                        PKR 0
+                    </div>
+
+                    <div class="expense-stat-sub">
+                        Selected period
+                    </div>
+
+                </div>
+
+
+                <div class="expense-stat-card">
+
+                    <div class="expense-stat-label">
+                        This Month
+                    </div>
+
+                    <div
+                        class="expense-stat-value"
+                        id="monthExpenses"
+                    >
+                        PKR 0
+                    </div>
+
+                    <div class="expense-stat-sub">
+                        Current calendar month
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <section class="panel expense-form-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2 id="expenseFormTitle">
+                            Add Expense
+                        </h2>
+
+                        <p class="panel-note">
+                            Create an expense invoice. It is saved locally immediately when offline.
+                        </p>
+
+                    </div>
+
+                    <button
+                        class="btn-secondary hidden"
+                        id="cancelEditBtn"
+                        type="button"
+                    >
+                        Cancel Edit
+                    </button>
+
+                </div>
+
+
+                <div class="expense-tabs">
+
+                    <button
+                        class="expense-tab active"
+                        type="button"
+                        data-form-type="general"
+                        id="generalExpenseTab"
+                    >
+                        General Expense
+                    </button>
+
+                    <button
+                        class="expense-tab"
+                        type="button"
+                        data-form-type="salary"
+                        id="salaryExpenseTab"
+                    >
+                        Worker Salary
+                    </button>
+
+                </div>
+
+
+                <form
+                    id="expenseForm"
+                    novalidate
+                >
+
+                    <input
+                        type="hidden"
+                        id="editingExpenseId"
+                    >
+
+
+                    <div
+                        id="generalExpenseFields"
+                        class="form-grid"
+                    >
+
+                        <div class="form-field">
+
+                            <label for="expenseCategory">
+                                Category
+                            </label>
+
+                            <select id="expenseCategory">
+
+                                <option value="Raw Materials">
+                                    Raw Materials
+                                </option>
+
+                                <option value="Gas">
+                                    Gas
+                                </option>
+
+                                <option value="Electricity">
+                                    Electricity
+                                </option>
+
+                                <option value="Water">
+                                    Water
+                                </option>
+
+                                <option value="Rent">
+                                    Rent
+                                </option>
+
+                                <option value="Maintenance">
+                                    Maintenance
+                                </option>
+
+                                <option value="Transport">
+                                    Transport
+                                </option>
+
+                                <option value="Internet / Phone">
+                                    Internet / Phone
+                                </option>
+
+                                <option value="Office Expenses">
+                                    Office Expenses
+                                </option>
+
+                                <option value="Other">
+                                    Other
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="expenseName">
+                                Expense Name
+                            </label>
+
+                            <input
+                                id="expenseName"
+                                type="text"
+                                placeholder="e.g. Milk, LPG, Electricity bill"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="expenseQuantity">
+                                Quantity
+                                <span>(optional)</span>
+                            </label>
+
+                            <input
+                                id="expenseQuantity"
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                placeholder="e.g. 25"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="expenseUnit">
+                                Unit
+                                <span>(optional)</span>
+                            </label>
+
+                            <select id="expenseUnit">
+
+                                <option value="">
+                                    Select unit
+                                </option>
+
+                                <option value="Kg">
+                                    Kg
+                                </option>
+
+                                <option value="Grams">
+                                    Grams
+                                </option>
+
+                                <option value="Litres">
+                                    Litres
+                                </option>
+
+                                <option value="ML">
+                                    ML
+                                </option>
+
+                                <option value="Pieces">
+                                    Pieces
+                                </option>
+
+                                <option value="Boxes">
+                                    Boxes
+                                </option>
+
+                                <option value="Packs">
+                                    Packs
+                                </option>
+
+                                <option value="Bags">
+                                    Bags
+                                </option>
+
+                                <option value="Cylinders">
+                                    Cylinders
+                                </option>
+
+                                <option value="Other">
+                                    Other
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="expenseUnitPrice">
+                                Unit Price (PKR)
+                                <span>(optional)</span>
+                            </label>
+
+                            <input
+                                id="expenseUnitPrice"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="e.g. 220"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="expenseAmount">
+                                Total Amount (PKR)
+                            </label>
+
+                            <input
+                                id="expenseAmount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Enter amount"
+                            >
+
+                            <small id="amountHelp">
+                                Enter an amount, or enter quantity + unit price to calculate it automatically.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        id="salaryFields"
+                        class="form-grid hidden"
+                    >
+
+                        <div class="form-field">
+
+                            <label for="workerName">
+                                Worker Name
+                            </label>
+
+                            <input
+                                id="workerName"
+                                type="text"
+                                placeholder="e.g. Ali"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="salaryType">
+                                Salary Type
+                            </label>
+
+                            <select id="salaryType">
+
+                                <option value="Monthly">
+                                    Monthly
+                                </option>
+
+                                <option value="Daily">
+                                    Daily
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="salaryPeriod">
+                                Salary Period
+                            </label>
+
+                            <input
+                                id="salaryPeriod"
+                                type="text"
+                                placeholder="e.g. September 2026 or 20 Sep 2026"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="baseSalary">
+                                Base Salary (PKR)
+                            </label>
+
+                            <input
+                                id="baseSalary"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="e.g. 35000"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="extraPayment">
+                                Bonus / Extra (PKR)
+                            </label>
+
+                            <input
+                                id="extraPayment"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value="0"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="salaryDeductions">
+                                Deductions (PKR)
+                            </label>
+
+                            <input
+                                id="salaryDeductions"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value="0"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="salaryNetPaid">
+                                Net Salary Expense (PKR)
+                            </label>
+
+                            <input
+                                id="salaryNetPaid"
+                                type="number"
+                                readonly
+                            >
+
+                            <small>
+                                Base salary + bonus − deductions.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-grid form-grid-bottom">
+
+                        <div class="form-field">
+
+                            <label for="expenseDate">
+                                Date
+                            </label>
+
+                            <input
+                                id="expenseDate"
+                                type="date"
+                            >
+
+                        </div>
+
+
+                        <div class="form-field">
+
+                            <label for="paymentMethod">
+                                Payment Method
+                            </label>
+
+                            <select id="paymentMethod">
+
+                                <option value="Cash">
+                                    Cash
+                                </option>
+
+                                <option value="Bank">
+                                    Bank
+                                </option>
+
+                                <option value="Online Transfer">
+                                    Online Transfer
+                                </option>
+
+                                <option value="Other">
+                                    Other
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="form-field form-field-wide">
+
+                            <label for="expenseNotes">
+                                Notes
+                            </label>
+
+                            <textarea
+                                id="expenseNotes"
+                                rows="2"
+                                placeholder="Optional notes"
+                            ></textarea>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-actions">
+
+                        <button
+                            class="btn-primary"
+                            id="saveExpenseBtn"
+                            type="submit"
+                        >
+                            Create Expense Invoice
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </section>
+
+
+            <section class="panel history-panel">
+
+                <div class="panel-header history-header">
+
+                    <div>
+
+                        <h2>
+                            Expense History
+                        </h2>
+
+                        <p class="panel-note">
+                            Every expense is stored as an EXP invoice.
+                        </p>
+
+                    </div>
+
+
+                    <div class="history-controls">
+
+                        <select id="historyPeriodFilter">
+
+                            <option
+                                value="thisMonth"
+                                selected
+                            >
+                                This Month
+                            </option>
+
+                            <option value="today">
+                                Today
+                            </option>
+
+                            <option value="yesterday">
+                                Yesterday
+                            </option>
+
+                            <option value="7days">
+                                Last 7 Days
+                            </option>
+
+                            <option value="previousMonth">
+                                Past Month
+                            </option>
+
+                            <option value="custom">
+                                Custom Date
+                            </option>
+
+                        </select>
+
+
+                        <div
+                            id="historyCustomRange"
+                            class="custom-range hidden"
+                        >
+
+                            <input
+                                type="date"
+                                id="historyStartDate"
+                            >
+
+                            <input
+                                type="date"
+                                id="historyEndDate"
+                            >
+
+                        </div>
+
+
+                        <select id="historyCategoryFilter">
+
+                            <option value="all">
+                                All Categories
+                            </option>
+
+                        </select>
+
+
+                        <input
+                            id="historySearch"
+                            type="search"
+                            placeholder="Search expense or invoice..."
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <div class="table-wrap">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Invoice
+                                </th>
+
+                                <th>
+                                    Date
+                                </th>
+
+                                <th>
+                                    Category
+                                </th>
+
+                                <th>
+                                    Particular
+                                </th>
+
+                                <th>
+                                    Qty
+                                </th>
+
+                                <th>
+                                    Amount (PKR)
+                                </th>
+
+                                <th>
+                                    Payment
+                                </th>
+
+                                <th>
+                                    Action
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody
+                            id="expenseHistoryBody"
+                        ></tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+        </div>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<div
+    class="modal"
+    id="expenseInvoiceModal"
+    aria-hidden="true"
+>
+
+```
+<div class="modal-card">
+
+    <div class="modal-head">
+
+        <div>
+
+            <div class="modal-kicker">
+                Expense Invoice
+            </div>
+
+            <h3 id="modalInvoiceNo">
+                EXP-
+            </h3>
+
+        </div>
+
+        <button
+            class="modal-close"
+            id="closeExpenseModal"
+            type="button"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <div
+        class="invoice-sheet"
+        id="expenseInvoiceContent"
+    ></div>
+
+
+    <div class="modal-actions">
+
+        <button
+            class="btn-secondary"
+            id="printExpenseBtn"
+            type="button"
+        >
+            Print
+        </button>
+
+        <button
+            class="btn-primary"
+            id="closeExpenseModalBottom"
+            type="button"
+        >
+            Done
+        </button>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<script src="config.js"></script>
+
+<script src="shared-layout.js"></script>
+
+<script src="offline-db.js"></script>
+
+<script src="expenses.js"></script>
+
+</body>
+</html>
