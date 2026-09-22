@@ -248,7 +248,7 @@ document.getElementById("modalInvoiceNo");
 function getLocalStorageUser() {
 const raw = localStorage.getItem("user");
 
-```
+
 if (!raw) {
     window.location.href = "login.html";
     return null;
@@ -262,7 +262,7 @@ catch (error) {
     window.location.href = "login.html";
     return null;
 }
-```
+
 
 }
 
