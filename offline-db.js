@@ -1275,6 +1275,74 @@ async function syncInvoicesToOfflineDB() {
 // ============================================================
 
 let isSyncing = false;
+let syncRetryTimer = null;
+
+function waitForSyncRetry(
+    milliseconds
+) {
+
+    return new Promise(resolve => {
+
+        setTimeout(
+            resolve,
+            milliseconds
+        );
+
+    });
+
+}
+
+function isTransientSyncStatus(
+    status
+) {
+
+    return (
+        status === 408 ||
+        status === 429 ||
+        status >= 500
+    );
+
+}
+
+function scheduleSyncQueueRetry(
+    delay = 5000
+) {
+
+    if (syncRetryTimer) {
+
+        clearTimeout(
+            syncRetryTimer
+        );
+
+    }
+
+    syncRetryTimer = setTimeout(
+        async () => {
+
+            syncRetryTimer = null;
+
+            if (
+                !navigator.onLine
+            ) {
+
+                console.log(
+                    "Still offline. Sync retry postponed."
+                );
+
+                return;
+            }
+
+            console.log(
+                "Retrying pending synchronization..."
+            );
+
+            await processSyncQueue();
+
+        },
+        delay
+    );
+
+}
 
 async function processSyncQueue() {
 
@@ -1297,6 +1365,8 @@ async function processSyncQueue() {
     }
 
     isSyncing = true;
+
+    let shouldRetryLater = false;
 
     try {
 
@@ -1331,205 +1401,300 @@ async function processSyncQueue() {
                     "Internet lost during sync. Stopping."
                 );
 
+                shouldRetryLater = true;
+
                 break;
             }
 
-            try {
+            let operationSucceeded = false;
 
-                const requestOptions = {
+            for (
+                let attempt = 1;
+                attempt <= 3;
+                attempt++
+            ) {
 
-                    method:
-                        operation.method,
+                try {
 
-                    credentials:
-                        "include"
-
-                };
-
-                // ------------------------------------------------
-                // Only attach JSON body when a real body exists.
-                // ------------------------------------------------
-
-                if (
-                    operation.body !== null &&
-                    operation.body !== undefined
-                ) {
-
-                    requestOptions.headers = {
-
-                        "Content-Type":
-                            "application/json"
-
-                    };
-
-                    requestOptions.body =
-                        JSON.stringify(
-                            operation.body
-                        );
-                }
-
-                const response =
-                    await fetch(
-                        `${window.APP_CONFIG.API}${operation.endpoint}`,
-                        requestOptions
-                    );
-
-                // ------------------------------------------------
-                // Authentication expired
-                // ------------------------------------------------
-
-                if (
-                    response.status === 401
-                ) {
-
-                    console.log(
-                        "Authentication expired during sync."
-                    );
-
-                    window.location.href =
-                        "login.html";
-
-                    break;
-                }
-
-                // ------------------------------------------------
-                // Read response
-                // ------------------------------------------------
-
-                let responseData =
-                    null;
-
-                const contentType =
-                    response.headers.get(
-                        "content-type"
-                    ) || "";
-
-                if (
-                    contentType.includes(
-                        "application/json"
-                    )
-                ) {
-
-                    responseData =
-                        await response.json();
-
-                } else {
-
-                    responseData =
-                        await response.text();
-
-                }
-
-                // ------------------------------------------------
-                // Request failed
-                // ------------------------------------------------
-
-                if (
-                    !response.ok
-                ) {
-
-                    console.error(
-                        "Queued operation failed:",
-                        operation,
-                        response.status,
-                        responseData
-                    );
-
-                    // DELETE + 404 means the record is already
-                    // gone from backend.
                     if (
-                        operation.method ===
-                            "DELETE" &&
-                        response.status === 404
+                        !navigator.onLine
                     ) {
 
-                        await removeFromSyncQueue(
-                            operation.queueId
+                        console.log(
+                            "Internet lost during sync."
+                        );
+
+                        shouldRetryLater = true;
+
+                        break;
+                    }
+
+                    if (
+                        attempt > 1
+                    ) {
+
+                        const retryDelay =
+                            attempt === 2
+                                ? 2000
+                                : 4000;
+
+                        console.log(
+                            `Retrying ${operation.method} ${operation.endpoint} in ${retryDelay}ms...`
+                        );
+
+                        await waitForSyncRetry(
+                            retryDelay
                         );
                     }
 
-                    // Keep all other failed operations pending.
-                    continue;
-                }
+                    const requestOptions = {
 
-                // ------------------------------------------------
-                // Successful invoice creation
-                // ------------------------------------------------
+                        method:
+                            operation.method,
 
-                if (
-                    operation.method ===
-                        "POST" &&
+                        credentials:
+                            "include"
 
-                    operation.endpoint ===
-                        "/invoices" &&
+                    };
 
-                    operation.body
-                ) {
+                    // ------------------------------------------------
+                    // Only attach JSON body when a real body exists.
+                    // ------------------------------------------------
 
-                    await saveToOfflineDB(
-                        STORES.INVOICES,
+                    if (
+                        operation.body !== null &&
+                        operation.body !== undefined
+                    ) {
+
+                        requestOptions.headers = {
+
+                            "Content-Type":
+                                "application/json"
+
+                        };
+
+                        requestOptions.body =
+                            JSON.stringify(
+                                operation.body
+                            );
+                    }
+
+                    const response =
+                        await fetch(
+                            `${window.APP_CONFIG.API}${operation.endpoint}`,
+                            requestOptions
+                        );
+
+                    // ------------------------------------------------
+                    // Authentication expired
+                    // ------------------------------------------------
+
+                    if (
+                        response.status === 401
+                    ) {
+
+                        console.log(
+                            "Authentication expired during sync."
+                        );
+
+                        window.location.href =
+                            "login.html";
+
+                        return;
+                    }
+
+                    // ------------------------------------------------
+                    // Read response
+                    // ------------------------------------------------
+
+                    let responseData =
+                        null;
+
+                    const contentType =
+                        response.headers.get(
+                            "content-type"
+                        ) || "";
+
+                    if (
+                        contentType.includes(
+                            "application/json"
+                        )
+                    ) {
+
+                        responseData =
+                            await response.json();
+
+                    } else {
+
+                        responseData =
+                            await response.text();
+
+                    }
+
+                    // ------------------------------------------------
+                    // Request failed
+                    // ------------------------------------------------
+
+                    if (
+                        !response.ok
+                    ) {
+
+                        console.error(
+                            "Queued operation failed:",
+                            operation,
+                            response.status,
+                            responseData
+                        );
+
+                        // DELETE + 404 means the record is already
+                        // gone from backend.
+                        if (
+                            operation.method ===
+                                "DELETE" &&
+                            response.status === 404
+                        ) {
+
+                            await removeFromSyncQueue(
+                                operation.queueId
+                            );
+
+                            operationSucceeded =
+                                true;
+
+                            break;
+                        }
+
+                        // Retry temporary HTTP failures.
+                        if (
+                            isTransientSyncStatus(
+                                response.status
+                            )
+                        ) {
+
+                            shouldRetryLater =
+                                true;
+
+                            continue;
+                        }
+
+                        // Permanent server error.
+                        // Keep it pending.
+                        break;
+                    }
+
+                    // ------------------------------------------------
+                    // Successful invoice creation
+                    // ------------------------------------------------
+
+                    if (
+                        operation.method ===
+                            "POST" &&
+
+                        operation.endpoint ===
+                            "/invoices" &&
+
                         operation.body
+                    ) {
+
+                        await saveToOfflineDB(
+                            STORES.INVOICES,
+                            operation.body
+                        );
+
+                        console.log(
+                            "Queued invoice cached locally:",
+                            operation.body.id
+                        );
+                    }
+
+                    // ------------------------------------------------
+                    // Successful latest-invoice update
+                    // ------------------------------------------------
+
+                    if (
+                        operation.method ===
+                            "PUT" &&
+
+                        operation.endpoint.includes(
+                            "/update-last"
+                        ) &&
+
+                        responseData &&
+
+                        responseData.invoice
+                    ) {
+
+                        await saveToOfflineDB(
+                            STORES.INVOICES,
+                            responseData.invoice
+                        );
+
+                        console.log(
+                            "Updated invoice cached locally:",
+                            responseData.invoice.id
+                        );
+                    }
+
+                    // ------------------------------------------------
+                    // Successful operation
+                    // ------------------------------------------------
+
+                    await removeFromSyncQueue(
+                        operation.queueId
                     );
 
                     console.log(
-                        "Queued invoice cached locally:",
-                        operation.body.id
+                        "Queued operation synchronized:",
+                        operation.endpoint
                     );
-                }
 
-                // ------------------------------------------------
-                // Successful latest-invoice update
-                // ------------------------------------------------
+                    operationSucceeded =
+                        true;
 
-                if (
-                    operation.method ===
-                        "PUT" &&
+                    break;
 
-                    operation.endpoint.includes(
-                        "/update-last"
-                    ) &&
-
-                    responseData &&
-
-                    responseData.invoice
+                } catch (
+                    operationError
                 ) {
 
-                    await saveToOfflineDB(
-                        STORES.INVOICES,
-                        responseData.invoice
+                    // Network errors such as:
+                    // ERR_NETWORK_CHANGED
+                    // Failed to fetch
+
+                    console.error(
+                        `Sync attempt ${attempt} failed:`,
+                        operationError
                     );
 
-                    console.log(
-                        "Updated invoice cached locally:",
-                        responseData.invoice.id
-                    );
+                    if (
+                        attempt < 3
+                    ) {
+
+                        shouldRetryLater =
+                            true;
+
+                        continue;
+                    }
+
+                    shouldRetryLater =
+                        true;
+
                 }
 
-                // ------------------------------------------------
-                // Successful operation
-                // ------------------------------------------------
+            }
 
-                await removeFromSyncQueue(
-                    operation.queueId
-                );
+            if (
+                !operationSucceeded &&
+                shouldRetryLater
+            ) {
 
                 console.log(
-                    "Queued operation synchronized:",
+                    "Operation remains pending and will be retried later:",
                     operation.endpoint
                 );
 
-            } catch (
-                operationError
-            ) {
-
-                // Network/server error.
-                // Keep operation pending.
-
-                console.error(
-                    "Sync operation error:",
-                    operationError
-                );
             }
+
         }
 
     } catch (error) {
@@ -1539,10 +1704,38 @@ async function processSyncQueue() {
             error
         );
 
+        shouldRetryLater = true;
+
     } finally {
 
         isSyncing = false;
+
     }
+
+    // --------------------------------------------------------
+    // Schedule another attempt if pending operations remain.
+    // --------------------------------------------------------
+
+    if (
+        shouldRetryLater &&
+        navigator.onLine
+    ) {
+
+        const remainingItems =
+            await getPendingSyncQueue();
+
+        if (
+            remainingItems.length > 0
+        ) {
+
+            scheduleSyncQueueRetry(
+                5000
+            );
+
+        }
+
+    }
+
 }
 
 // ============================================================
@@ -1555,6 +1748,11 @@ window.addEventListener(
 
         console.log(
             "Internet restored. Starting synchronization..."
+        );
+
+        // Give the connection a moment to stabilize.
+        await waitForSyncRetry(
+            1500
         );
 
         // First send pending offline operations.
