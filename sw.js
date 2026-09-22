@@ -1,102 +1,177 @@
-const CACHE_NAME = "frostyops-v17";
+const CACHE_NAME = "frostyops-v18";
 
 const APP_FILES = [
-    "/",
+"/",
 
-    "/login",
 
-    "/Categories",
-    "/Products",
-    "/Salesmen",
-    "/suppliers",
+// ============================================================
+// HTML PAGES - CLEAN URLS
+// ============================================================
 
-    "/purchase-stocks",
-    "/issueStocks",
-    "/stockInventory",
-    "/settings",
+"/login",
 
-    "/salesman-details",
-    "/suppliers-details",
+"/Categories",
+"/Products",
+"/Salesmen",
+"/suppliers",
 
-    // Shared
-    "/shared-layout.css",
-    "/shared-layout.js",
-    "/offline-db.js",
-    "/config.js",
+"/purchase-stocks",
+"/issueStocks",
+"/stockInventory",
+"/settings",
 
-    // Dashboard
-    "/index.css",
-    "/index.js",
+"/salesman-details",
+"/suppliers-details",
 
-    // Categories
-    "/Categories.js",
-    "/Categories.css",
+"/expenses",
 
-    // Products
-    "/products.js",
-    "/Products.css",
+// ============================================================
+// HTML PAGES - ACTUAL FILES
+// ============================================================
 
-    // Salesmen
-    "/salesmen.js",
-    "/Salesmen.css",
+"/login.html",
 
-    // Suppliers
-    "/suppliers.js",
-    "/suppliers.css",
+"/index.html",
 
-    // Purchase Stocks
-    "/Purchase-stocks.js",
-    "/Purchase-stocks.css",
+"/Categories.html",
+"/Products.html",
+"/Salesmen.html",
+"/suppliers.html",
 
-    // Issue Stocks
-    "/issueStocks.js",
-    "/issueStocks.css",
+"/purchase-stocks.html",
+"/issueStocks.html",
+"/stockInventory.html",
+"/settings.html",
 
-    // Stock Inventory
-    "/stockInventory.js",
-    "/stockInventory.css",
+"/salesman-details.html",
+"/suppliers-details.html",
 
-    // Detail pages
-    "/salesmanDetails.js",
-    "/suppliers-details.js",
-    "/salesman-details.css",
-    "/suppliers-details.css",
-
-    // Dashboard assets
-    "/assets/Group%20(1).png",
-    "/assets/Vector%20(5).png",
-    "/assets/money%201.png",
-    "/assets/2875986%201.png",
-    "/assets/Group%20(2).png",
-
-    // expenses pages
-    "/expenses",
 "/expenses.html",
-"/expenses.css",
-"/expenses.js",
-];
 
+// ============================================================
+// SHARED
+// ============================================================
+
+"/shared-layout.css",
+"/shared-layout.js",
+"/offline-db.js",
+"/config.js",
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+
+"/index.css",
+"/index.js",
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+
+"/Categories.js",
+"/Categories.css",
+
+// ============================================================
+// PRODUCTS
+// ============================================================
+
+"/products.js",
+"/Products.css",
+
+// ============================================================
+// SALESMEN
+// ============================================================
+
+"/salesmen.js",
+"/Salesmen.css",
+
+// ============================================================
+// SUPPLIERS
+// ============================================================
+
+"/suppliers.js",
+"/suppliers.css",
+
+// ============================================================
+// PURCHASE STOCKS
+// ============================================================
+
+"/Purchase-stocks.js",
+"/Purchase-stocks.css",
+
+// ============================================================
+// ISSUE STOCKS
+// ============================================================
+
+"/issueStocks.js",
+"/issueStocks.css",
+
+// ============================================================
+// STOCK INVENTORY
+// ============================================================
+
+"/stockInventory.js",
+"/stockInventory.css",
+
+// ============================================================
+// DETAIL PAGES
+// ============================================================
+
+"/salesmanDetails.js",
+"/suppliers-details.js",
+"/salesman-details.css",
+"/suppliers-details.css",
+
+// ============================================================
+// EXPENSES
+// ============================================================
+
+"/expenses.js",
+"/expenses.css",
+
+// ============================================================
+// DASHBOARD ASSETS
+// ============================================================
+
+"/assets/Group%20(1).png",
+"/assets/Vector%20(5).png",
+"/assets/money%201.png",
+"/assets/2875986%201.png",
+"/assets/Group%20(2).png"
+
+
+];
 
 // ============================================================
 // INSTALL
 // ============================================================
 
-self.addEventListener("install", event => {
+self.addEventListener(
+"install",
+event => {
+
 
     event.waitUntil(
 
-        caches.open(CACHE_NAME)
-            .then(async cache => {
+        caches.open(
+            CACHE_NAME
+        )
+        .then(
+            async cache => {
 
                 // =================================================
-                // CACHE NORMAL STATIC FILES
+                // CACHE APPLICATION FILES
                 // =================================================
 
-                for (const file of APP_FILES) {
+                for (
+                    const file of APP_FILES
+                ) {
 
                     try {
 
-                        await cache.add(file);
+                        await cache.add(
+                            file
+                        );
 
                         console.log(
                             "FrostyOps cached:",
@@ -127,12 +202,14 @@ self.addEventListener("install", event => {
                         await fetch(
                             "/index.html",
                             {
-                                redirect: "follow"
+                                redirect:
+                                    "follow"
                             }
                         );
 
-
-                    if (!response.ok) {
+                    if (
+                        !response.ok
+                    ) {
 
                         throw new Error(
                             `Dashboard request failed: ${response.status}`
@@ -140,39 +217,47 @@ self.addEventListener("install", event => {
 
                     }
 
-
                     const body =
                         await response.arrayBuffer();
-
 
                     const headers =
                         new Headers(
                             response.headers
                         );
 
-
                     headers.set(
                         "Content-Type",
                         "text/html; charset=UTF-8"
                     );
 
-
                     const dashboardResponse =
                         new Response(
                             body,
                             {
-                                status: 200,
-                                statusText: "OK",
+                                status:
+                                    200,
+
+                                statusText:
+                                    "OK",
+
                                 headers
                             }
                         );
 
+
+                    // ------------------------------------------------
+                    // Cache root
+                    // ------------------------------------------------
 
                     await cache.put(
                         "/",
                         dashboardResponse.clone()
                     );
 
+
+                    // ------------------------------------------------
+                    // Cache index.html
+                    // ------------------------------------------------
 
                     await cache.put(
                         "/index.html",
@@ -194,58 +279,74 @@ self.addEventListener("install", event => {
 
                 }
 
-            })
+            }
+        )
 
     );
 
     self.skipWaiting();
 
-});
+}
 
+
+);
 
 // ============================================================
 // ACTIVATE
 // ============================================================
 
-self.addEventListener("activate", event => {
+self.addEventListener(
+"activate",
+event => {
+
 
     event.waitUntil(
 
         caches.keys()
-            .then(cacheNames => {
+            .then(
+                cacheNames => {
 
-                return Promise.all(
+                    return Promise.all(
 
-                    cacheNames
-                        .filter(
-                            cacheName =>
-                                cacheName !== CACHE_NAME
-                        )
-                        .map(
-                            cacheName =>
-                                caches.delete(
-                                    cacheName
-                                )
-                        )
+                        cacheNames
+                            .filter(
+                                cacheName =>
+                                    cacheName !==
+                                    CACHE_NAME
+                            )
+                            .map(
+                                cacheName =>
+                                    caches.delete(
+                                        cacheName
+                                    )
+                            )
 
-                );
+                    );
 
-            })
+                }
+            )
 
     );
 
     self.clients.claim();
 
-});
+}
+
+
+);
 
 // ============================================================
 // FETCH
 // ============================================================
 
-self.addEventListener("fetch", event => {
+self.addEventListener(
+"fetch",
+event => {
+
 
     if (
-        event.request.method !== "GET"
+        event.request.method !==
+        "GET"
     ) {
 
         return;
@@ -267,10 +368,13 @@ self.addEventListener("fetch", event => {
     // ========================================================
 
     if (
-        request.mode === "navigate" &&
+        request.mode ===
+            "navigate" &&
         (
-            url.pathname === "/" ||
-            url.pathname === "/index.html"
+            url.pathname ===
+                "/" ||
+            url.pathname ===
+                "/index.html"
         )
     ) {
 
@@ -285,7 +389,7 @@ self.addEventListener("fetch", event => {
 
 
                 // ----------------------------------------------
-                // Always try the cached Dashboard first
+                // Cached dashboard root
                 // ----------------------------------------------
 
                 const cachedDashboard =
@@ -294,7 +398,9 @@ self.addEventListener("fetch", event => {
                     );
 
 
-                if (cachedDashboard) {
+                if (
+                    cachedDashboard
+                ) {
 
                     return cachedDashboard;
 
@@ -302,7 +408,7 @@ self.addEventListener("fetch", event => {
 
 
                 // ----------------------------------------------
-                // Fallback to cached index.html
+                // Cached index.html
                 // ----------------------------------------------
 
                 const cachedIndex =
@@ -311,7 +417,9 @@ self.addEventListener("fetch", event => {
                     );
 
 
-                if (cachedIndex) {
+                if (
+                    cachedIndex
+                ) {
 
                     return cachedIndex;
 
@@ -334,7 +442,9 @@ self.addEventListener("fetch", event => {
                     return new Response(
                         "FrostyOps Dashboard is unavailable offline.",
                         {
-                            status: 503,
+                            status:
+                                503,
+
                             headers: {
                                 "Content-Type":
                                     "text/plain"
@@ -358,7 +468,8 @@ self.addEventListener("fetch", event => {
     // ========================================================
 
     if (
-        request.mode === "navigate"
+        request.mode ===
+        "navigate"
     ) {
 
         event.respondWith(
@@ -381,6 +492,12 @@ self.addEventListener("fetch", event => {
                     );
 
 
+                const htmlPagePath =
+                    cleanPagePath === "/"
+                        ? "/index.html"
+                        : `${cleanPagePath}.html`;
+
+
                 const cache =
                     await caches.open(
                         CACHE_NAME
@@ -397,7 +514,9 @@ self.addEventListener("fetch", event => {
                     );
 
 
-                if (cachedPage) {
+                if (
+                    cachedPage
+                ) {
 
                     return cachedPage;
 
@@ -405,7 +524,26 @@ self.addEventListener("fetch", event => {
 
 
                 // ----------------------------------------------
-                // Exact request
+                // Actual .html file
+                // ----------------------------------------------
+
+                const cachedHTMLPage =
+                    await cache.match(
+                        htmlPagePath
+                    );
+
+
+                if (
+                    cachedHTMLPage
+                ) {
+
+                    return cachedHTMLPage;
+
+                }
+
+
+                // ----------------------------------------------
+                // Exact browser request
                 // ----------------------------------------------
 
                 const exactPage =
@@ -414,7 +552,9 @@ self.addEventListener("fetch", event => {
                     );
 
 
-                if (exactPage) {
+                if (
+                    exactPage
+                ) {
 
                     return exactPage;
 
@@ -437,7 +577,9 @@ self.addEventListener("fetch", event => {
                     return new Response(
                         "FrostyOps is unavailable offline.",
                         {
-                            status: 503,
+                            status:
+                                503,
+
                             headers: {
                                 "Content-Type":
                                     "text/plain"
@@ -470,18 +612,28 @@ self.addEventListener("fetch", event => {
                 );
 
 
+            // ----------------------------------------------
+            // Cache first
+            // ----------------------------------------------
+
             const cachedResponse =
                 await cache.match(
                     request
                 );
 
 
-            if (cachedResponse) {
+            if (
+                cachedResponse
+            ) {
 
                 return cachedResponse;
 
             }
 
+
+            // ----------------------------------------------
+            // Network
+            // ----------------------------------------------
 
             try {
 
@@ -513,7 +665,8 @@ self.addEventListener("fetch", event => {
                 return new Response(
                     "",
                     {
-                        status: 503
+                        status:
+                            503
                     }
                 );
 
@@ -523,4 +676,7 @@ self.addEventListener("fetch", event => {
 
     );
 
-});
+}
+
+
+);
