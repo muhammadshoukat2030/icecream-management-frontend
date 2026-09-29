@@ -859,7 +859,274 @@ function renderProductsTable() {
 
 }
 
+ // ===========================================================
+// RECENT PRODUCT ACTIVITY - OFFLINE ONLY
+// ===========================================================
 
+async function loadProductActivity(productId) {
+
+    const container =
+        document.getElementById(
+            "productActivityList"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = "";
+
+
+    try {
+
+        // =====================================================
+        // GET INVOICES FROM INDEXEDDB
+        // =====================================================
+
+        const invoices =
+            await getAllFromOfflineDB(
+                "invoices"
+            );
+
+
+        // =====================================================
+        // FIND INVOICES CONTAINING THIS PRODUCT
+        // =====================================================
+
+        const productInvoices =
+            (Array.isArray(invoices)
+                ? invoices
+                : []
+            )
+            .filter(
+                invoice => {
+
+                    if (
+                        !Array.isArray(
+                            invoice.items
+                        )
+                    ) {
+                        return false;
+                    }
+
+
+                    return invoice.items.some(
+                        item =>
+                            Number(
+                                item.productId
+                            ) === Number(
+                                productId
+                            )
+                    );
+
+                }
+            )
+            .sort(
+                (a, b) => {
+
+                    const dateDifference =
+                        new Date(b.date) -
+                        new Date(a.date);
+
+
+                    if (
+                        dateDifference !== 0
+                    ) {
+                        return dateDifference;
+                    }
+
+
+                    return (
+                        Number(b.id) -
+                        Number(a.id)
+                    );
+
+                }
+            )
+            .slice(
+                0,
+                10
+            );
+
+
+        // =====================================================
+        // NO ACTIVITY
+        // =====================================================
+
+        if (
+            productInvoices.length === 0
+        ) {
+
+            container.innerHTML = `
+                <div class="product-activity-empty">
+                    No purchase or issue history available offline.
+                </div>
+            `;
+
+            return;
+        }
+
+
+        // =====================================================
+        // RENDER ACTIVITY
+        // =====================================================
+
+        productInvoices.forEach(
+            invoice => {
+
+                const item =
+                    invoice.items.find(
+                        invoiceItem =>
+                            Number(
+                                invoiceItem.productId
+                            ) === Number(
+                                productId
+                            )
+                    );
+
+
+                if (!item) {
+                    return;
+                }
+
+
+                const isSupplier =
+                    String(
+                        invoice.type || ""
+                    ).toLowerCase() ===
+                    "supplier";
+
+
+                const activityType =
+                    isSupplier
+                        ? "Bought"
+                        : "Issued";
+
+
+                const partyName =
+                    invoice.partyName ||
+                    (
+                        isSupplier
+                            ? "Unknown Supplier"
+                            : "Unknown Salesman"
+                    );
+
+
+                const quantity =
+                    Number(
+                        item.quantity || 0
+                    );
+
+
+                const returnedQuantity =
+                    Number(
+                        item.returnQuantity ??
+                        item.returnedQuantity ??
+                        0
+                    );
+
+
+                const netQuantity =
+                    Math.max(
+                        quantity -
+                        returnedQuantity,
+                        0
+                    );
+
+
+                const date =
+                    invoice.date
+                        ? new Date(
+                            invoice.date
+                        ).toLocaleDateString(
+                            "en-GB",
+                            {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric"
+                            }
+                        )
+                        : "-";
+
+
+                const row =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                row.className =
+                    "product-activity-row";
+
+
+                row.innerHTML = `
+
+                    <div class="product-activity-main">
+
+                        <div class="product-activity-type">
+
+                            ${activityType}
+
+                        </div>
+
+                        <div class="product-activity-party">
+
+                            ${partyName}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="product-activity-quantity">
+
+                        ${
+                            isSupplier
+                                ? quantity
+                                : netQuantity
+                        }
+                        units
+
+                    </div>
+
+
+                    <div class="product-activity-date">
+
+                        ${date}
+
+                    </div>
+
+                `;
+
+
+                container.appendChild(
+                    row
+                );
+
+            }
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Product activity load error:",
+            error
+        );
+
+
+        container.innerHTML = `
+            <div class="product-activity-empty">
+                Unable to load product activity.
+            </div>
+        `;
+
+    }
+
+}
 // ===========================================================
 // Show Product Details
 // ===========================================================
@@ -990,7 +1257,14 @@ function showProductDetails(idx) {
 
 
     renderProductsTable();
+        // =======================================================
+    // LOAD RECENT PRODUCT ACTIVITY
+    // OFFLINE ONLY
+    // =======================================================
 
+    loadProductActivity(
+        row.id
+    );
 }
 
 

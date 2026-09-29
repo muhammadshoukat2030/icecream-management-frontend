@@ -1726,3 +1726,152 @@
     min-width: 0 !important;
     box-sizing: border-box;
 }
+/* ===========================================================
+   RECENT PRODUCT ACTIVITY
+   =========================================================== */
+
+.product-activity {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e8e8ee;
+}
+
+
+.product-activity h4 {
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2430;
+}
+
+
+.product-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    max-height: 260px;
+    overflow-y: auto;
+
+    padding-right: 4px;
+}
+
+
+.product-activity-row {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto
+        auto;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 11px 12px;
+
+    border: 1px solid #ececf2;
+    border-radius: 10px;
+
+    background: #fafafe;
+}
+
+
+.product-activity-main {
+    min-width: 0;
+}
+
+
+.product-activity-type {
+    font-size: 13px;
+    font-weight: 700;
+
+    color: #3f3d9e;
+
+    margin-bottom: 3px;
+}
+
+
+.product-activity-party {
+    font-size: 13px;
+    color: #555b68;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+.product-activity-quantity {
+    font-size: 13px;
+    font-weight: 700;
+
+    color: #1f2430;
+
+    white-space: nowrap;
+}
+
+
+.product-activity-date {
+    font-size: 12px;
+    color: #777d89;
+
+    white-space: nowrap;
+}
+
+
+.product-activity-empty {
+    padding: 18px 12px;
+
+    text-align: center;
+
+    border: 1px dashed #dcdde5;
+    border-radius: 10px;
+
+    color: #777d89;
+
+    font-size: 13px;
+
+    background: #fafafe;
+}
+
+
+/* ===========================================================
+   ACTIVITY LIST SCROLLBAR
+   =========================================================== */
+
+.product-activity-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+
+.product-activity-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+.product-activity-list::-webkit-scrollbar-thumb {
+    background: #d4d5de;
+    border-radius: 10px;
+}
+
+
+/* ===========================================================
+   MOBILE
+   =========================================================== */
+
+@media (max-width: 700px) {
+
+    .product-activity-row {
+        grid-template-columns:
+            1fr
+            auto;
+    }
+
+
+    .product-activity-date {
+        grid-column: 1 / -1;
+    }
+
+}
+    
