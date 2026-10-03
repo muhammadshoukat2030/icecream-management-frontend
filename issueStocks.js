@@ -1625,14 +1625,19 @@ function renderIssueTable() {
                 </td>
 
 
-                <td>
-                    ${Number(
-                        item.price ||
-                        0
-                    ).toLocaleString(
-                        "en-PK"
-                    )}
-                </td>
+               <td>
+
+    <input
+        type="number"
+        class="price-input"
+        data-index="${index}"
+        value="${item.price}"
+        min="0"
+        step="0.01"
+        oninput="this.value = this.value.replace(/[^0-9.]/g, '')"
+    >
+
+</td>
 
 
                 <td
@@ -2014,6 +2019,68 @@ document
                 );
 
             }
+
+// =================================================
+// SALE PRICE
+// =================================================
+
+if (
+    event.target.classList.contains(
+        "price-input"
+    )
+) {
+
+    const value =
+        event.target.value;
+
+
+    if (
+        value === ""
+    ) {
+
+        item.price =
+            "";
+
+        updateIssueRow(
+            index
+        );
+
+        return;
+
+    }
+
+
+    let price =
+        Number(
+            value
+        );
+
+
+    if (
+        Number.isNaN(
+            price
+        ) ||
+        price < 0
+    ) {
+
+        price =
+            0;
+
+        event.target.value =
+            price;
+
+    }
+
+
+    item.price =
+        price;
+
+
+    updateIssueRow(
+        index
+    );
+
+}
 
         }
     );
@@ -2838,6 +2905,93 @@ async function applyIssueLocally(
 
 }
 
+// ===========================================================
+// ISSUE STOCK INVOICE NUMBER
+//
+// Issue Stock invoice numbers are sequential:
+// 1, 2, 3, 4...
+//
+// This is separate from invoice.id.
+// invoice.id remains the unique internal ID.
+// ===========================================================
+
+async function getNextIssueInvoiceNumber() {
+
+    try {
+
+        const invoices =
+            await getAllFromOfflineDB(
+                "invoices"
+            );
+
+
+        let highestNumber = 0;
+
+
+        (Array.isArray(invoices)
+            ? invoices
+            : []
+        ).forEach(
+            invoice => {
+
+                // Only Issue Stock / Salesman invoices
+                if (
+                    String(
+                        invoice?.type || ""
+                    ).toLowerCase() !==
+                    "salesman"
+                ) {
+
+                    return;
+
+                }
+
+
+                const invoiceNumber =
+                    Number(
+                        invoice?.invoiceNo
+                    );
+
+
+                if (
+                    Number.isFinite(
+                        invoiceNumber
+                    ) &&
+                    invoiceNumber >
+                    highestNumber
+                ) {
+
+                    highestNumber =
+                        invoiceNumber;
+
+                }
+
+            }
+        );
+
+
+        return (
+            highestNumber +
+            1
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Issue Stock invoice number error:",
+            error
+        );
+
+
+        // Safe first number if local
+        // invoice history cannot be read.
+        return 1;
+
+    }
+
+}
 
 // ===========================================================
 // CREATE INVOICE
@@ -2919,7 +3073,27 @@ document
                         item.ret
                     ) || 0;
 
+const salePrice =
+    Number(
+        item.price
+    );
 
+
+if (
+    item.price === "" ||
+    !Number.isFinite(
+        salePrice
+    ) ||
+    salePrice < 0
+) {
+
+    alert(
+        `${product.name}: please enter a valid sale price.`
+    );
+
+    return;
+
+}
                 if (
                     qty < 1
                 ) {
@@ -2985,15 +3159,19 @@ document
             // =================================================
             // CREATE INVOICE OBJECT
             // =================================================
+const invoiceNumber =
+    await getNextIssueInvoiceNumber();
 
-            const invoice = {
+    const invoice = {
 
-                id:
-                    Date.now(),
+    id:
+        Date.now(),
 
-                type:
-                    "salesman",
+    invoiceNo:
+        invoiceNumber,
 
+    type:
+        "salesman",
                 partyId:
                     Number(
                         currentSalesmanId
@@ -3637,7 +3815,7 @@ function printRealInvoice(
 <meta charset="UTF-8">
 
 <title>
-    Invoice ${invoice.id}
+    Invoice ${invoice.invoiceNo ?? invoice.id}
 </title>
 
 <style>
@@ -3861,9 +4039,9 @@ body {
                 Inv No.
             </td>
 
-            <td class="info-value">
-                ${invoice.id}
-            </td>
+           <td class="info-value">
+    ${invoice.invoiceNo ?? invoice.id}
+</td>
 
         </tr>
 
@@ -4324,7 +4502,7 @@ function printThermalInvoice(
 <meta charset="UTF-8">
 
 <title>
-    Thermal Invoice ${invoice.id}
+    Thermal Invoice ${invoice.invoiceNo ?? invoice.id}
 </title>
 
 <style>
@@ -4741,9 +4919,9 @@ body {
                 Invoice:
             </span>
 
-            <span>
-                ${invoice.id}
-            </span>
+          <span>
+    ${invoice.invoiceNo ?? invoice.id}
+</span>
 
         </div>
 

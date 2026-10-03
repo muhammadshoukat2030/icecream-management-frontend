@@ -529,7 +529,7 @@ async function renderFromLocalInvoices() {
 
                     invoiceNo:
                         "INV-" +
-                        invoice.id,
+                        (invoice.invoiceNo ?? invoice.id),
 
                     date:
                         invoice.date,
@@ -590,6 +590,8 @@ async function renderFromLocalInvoices() {
         renderLocalStats(
             salesmanInvoices
         );
+
+
         filterSummary();
 
         // =====================================================
@@ -1151,7 +1153,7 @@ function renderInvoice(
 
         invoiceNumberElement.textContent =
             "Invoice No: " +
-            invoice.id;
+            (invoice.invoiceNo ?? invoice.id);
 
     }
 
@@ -1394,7 +1396,7 @@ function openInvoiceEditPopup(
                     Invoice:
                 </strong>
 
-                ${invoice.id}
+                ${invoice.invoiceNo ?? invoice.id}
 
             </div>
 
@@ -2239,7 +2241,7 @@ function printRealInvoice(
 <meta charset="UTF-8">
 
 <title>
-    Invoice ${invoice.id}
+    Invoice ${invoice.invoiceNo ?? invoice.id}
 </title>
 
 <style>
@@ -2464,7 +2466,7 @@ body {
             </td>
 
             <td class="info-value">
-                ${invoice.id}
+                ${invoice.invoiceNo ?? invoice.id}
             </td>
 
         </tr>
@@ -2957,7 +2959,7 @@ function printThermalInvoice(
 <meta charset="UTF-8">
 
 <title>
-    Thermal Invoice ${invoice.id}
+    Thermal Invoice ${invoice.invoiceNo ?? invoice.id}
 </title>
 
 <style>
@@ -3294,7 +3296,7 @@ body {
             </span>
 
             <span>
-                ${invoice.id}
+                ${invoice.invoiceNo ?? invoice.id}
             </span>
 
         </div>
@@ -4386,7 +4388,6 @@ th {
 
 
             ${rows}
-
 
             <tr class="total-row">
 

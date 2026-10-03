@@ -2179,6 +2179,72 @@ async function applyPurchaseLocally(
 
 
 // ===========================================================
+// PURCHASE INVOICE NUMBER
+// ===========================================================
+//
+// Purchase invoices have their own human-readable sequence:
+//
+// 1
+// 2
+// 3
+// 4
+// ...
+//
+// This is separate from the Issue Stock / salesman sequence.
+//
+// The existing invoice.id remains the internal identifier.
+// ===========================================================
+
+async function getNextPurchaseInvoiceNumber() {
+
+    const allInvoices =
+        await getAllFromOfflineDB(
+            "invoices"
+        );
+
+
+    const purchaseInvoiceNumbers =
+        allInvoices
+            .filter(
+                invoice =>
+                    invoice.type ===
+                    "supplier"
+            )
+            .map(
+                invoice =>
+                    Number(
+                        invoice.invoiceNo
+                    )
+            )
+            .filter(
+                invoiceNo =>
+                    Number.isInteger(
+                        invoiceNo
+                    ) &&
+                    invoiceNo > 0
+            );
+
+
+    if (
+        purchaseInvoiceNumbers.length ===
+        0
+    ) {
+
+        return 1;
+
+    }
+
+
+    return (
+        Math.max(
+            ...purchaseInvoiceNumbers
+        ) + 1
+    );
+
+}
+
+
+// ===========================================================
 // PURCHASE INVOICE PRINTING
 // ===========================================================
 
@@ -2344,7 +2410,7 @@ function printPurchaseRealInvoice(
 <meta charset="UTF-8">
 
 <title>
-    Purchase Invoice ${invoice.id}
+    Purchase Invoice ${invoice.invoiceNo ?? invoice.id}
 </title>
 
 <style>
@@ -2568,7 +2634,7 @@ body {
             </td>
 
             <td class="info-value">
-                ${invoice.id}
+                ${invoice.invoiceNo ?? invoice.id}
             </td>
 
         </tr>
@@ -2971,7 +3037,7 @@ function printPurchaseThermalInvoice(
 <meta charset="UTF-8">
 
 <title>
-    Purchase Invoice ${invoice.id}
+    Purchase Invoice ${invoice.invoiceNo ?? invoice.id}
 </title>
 
 <style>
@@ -3180,7 +3246,6 @@ body {
         <div class="company-address">
 
             Head Office: New Ring Road Near Madni Colony
-
             Back side Zantara Town Peshawar
 
             <br>
@@ -3210,7 +3275,7 @@ body {
             </span>
 
             <span>
-                ${invoice.id}
+                ${invoice.invoiceNo ?? invoice.id}
             </span>
 
         </div>
@@ -3360,7 +3425,11 @@ body {
         <div class="total-row">
 
             <span class="total-label">
-                Commission 20%
+                Commission ${
+                    Number(
+                        invoice.commission || 0
+                    )
+                }
             </span>
 
             <span class="total-value">
@@ -3775,10 +3844,21 @@ if (createInvoiceBtn) {
             }
 
 
+            // =================================================
+            // GET NEXT PURCHASE INVOICE NUMBER
+            // =================================================
+
+            const invoiceNumber =
+                await getNextPurchaseInvoiceNumber();
+
+
             const invoice = {
 
                 id:
                     Date.now(),
+
+                invoiceNo:
+                    invoiceNumber,
 
                 type:
                     "supplier",
@@ -4246,10 +4326,14 @@ document
 // ===========================================================
 // DYNAMIC COMMISSION
 // ===========================================================
+
 document
     .getElementById(
         "dynamicCommission"
-    ).value=entercomission*100
+    ).value =
+        entercomission * 100;
+
+
 document
     .getElementById(
         "dynamicCommission"
