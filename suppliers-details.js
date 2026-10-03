@@ -373,7 +373,6 @@ async function loadSupplier() {
             supplier =
                 cachedSupplier;
 
-
             renderSupplierInformation();
 
         }
@@ -507,19 +506,23 @@ async function loadSupplierDetails() {
         loadSupplierProducts()
     ]);
 
-filteredSupplierInvoices =
-    [...supplierInvoices];
 
-filteredSupplierProducts =
-    [...supplierProducts];
+    filteredSupplierInvoices =
+        [...supplierInvoices];
 
-filterSupplierInvoices(
-    document.getElementById(
-        "supplierInvoiceSearch"
-    )?.value || ""
-);
 
-renderProducts();
+    filteredSupplierProducts =
+        [...supplierProducts];
+
+
+    filterSupplierInvoices(
+        document.getElementById(
+            "supplierInvoiceSearch"
+        )?.value || ""
+    );
+
+
+    renderProducts();
 
 }
 
@@ -1212,6 +1215,7 @@ function createInvoiceSearch() {
             "supplierInvoiceSearch"
         );
 
+
     const clearButton =
         document.getElementById(
             "clearSupplierInvoiceSearch"
@@ -1252,6 +1256,7 @@ function createInvoiceSearch() {
     );
 
 }
+
 
 document
     .getElementById(
@@ -1473,6 +1478,7 @@ function createProductSearch() {
 
 }
 
+
 // ============================================================
 // SUPPLIER SUMMARY DATE FILTER
 // ============================================================
@@ -1482,13 +1488,16 @@ function getSupplierStartOfWeek(date) {
     const result =
         new Date(date);
 
+
     const day =
         result.getDay();
+
 
     const diff =
         day === 0
             ? -6
             : 1 - day;
+
 
     result.setHours(
         0,
@@ -1497,9 +1506,11 @@ function getSupplierStartOfWeek(date) {
         0
     );
 
+
     result.setDate(
         result.getDate() + diff
     );
+
 
     return result;
 
@@ -1511,7 +1522,9 @@ function getSupplierStartOfMonth(date) {
     const result =
         new Date(date);
 
+
     result.setDate(1);
+
 
     result.setHours(
         0,
@@ -1519,6 +1532,7 @@ function getSupplierStartOfMonth(date) {
         0,
         0
     );
+
 
     return result;
 
@@ -1553,6 +1567,7 @@ function getSupplierDateRange() {
 
         const start =
             new Date();
+
 
         start.setHours(
             0,
@@ -1730,6 +1745,7 @@ function getDateFilteredSupplierInvoices() {
 
 }
 
+
 // ============================================================
 // FILTER INVOICES
 // ============================================================
@@ -1755,7 +1771,7 @@ function filterSupplierInvoices(
 
 
     // --------------------------------------------------------
-    // SECOND: APPLY INVOICE SEARCH
+    // SECOND: APPLY INVOICE NUMBER SEARCH
     // --------------------------------------------------------
 
     if (!search) {
@@ -1770,17 +1786,24 @@ function filterSupplierInvoices(
             dateFilteredInvoices.filter(
                 invoice => {
 
-                    const invoiceId =
+                    /*
+                     * Search primarily by the human-readable
+                     * invoice number.
+                     *
+                     * Older invoices without invoiceNo still
+                     * remain searchable by their internal ID.
+                     */
+                    const displayInvoiceNo =
                         String(
+                            invoice.invoiceNo ??
                             invoice.id ??
                             invoice.invoiceId ??
-                            invoice.invoiceNo ??
                             ""
                         )
                             .toLowerCase();
 
 
-                    return invoiceId.includes(
+                    return displayInvoiceNo.includes(
                         search
                     );
 
@@ -1789,11 +1812,13 @@ function filterSupplierInvoices(
 
     }
 
-updateStats();
 
-renderSummary();
+    updateStats();
+
+    renderSummary();
 
 }
+
 
 // ============================================================
 // FILTER PRODUCTS
@@ -1999,10 +2024,23 @@ function renderSummary() {
                 );
 
 
-            const invoiceId =
+            /*
+             * INTERNAL ID:
+             * Used only for locating/opening the invoice.
+             */
+            const internalInvoiceId =
                 invoice.id ??
                 invoice.invoiceId ??
+                null;
+
+
+            /*
+             * DISPLAY INVOICE NUMBER:
+             * Human-readable invoiceNo is shown to the user.
+             */
+            const displayInvoiceNo =
                 invoice.invoiceNo ??
+                internalInvoiceId ??
                 "-";
 
 
@@ -2025,7 +2063,7 @@ function renderSummary() {
                         "
                     >
                         INV-${escapeHTML(
-                            String(invoiceId)
+                            String(displayInvoiceNo)
                         )}
                     </span>
 
@@ -2064,8 +2102,27 @@ function renderSummary() {
                 "click",
                 async () => {
 
+                    /*
+                     * IMPORTANT:
+                     * Open by internal invoice.id,
+                     * not by invoiceNo.
+                     */
+                    if (
+                        internalInvoiceId ===
+                        null ||
+                        internalInvoiceId ===
+                        undefined
+                    ) {
+
+                        return;
+
+                    }
+
+
                     await showInvoice(
-                        Number(invoiceId)
+                        Number(
+                            internalInvoiceId
+                        )
                     );
 
                 }
@@ -2261,10 +2318,21 @@ function renderInvoice(
         );
 
 
+    /*
+     * Show the human-readable invoice number.
+     * Fall back to internal ID for older invoices that
+     * do not yet have invoiceNo.
+     */
+    const displayInvoiceNo =
+        invoice.invoiceNo ??
+        invoice.id ??
+        "-";
+
+
     if (invoiceNo) {
 
         invoiceNo.textContent =
-            `INV-${invoice.id}`;
+            `INV-${displayInvoiceNo}`;
 
     }
 
@@ -2967,6 +3035,7 @@ function showProductDetails(
 // ============================================================
 // UPDATE STATISTICS
 // ============================================================
+
 function updateStats() {
 
     const statNumbers =
@@ -3071,7 +3140,6 @@ function updateStats() {
     // THIS MONTH CARD
     // ========================================================
 
-   
 
 
     // ========================================================
@@ -3125,6 +3193,8 @@ function updateStats() {
     }
 
 }
+
+
 // ============================================================
 // CREATE EDIT BUTTON
 // ============================================================
@@ -3952,6 +4022,7 @@ async function updateSupplier(
 
         }
 
+
         if (saveButton) {
 
             saveButton.disabled =
@@ -4008,6 +4079,16 @@ function openInvoiceEditPopup(
         );
 
 
+    /*
+     * Display invoiceNo to the user.
+     * Internal invoice.id remains untouched elsewhere.
+     */
+    const displayInvoiceNo =
+        invoice.invoiceNo ??
+        invoice.id ??
+        "-";
+
+
     if (info) {
 
         info.innerHTML = `
@@ -4020,7 +4101,7 @@ function openInvoiceEditPopup(
 
                 INV-${escapeHTML(
                     String(
-                        invoice.id ?? ""
+                        displayInvoiceNo
                     )
                 )}
 
@@ -5656,10 +5737,14 @@ function printSupplierSummary() {
                         );
 
 
+                    /*
+                     * Use the human-readable invoice number.
+                     * Older invoices fall back to internal ID.
+                     */
                     const invoiceNo =
-                        invoice.invoiceNo ||
-                        invoice.id ||
-                        invoice.invoiceId ||
+                        invoice.invoiceNo ??
+                        invoice.id ??
+                        invoice.invoiceId ??
                         "-";
 
 
@@ -6861,6 +6946,16 @@ function printRealInvoice(
         );
 
 
+    /*
+     * Human-readable invoice number for the print title
+     * and printed invoice.
+     */
+    const displayInvoiceNo =
+        invoice.invoiceNo ??
+        invoice.id ??
+        "-";
+
+
     printWindow.document.write(`
 
 <!DOCTYPE html>
@@ -6874,7 +6969,7 @@ function printRealInvoice(
 <title>
     Invoice ${escapeHTML(
         String(
-            invoice.id || ""
+            displayInvoiceNo
         )
     )}
 </title>
@@ -7239,8 +7334,7 @@ body {
             <td class="info-value">
                 ${escapeHTML(
                     String(
-                        invoice.id ||
-                        "-"
+                        displayInvoiceNo
                     )
                 )}
             </td>
