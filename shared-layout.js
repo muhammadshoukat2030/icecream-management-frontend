@@ -129,6 +129,9 @@ setActiveNavFromUrl() {
         currentPath === "/supplier-details" ||
         currentPath === "/suppliers-details";
 
+    const isProductDetails=
+    currentPath==="/product-details";
+
 
     this.navlinks.forEach(link => {
 
@@ -194,6 +197,14 @@ setActiveNavFromUrl() {
         if (
             isSupplierDetails &&
             linkPath === "/suppliers"
+        ) {
+
+            isMatch = true;
+
+        }
+        if (
+            isProductDetails &&
+            linkPath === "/products"
         ) {
 
             isMatch = true;

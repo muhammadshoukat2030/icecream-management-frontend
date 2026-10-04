@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#5b4b8a">
+    <title>Product Details — FrostyOps</title>
+
+    <link rel="stylesheet" href="shared-layout.css">
+    <link rel="stylesheet" href="product-details.css">
+</head>
+<body>
+
+<div class="shell layout">
+
+    <div class="overlay sidebar-overlay" id="sidebarOverlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+
+        <div class="brand">
+            <div class="brand-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7l9-4 9 4-9 4-9-4z"/>
+                    <path d="M3 12l9 4 9-4"/>
+                    <path d="M3 17l9 4 9-4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="brand-name">FrostyOps</div>
+                <div class="brand-sub">Ice cream distribution</div>
+            </div>
+        </div>
+
+        <nav class="navlist">
+
+            <a class="navlink" data-nav="dashboard" href="index.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>
+                </svg>
+                Dashboard
+            </a>
+
+            <a class="navlink" data-nav="categories" href="Categories.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="8" height="8" rx="1.5"/>
+                    <rect x="13" y="3" width="8" height="8" rx="1.5"/>
+                    <rect x="3" y="13" width="8" height="8" rx="1.5"/>
+                    <rect x="13" y="13" width="8" height="8" rx="1.5"/>
+                </svg>
+                Categories
+            </a>
+
+            <a class="navlink active" data-nav="products" href="Products.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 8l-9-5-9 5 9 5 9-5z"/>
+                    <path d="M3 8v8l9 5 9-5V8"/>
+                    <path d="M12 13v8"/>
+                </svg>
+                Products
+            </a>
+
+            <a class="navlink" data-nav="salesmen" href="Salesmen.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+                </svg>
+                Salesmen
+            </a>
+
+            <a class="navlink" data-nav="suppliers" href="suppliers.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="8" cy="9" r="3"/><circle cx="17" cy="9" r="3"/>
+                    <path d="M2 21c0-3.5 2.7-6 6-6s6 2.5 6 6"/>
+                    <path d="M11 21c0-3 2.4-5.5 5.5-5.5S22 18 22 21"/>
+                </svg>
+                Suppliers
+            </a>
+
+            <a class="navlink" data-nav="purchase" href="purchase-stocks.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.6 7.5L12 12l-8.6-4.5"/><path d="M12 12v9"/>
+                    <path d="M20.6 16.5L12 21l-8.6-4.5V7.5L12 3l8.6 4.5v9z"/>
+                </svg>
+                Purchase Stocks
+            </a>
+
+            <a class="navlink" data-nav="issue" href="issueStocks.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="1" y="7" width="14" height="10" rx="1"/>
+                    <path d="M15 10h3l4 4v3h-7"/><circle cx="6" cy="19" r="1.6"/>
+                    <circle cx="17.5" cy="19" r="1.6"/>
+                </svg>
+                Issue Stocks
+            </a>
+
+            <a class="navlink" data-nav="inventory" href="stockInventory.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4v5h5"/><path d="M4.6 15a8 8 0 1 0 2-9.4L4 9"/>
+                </svg>
+                Stock Inventory
+            </a>
+
+            <a class="navlink" data-nav="expenses" href="expenses.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"/>
+                </svg>
+                Expenses
+            </a>
+
+            <div class="navdivider"></div>
+
+            <a class="navlink" data-nav="settings" href="settings.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1A1.6 1.6 0 004.6 9a1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9c.4.3.9.5 1.5.5H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/>
+                </svg>
+                Settings
+            </a>
+
+        </nav>
+
+    </aside>
+
+    <div class="main">
+
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle hamburger" id="menuToggle" aria-label="Toggle menu" type="button">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="crumb">
+                    <a href="Products.html">Products</a>
+                    <span class="dim"> / Product Details</span>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <div class="pill"><span class="pill-text" id="datePill">Today</span></div>
+                <div class="pill admin">
+                    <span class="avatar-dot"></span>
+                    <span class="pill-text" id="admin">Admin</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content product-details-content">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">PRODUCTS / DETAILS</div>
+                    <h1>Product Details</h1>
+                    <p>Track this product's stock flow, purchases and salesman issues.</p>
+                </div>
+
+                <div class="page-heading-actions">
+                    <button class="ghost-btn" type="button" id="backToProductsBtn">Back to Products</button>
+                    <button class="primary-btn" type="button" id="refreshProductBtn">Refresh</button>
+                </div>
+            </div>
+
+            <div class="connection-row">
+                <div class="sync-status" id="connectionStatus">
+                    <span class="status-dot" id="connectionDot"></span>
+                    <span id="connectionText">Checking connection...</span>
+                </div>
+                <span class="data-source-note" id="dataSourceNote">Local product history</span>
+            </div>
+
+            <div id="pageLoading" class="panel loading-panel">
+                <div class="loading-line"></div>
+                <div class="loading-line short"></div>
+                Loading product details...
+            </div>
+
+            <div id="pageError" class="panel error-panel" style="display:none;"></div>
+
+            <div id="pageContent" style="display:none;">
+
+                <section class="product-hero panel">
+                    <div class="product-hero-main">
+                        <div class="product-icon" id="productAvatar">P</div>
+                        <div class="product-identity">
+                            <div class="product-code" id="productCode">PRODUCT #-</div>
+                            <h2 id="productName">Product</h2>
+                            <p id="productDescription">No description available.</p>
+                            <div class="product-tags">
+                                <span class="tag" id="productCompany">Supplier: -</span>
+                                <span class="tag" id="productCategory">Category: -</span>
+                                <span class="tag" id="productPrices">Buy Rs.0 · Sell Rs.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="current-stock-block">
+                        <span class="mini-label">Current Stock</span>
+                        <strong id="headerCurrentStock">0</strong>
+                        <span>units available</span>
+                    </div>
+                </section>
+
+                <section class="filter-panel panel">
+                    <div class="filter-main">
+                        <div class="filter-title">
+                            <span class="filter-kicker">REPORT PERIOD</span>
+                            <strong id="periodLabel">All Time</strong>
+                        </div>
+
+                        <select id="periodSelect" class="filter-control">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+
+                        <div class="custom-date-range" id="customDateRange" hidden>
+                            <input type="date" id="dateFrom" class="filter-control">
+                            <span>to</span>
+                            <input type="date" id="dateTo" class="filter-control">
+                        </div>
+
+                        <button class="apply-filter-btn" type="button" id="applyFilterBtn">Apply</button>
+                    </div>
+
+                    <div class="filter-summary" id="filterSummary">Showing all recorded transactions</div>
+                </section>
+
+                <section class="stats-grid">
+
+                    <article class="stat-card stat-purchase">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="stat-label">Total Bought</span>
+                            <strong class="stat-value" id="statPurchased">0</strong>
+                            <span class="stat-sub">units purchased in period</span>
+                        </div>
+                    </article>
+
+                    <article class="stat-card stat-return">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 7H5v4"/><path d="M5 11a7 7 0 1 0 2-5"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="stat-label">Purchase Returns</span>
+                            <strong class="stat-value" id="statPurchaseReturns">0</strong>
+                            <span class="stat-sub">units returned to suppliers</span>
+                        </div>
+                    </article>
+
+                    <article class="stat-card stat-net">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 12h16"/><path d="M14 6l6 6-6 6"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="stat-label">Net Bought</span>
+                            <strong class="stat-value" id="statNetPurchased">0</strong>
+                            <span class="stat-sub">units after purchase returns</span>
+                        </div>
+                    </article>
+
+                    <article class="stat-card stat-issued">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12h14"/><path d="M13 6l6 6-6 6"/><path d="M19 8h2v8h-2"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="stat-label">Issued to Salesmen</span>
+                            <strong class="stat-value" id="statIssued">0</strong>
+                            <span class="stat-sub">units issued in period</span>
+                        </div>
+                    </article>
+
+                    <article class="stat-card stat-stock">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 8l-9 5-9-5 9-5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="stat-label">Current Stock</span>
+                            <strong class="stat-value" id="statStock">0</strong>
+                            <span class="stat-sub">live available quantity</span>
+                        </div>
+                    </article>
+
+                </section>
+
+                <section class="panel info-strip">
+                    <div>
+                        <span class="info-label">Purchase Price</span>
+                        <strong id="detailPurchasePrice">Rs.0</strong>
+                    </div>
+                    <div>
+                        <span class="info-label">Sale Price</span>
+                        <strong id="detailSalePrice">Rs.0</strong>
+                    </div>
+                    <div>
+                        <span class="info-label">Unit Profit</span>
+                        <strong id="detailProfit">Rs.0</strong>
+                    </div>
+                    <div>
+                        <span class="info-label">Total Transactions</span>
+                        <strong id="detailTransactionCount">0</strong>
+                    </div>
+                    <div>
+                        <span class="info-label">Last Purchase</span>
+                        <strong id="detailLastPurchase">-</strong>
+                    </div>
+                </section>
+
+                <section class="panel history-panel">
+                    <div class="panel-header history-header">
+                        <div>
+                            <span class="section-kicker">PRODUCT HISTORY</span>
+                            <h2>Transactions</h2>
+                            <p>Purchases and stock issued to salesmen for this product.</p>
+                        </div>
+
+                        <div class="history-header-right">
+                            <span class="history-count" id="historyCount">0 records</span>
+                            <select id="transactionTypeFilter" class="table-filter-control">
+                                <option value="all">All Transactions</option>
+                                <option value="supplier">Purchases</option>
+                                <option value="salesman">Issued to Salesmen</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="history-toolbar">
+                        <div class="search-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="7"/>
+                                <path d="M20 20l-4-4"/>
+                            </svg>
+                            <input type="search" id="historySearch" placeholder="Search invoice, supplier or salesman..." autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="table-scroll">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Invoice</th>
+                                    <th>Transaction</th>
+                                    <th>Party</th>
+                                    <th class="number">Qty</th>
+                                    <th class="number">Return</th>
+                                    <th class="number">Net Qty</th>
+                                    <th class="number">Price</th>
+                                    <th class="number">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="empty-state" id="historyEmpty" hidden>
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 3h10v4H7z"/><path d="M5 7h14v14H5z"/><path d="M9 12h6M9 16h4"/>
+                            </svg>
+                        </div>
+                        <strong>No transactions found</strong>
+                        <p>There are no matching records for this product and selected period.</p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="shared-layout.js"></script>
+<script src="offline-db.js"></script>
+<script src="product-details.js"></script>
+
+</body>
+</html>

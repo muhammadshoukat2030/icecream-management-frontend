@@ -16,7 +16,7 @@ const API = window.APP_CONFIG.API;
 
 let data;
 let products = [];
-
+let product_detailsId;
 const companyOptions = [];
 const categoryOptions = [];
 
@@ -1133,6 +1133,8 @@ async function loadProductActivity(productId) {
 
 function showProductDetails(idx) {
 
+    product_detailsId=idx 
+
     const row =
         products[idx];
 
@@ -1266,6 +1268,18 @@ function showProductDetails(idx) {
         row.id
     );
 }
+
+///////////////////////////////////////////////////////////////
+// product Details page transfer
+//////////////////////////////////////////////////////////////
+
+document.getElementById('viewDetailsBtn').addEventListener('click',(e)=>{
+    console.log(product_detailsId);
+    
+   window.location.href =
+    `product-details.html?id=${product_detailsId+0}`;
+   })
+/////////////////////////////////////////////////////////////////
 
 
 // ===========================================================
@@ -2397,6 +2411,9 @@ function updateStatCounts() {
 // ===========================================================
 
 let manualRows = [];
+
+
+
 
 
 // ===========================================================
