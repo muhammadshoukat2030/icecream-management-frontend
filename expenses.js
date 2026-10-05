@@ -1247,7 +1247,7 @@ function renderProfileDetails() {
 
     if (profileDetailSummaryLine) {
         profileDetailSummaryLine.textContent =
-            `${periodExpenses.length} invoice${periodExpenses.length === 1 ? "" : "s"} in the selected period · ${allExpenses.length} invoice${allExpenses.length === 1 ? "" : "s"} all time. Payments are not included yet.`;
+            `${periodExpenses.length} invoice${periodExpenses.length === 1 ? "" : "s"} in the selected period · ${allExpenses.length} invoice${allExpenses.length === 1 ? "" : "s"} all time.`;
     }
 
     if (profileDetailsExpenseBody) {
@@ -1388,6 +1388,7 @@ function closeProfileDetails() {
     expenseProfileDetailsModal?.classList.remove("show");
     expenseProfileDetailsModal?.setAttribute("aria-hidden", "true");
 }
+
 
 // ============================================================
 // PROFIT-LIKE DATE RANGE FOR EXPENSE HISTORY
@@ -1738,7 +1739,7 @@ function renderHistory() {
     if (filtered.length === 0) {
         expenseHistoryBody.innerHTML = `
             <tr>
-                <td class="empty-history" colspan="8">
+                <td class="empty-history" colspan="9">
                     No expenses found for the selected filters.
                 </td>
             </tr>
@@ -1780,7 +1781,12 @@ function renderHistory() {
             <td>${escapeHTML(particular)}</td>
             <td>${escapeHTML(quantityText)}</td>
             <td class="amount-cell">${formatMoney(expense.amount)}</td>
-            <td>${escapeHTML(expense.paymentMethod || "-")}</td>
+            <td>
+                ${escapeHTML(expense.paymentMethod || "-")}
+                <div class="profile-details-meta">
+                    Paid: PKR ${formatMoney(getExpensePaidAmount(expense))} · Due: PKR ${formatMoney(getExpenseOutstanding(expense))}
+                </div>
+            </td>
             <td>
                 <div class="action-group">
                     <button
@@ -1828,6 +1834,33 @@ function buildExpenseFromForm() {
     const selectedProfile =
         getProfileById(selectedProfileId);
 
+    const existingPaymentHistory =
+        Array.isArray(existing?.paymentHistory)
+            ? existing.paymentHistory
+            : [];
+
+    let paymentHistory =
+        [...existingPaymentHistory];
+
+    if (!existing) {
+        const initialPayment =
+            Number(initialPaymentInput?.value || 0);
+
+        if (
+            Number.isFinite(initialPayment) &&
+            initialPayment > 0
+        ) {
+            paymentHistory = [
+                {
+                    id: generateExpensePaymentId(),
+                    amount: initialPayment,
+                    date: selectedDate,
+                    notes: "Initial payment"
+                }
+            ];
+        }
+    }
+
     if (currentFormType === "salary") {
         const base = Number(baseSalary?.value || 0);
         const extra = Number(extraPayment?.value || 0);
@@ -1868,6 +1901,7 @@ function buildExpenseFromForm() {
             unitPrice: 0,
             amount,
             paymentMethod: paymentMethod?.value || "Cash",
+            paymentHistory,
             notes: String(expenseNotes?.value || "").trim(),
             updatedAt: new Date().toISOString(),
             createdAt:
@@ -1912,6 +1946,7 @@ function buildExpenseFromForm() {
         unitPrice: unitPrice > 0 ? unitPrice : 0,
         amount,
         paymentMethod: paymentMethod?.value || "Cash",
+        paymentHistory,
         notes: String(expenseNotes?.value || "").trim(),
         updatedAt: new Date().toISOString(),
         createdAt:
@@ -1949,8 +1984,6 @@ function validateExpense(expense) {
         return false;
     }
 
-    // New invoices must be linked to a registered profile.
-    // Existing legacy invoices without a profile may still be edited.
     if (!expense.profileId && !editingExpenseId) {
         alert(
             expense.expenseType === "salary"
@@ -1965,6 +1998,16 @@ function validateExpense(expense) {
 
     if (expense.profileId && !profile) {
         alert("The selected expense profile is no longer available.");
+        return false;
+    }
+
+    const paidAmount =
+        getExpensePaidAmount(expense);
+
+    if (paidAmount > Number(expense.amount || 0)) {
+        alert(
+            `Recorded payments of PKR ${formatMoney(paidAmount)} cannot exceed the invoice total of PKR ${formatMoney(expense.amount)}.`
+        );
         return false;
     }
 
@@ -2016,18 +2059,10 @@ async function saveExpense(expense) {
             ? "PUT"
             : "POST";
 
-    // --------------------------------------------------------
-    // Always save locally first.
-    // --------------------------------------------------------
-
     await saveToOfflineDB(
         "expenses",
         expense
     );
-
-    // --------------------------------------------------------
-    // Offline -> queue.
-    // --------------------------------------------------------
 
     if (!navigator.onLine) {
         await addToSyncQueue({
@@ -2039,10 +2074,6 @@ async function saveExpense(expense) {
         setSyncStatus("Saved offline · pending sync");
         return true;
     }
-
-    // --------------------------------------------------------
-    // Online -> backend immediately.
-    // --------------------------------------------------------
 
     try {
         const response = await fetch(
@@ -2078,6 +2109,8 @@ async function saveExpense(expense) {
                 "expenses",
                 responseData.expense
             );
+
+            expense = responseData.expense;
         }
 
         setSyncStatus("Synced with backend");
@@ -2089,8 +2122,6 @@ async function saveExpense(expense) {
             error
         );
 
-        // The local record already exists. Keep the same ID in the
-        // queue so the backend POST remains idempotent on retry.
         await addToSyncQueue({
             endpoint,
             method,
@@ -2137,6 +2168,7 @@ expenseForm?.addEventListener(
             refreshCategoryFilter();
             updateStats();
             renderHistory();
+            renderExpenseProfiles();
 
             alert(
                 editingExpenseId
@@ -2210,6 +2242,22 @@ function resetExpenseForm() {
         expenseAmount.readOnly = false;
         expenseAmount.value = "";
     }
+
+    if (initialPaymentInput) {
+        initialPaymentInput.value = "0";
+        initialPaymentInput.disabled = false;
+        initialPaymentInput.max = "";
+    }
+
+    const initialPaymentHelp =
+        document.getElementById("initialExpensePaymentHelp");
+
+    if (initialPaymentHelp) {
+        initialPaymentHelp.textContent =
+            "Record the amount paid immediately against this invoice. The remaining amount becomes outstanding.";
+    }
+
+    updatePaymentValidationHint();
 }
 
 cancelEditBtn?.addEventListener(
@@ -2337,6 +2385,20 @@ function editExpense(id) {
         updateGeneralAmount();
     }
 
+    if (initialPaymentInput) {
+        initialPaymentInput.value = "";
+        initialPaymentInput.disabled = true;
+        initialPaymentInput.max = "0";
+    }
+
+    const initialPaymentHelp =
+        document.getElementById("initialExpensePaymentHelp");
+
+    if (initialPaymentHelp) {
+        initialPaymentHelp.textContent =
+            "Existing invoice payments are preserved. Use Record Payment to add later payments.";
+    }
+
     window.scrollTo({
         top: 0,
         behavior: "smooth"
@@ -2433,6 +2495,7 @@ async function deleteExpense(id) {
         refreshCategoryFilter();
         updateStats();
         renderHistory();
+        renderExpenseProfiles();
     }
     catch (error) {
         console.error(
@@ -2505,6 +2568,15 @@ function openExpenseInvoice(id) {
             ? `${formatMoney(expense.quantity)} ${expense.unit || ""}`.trim()
             : "-";
 
+    const paid =
+        getExpensePaidAmount(expense);
+
+    const outstanding =
+        getExpenseOutstanding(expense);
+
+    const paymentHistory =
+        getExpensePaymentHistory(expense);
+
     if (expenseInvoiceContent) {
         expenseInvoiceContent.innerHTML = `
             <div class="invoice-title">
@@ -2522,30 +2594,47 @@ function openExpenseInvoice(id) {
                     <div class="invoice-item-label">Invoice No</div>
                     <div class="invoice-item-value">${escapeHTML(expense.invoiceNo)}</div>
                 </div>
+
                 <div>
                     <div class="invoice-item-label">Category</div>
                     <div class="invoice-item-value">${escapeHTML(getExpenseCategory(expense))}</div>
                 </div>
+
                 <div>
                     <div class="invoice-item-label">Profile</div>
                     <div class="invoice-item-value">${escapeHTML(getProfileName(expense?.profileId, expense?.workerName || "Unassigned"))}</div>
                 </div>
+
                 <div>
                     <div class="invoice-item-label">Particular</div>
                     <div class="invoice-item-value">${escapeHTML(particular)}</div>
                 </div>
+
                 <div>
                     <div class="invoice-item-label">Quantity</div>
                     <div class="invoice-item-value">${escapeHTML(quantityText)}</div>
                 </div>
+
                 <div>
                     <div class="invoice-item-label">Unit Price</div>
                     <div class="invoice-item-value">PKR ${formatMoney(expense.unitPrice || 0)}</div>
                 </div>
+
                 <div>
                     <div class="invoice-item-label">Payment Method</div>
                     <div class="invoice-item-value">${escapeHTML(expense.paymentMethod || "-")}</div>
                 </div>
+
+                <div>
+                    <div class="invoice-item-label">Total Paid</div>
+                    <div class="invoice-item-value">PKR ${formatMoney(paid)}</div>
+                </div>
+
+                <div>
+                    <div class="invoice-item-label">Outstanding</div>
+                    <div class="invoice-item-value">PKR ${formatMoney(outstanding)}</div>
+                </div>
+
                 ${
                     isSalary(expense)
                         ? `
@@ -2553,18 +2642,22 @@ function openExpenseInvoice(id) {
                                 <div class="invoice-item-label">Salary Period</div>
                                 <div class="invoice-item-value">${escapeHTML(expense.salaryPeriod || "-")}</div>
                             </div>
+
                             <div>
                                 <div class="invoice-item-label">Salary Type</div>
                                 <div class="invoice-item-value">${escapeHTML(expense.salaryType || "-")}</div>
                             </div>
+
                             <div>
                                 <div class="invoice-item-label">Base Salary</div>
                                 <div class="invoice-item-value">PKR ${formatMoney(expense.baseSalary || 0)}</div>
                             </div>
+
                             <div>
                                 <div class="invoice-item-label">Bonus / Extra</div>
                                 <div class="invoice-item-value">PKR ${formatMoney(expense.extraPayment || 0)}</div>
                             </div>
+
                             <div>
                                 <div class="invoice-item-label">Deductions</div>
                                 <div class="invoice-item-value">PKR ${formatMoney(expense.deductions || 0)}</div>
@@ -2572,6 +2665,7 @@ function openExpenseInvoice(id) {
                         `
                         : ""
                 }
+
                 <div>
                     <div class="invoice-item-label">Notes</div>
                     <div class="invoice-item-value">${escapeHTML(expense.notes || "-")}</div>
@@ -2582,7 +2676,98 @@ function openExpenseInvoice(id) {
                 <span>Total Expense</span>
                 <span>PKR ${formatMoney(expense.amount)}</span>
             </div>
+
+            <div style="margin-top:20px;">
+                <div class="profile-detail-summary-line" style="margin-bottom:10px;">
+                    Paid PKR ${formatMoney(paid)} · Outstanding PKR ${formatMoney(outstanding)}
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Payment Date</th>
+                                <th>Amount (PKR)</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            ${
+                                paymentHistory.length === 0
+                                    ? `
+                                        <tr>
+                                            <td class="empty-history" colspan="3">
+                                                No payments recorded.
+                                            </td>
+                                        </tr>
+                                    `
+                                    : paymentHistory
+                                        .map(payment => `
+                                            <tr>
+                                                <td>${escapeHTML(formatDate(payment.date))}</td>
+                                                <td class="amount-cell">${formatMoney(payment.amount)}</td>
+                                                <td>${escapeHTML(payment.notes || "-")}</td>
+                                            </tr>
+                                        `)
+                                        .join("")
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         `;
+    }
+
+    const actions =
+        expenseInvoiceModal?.querySelector(".modal-actions");
+
+    if (actions) {
+        actions
+            .querySelector("#invoiceRecordPaymentBtn")
+            ?.remove();
+
+        const button =
+            document.createElement("button");
+
+        button.className =
+            "btn-secondary";
+
+        button.id =
+            "invoiceRecordPaymentBtn";
+
+        button.type =
+            "button";
+
+        button.textContent =
+            "Record Payment";
+
+        button.disabled =
+            outstanding <= 0 ||
+            !expense.profileId;
+
+        button.addEventListener(
+            "click",
+            () => {
+                const profileId =
+                    expense.profileId;
+
+                const expenseId =
+                    expense.id;
+
+                closeExpenseInvoice();
+
+                openEmbeddedPaymentModal(
+                    profileId,
+                    expenseId
+                );
+            }
+        );
+
+        actions.insertBefore(
+            button,
+            actions.firstChild
+        );
     }
 
     expenseInvoiceModal?.classList.add("show");
@@ -2591,17 +2776,28 @@ function openExpenseInvoice(id) {
 
 function closeExpenseInvoice() {
     selectedInvoice = null;
+
     expenseInvoiceModal?.classList.remove("show");
-    expenseInvoiceModal?.setAttribute("aria-hidden", "true");
+
+    expenseInvoiceModal?.setAttribute(
+        "aria-hidden",
+        "true"
+    );
 }
 
 document
     .getElementById("closeExpenseModal")
-    ?.addEventListener("click", closeExpenseInvoice);
+    ?.addEventListener(
+        "click",
+        closeExpenseInvoice
+    );
 
 document
     .getElementById("closeExpenseModalBottom")
-    ?.addEventListener("click", closeExpenseInvoice);
+    ?.addEventListener(
+        "click",
+        closeExpenseInvoice
+    );
 
 expenseInvoiceModal?.addEventListener(
     "click",
@@ -2625,6 +2821,7 @@ document
             if (!selectedInvoice) return;
 
             const expense = selectedInvoice;
+
             const particular =
                 isSalary(expense)
                     ? expense.workerName || "Worker Salary"
@@ -2650,31 +2847,118 @@ document
                 <head>
                     <title>${escapeHTML(expense.invoiceNo)}</title>
                     <style>
-                        body{font-family:Arial,sans-serif;padding:30px;color:#222;}
-                        h1{font-size:22px;margin:0 0 4px;}
-                        h2{font-size:15px;margin:0 0 18px;color:#666;}
-                        table{width:100%;border-collapse:collapse;margin-top:18px;}
-                        td{padding:9px 0;border-bottom:1px solid #ddd;}
-                        td:first-child{color:#777;width:38%;}
-                        .total{font-size:18px;font-weight:700;text-align:right;margin-top:20px;}
+                        body{
+                            font-family:Arial,sans-serif;
+                            padding:30px;
+                            color:#222;
+                        }
+
+                        h1{
+                            font-size:22px;
+                            margin:0 0 4px;
+                        }
+
+                        h2{
+                            font-size:15px;
+                            margin:0 0 18px;
+                            color:#666;
+                        }
+
+                        table{
+                            width:100%;
+                            border-collapse:collapse;
+                            margin-top:18px;
+                        }
+
+                        td{
+                            padding:9px 0;
+                            border-bottom:1px solid #ddd;
+                        }
+
+                        td:first-child{
+                            color:#777;
+                            width:38%;
+                        }
+
+                        .total{
+                            font-size:18px;
+                            font-weight:700;
+                            text-align:right;
+                            margin-top:20px;
+                        }
                     </style>
                 </head>
+
                 <body>
                     <h1>FrostyOps</h1>
                     <h2>Company Expense Invoice</h2>
+
                     <table>
-                        <tr><td>Invoice No</td><td>${escapeHTML(expense.invoiceNo)}</td></tr>
-                        <tr><td>Date</td><td>${escapeHTML(formatDate(expense.date))}</td></tr>
-                        <tr><td>Category</td><td>${escapeHTML(getExpenseCategory(expense))}</td></tr>
-                        <tr><td>Particular</td><td>${escapeHTML(particular)}</td></tr>
-                        <tr><td>Quantity</td><td>${escapeHTML(Number(expense.quantity || 0) > 0 ? `${formatMoney(expense.quantity)} ${expense.unit || ""}`.trim() : "-")}</td></tr>
-                        <tr><td>Payment</td><td>${escapeHTML(expense.paymentMethod || "-")}</td></tr>
-                        <tr><td>Notes</td><td>${escapeHTML(expense.notes || "-")}</td></tr>
+                        <tr>
+                            <td>Invoice No</td>
+                            <td>${escapeHTML(expense.invoiceNo)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Date</td>
+                            <td>${escapeHTML(formatDate(expense.date))}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Category</td>
+                            <td>${escapeHTML(getExpenseCategory(expense))}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Particular</td>
+                            <td>${escapeHTML(particular)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Quantity</td>
+                            <td>
+                                ${escapeHTML(
+                                    Number(expense.quantity || 0) > 0
+                                        ? `${formatMoney(expense.quantity)} ${expense.unit || ""}`.trim()
+                                        : "-"
+                                )}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>Payment Method</td>
+                            <td>${escapeHTML(expense.paymentMethod || "-")}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Total Paid</td>
+                            <td>PKR ${formatMoney(getExpensePaidAmount(expense))}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Outstanding</td>
+                            <td>PKR ${formatMoney(getExpenseOutstanding(expense))}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Notes</td>
+                            <td>${escapeHTML(expense.notes || "-")}</td>
+                        </tr>
                     </table>
-                    <div class="total">Total Expense: PKR ${formatMoney(expense.amount)}</div>
+
+                    <div class="total">
+                        Total Expense:
+                        PKR ${formatMoney(expense.amount)}
+                    </div>
+
                     <script>
-                        window.onload=function(){window.print();};
-                        window.onafterprint=function(){window.close();};
+                        window.onload=function(){
+                            window.print();
+                        };
+
+                        window.onafterprint=function(){
+                            window.close();
+                        };
                     <\/script>
                 </body>
                 </html>
@@ -2804,7 +3088,9 @@ async function fetchExpensesFromBackend() {
         );
     }
 
-    await clearOfflineStore("expenses");
+    await clearOfflineStore(
+        "expenses"
+    );
 
     if (data.expenses.length > 0) {
         await saveManyToOfflineDB(
@@ -2878,7 +3164,9 @@ async function initializeExpensesPage() {
             error
         );
 
-        setSyncStatus("Failed to load expense data");
+        setSyncStatus(
+            "Failed to load expense data"
+        );
     }
 }
 
@@ -2891,8 +3179,7 @@ historyPeriodFilter?.addEventListener(
     "change",
     () => {
         const isCustom =
-            historyPeriodFilter.value ===
-            "custom";
+            historyPeriodFilter.value === "custom";
 
         historyCustomRange?.classList.toggle(
             "hidden",
@@ -3003,6 +3290,7 @@ expenseProfileForm?.addEventListener(
     "submit",
     async event => {
         event.preventDefault();
+
         await saveExpenseProfile();
     }
 );
@@ -3016,7 +3304,9 @@ profileTypeTabs?.addEventListener(
     "click",
     event => {
         const button =
-            event.target.closest("[data-profile-filter]");
+            event.target.closest(
+                "[data-profile-filter]"
+            );
 
         if (!button) return;
 
@@ -3024,7 +3314,9 @@ profileTypeTabs?.addEventListener(
             button.dataset.profileFilter || "all";
 
         profileTypeTabs
-            .querySelectorAll("[data-profile-filter]")
+            .querySelectorAll(
+                "[data-profile-filter]"
+            )
             .forEach(tab =>
                 tab.classList.toggle(
                     "active",
@@ -3040,7 +3332,9 @@ expenseProfilesGrid?.addEventListener(
     "click",
     event => {
         const button =
-            event.target.closest("[data-profile-action]");
+            event.target.closest(
+                "[data-profile-action]"
+            );
 
         if (!button) return;
 
@@ -3122,7 +3416,9 @@ profileDetailsExpenseBody?.addEventListener(
     "click",
     event => {
         const button =
-            event.target.closest("[data-profile-expense-id]");
+            event.target.closest(
+                "[data-profile-expense-id]"
+            );
 
         if (!button) return;
 
@@ -3190,7 +3486,9 @@ window.addEventListener(
         expenseOnlineSyncRunning = true;
 
         try {
-            setSyncStatus("Internet restored · synchronizing...");
+            setSyncStatus(
+                "Internet restored · synchronizing..."
+            );
 
             await processSyncQueue();
 
@@ -3217,7 +3515,20 @@ window.addEventListener(
             refreshCategoryFilter();
             updateStats();
             renderHistory();
-            setSyncStatus("Synced with backend");
+            renderExpenseProfiles();
+
+            if (selectedProfileForDetails) {
+                profileDetailsExpenses =
+                    getProfileExpenses(
+                        selectedProfileForDetails._id
+                    );
+
+                renderProfileDetails();
+            }
+
+            setSyncStatus(
+                "Synced with backend"
+            );
         }
         catch (error) {
             console.error(
@@ -3237,7 +3548,2370 @@ window.addEventListener(
 
 
 // ============================================================
+// EMBEDDED EXPENSE PAYMENTS
+// Payments belong directly to the existing ExpenseInvoice.
+// No separate payment IndexedDB store is used.
+// ============================================================
+
+let editingEmbeddedPaymentId = null;
+let editingEmbeddedPaymentExpenseId = null;
+let initialPaymentField = null;
+let initialPaymentInput = null;
+
+let embeddedPaymentModal = null;
+let embeddedPaymentForm = null;
+let embeddedPaymentInvoiceSelect = null;
+let embeddedPaymentAmountInput = null;
+let embeddedPaymentDateInput = null;
+let embeddedPaymentNotesInput = null;
+let embeddedPaymentSaveButton = null;
+let embeddedPaymentCancelButton = null;
+let embeddedPaymentFullButton = null;
+let embeddedPaymentProfileLabel = null;
+let embeddedPaymentHint = null;
+
+
+// ============================================================
+// PAYMENT HELPERS
+// ============================================================
+
+function getExpensePaymentHistory(expense) {
+    return Array.isArray(expense?.paymentHistory)
+        ? expense.paymentHistory
+        : [];
+}
+
+function getExpensePaidAmount(expense) {
+    return getExpensePaymentHistory(expense).reduce(
+        (sum, payment) =>
+            sum + Number(payment?.amount || 0),
+        0
+    );
+}
+
+function getExpenseOutstanding(expense) {
+    return Math.max(
+        Number(expense?.amount || 0) -
+        getExpensePaidAmount(expense),
+        0
+    );
+}
+
+function getProfileTotalPaid(profileId) {
+    return getProfileExpenses(profileId).reduce(
+        (sum, expense) =>
+            sum + getExpensePaidAmount(expense),
+        0
+    );
+}
+
+function getProfileOutstanding(profileId) {
+    return Math.max(
+        getProfileRecordedObligation(profileId) -
+        getProfileTotalPaid(profileId),
+        0
+    );
+}
+
+function getProfilePaymentRecords(profileId) {
+    const records = [];
+
+    getProfileExpenses(profileId).forEach(expense => {
+        getExpensePaymentHistory(expense)
+            .forEach(payment => {
+                records.push({
+                    id: String(payment?.id || ""),
+                    expenseId: expense.id,
+                    invoiceNo:
+                        expense.invoiceNo ||
+                        expense.id,
+                    date:
+                        payment?.date ||
+                        expense.date,
+                    amount:
+                        Number(payment?.amount || 0),
+                    notes:
+                        payment?.notes || ""
+                });
+            });
+    });
+
+    return records;
+}
+
+function generateExpensePaymentId() {
+    return `EPM-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+}
+
+function findEmbeddedPayment(
+    paymentId,
+    expenseId = null
+) {
+    const sourceExpenses =
+        expenseId
+            ? expenses.filter(expense =>
+                String(expense?.id || "") ===
+                String(expenseId)
+            )
+            : expenses;
+
+    for (const expense of sourceExpenses) {
+        const payment =
+            getExpensePaymentHistory(expense)
+                .find(item =>
+                    String(item?.id || "") ===
+                    String(paymentId)
+                );
+
+        if (payment) {
+            return {
+                expense,
+                payment
+            };
+        }
+    }
+
+    return null;
+}
+
+
+// ============================================================
+// INITIAL PAYMENT FIELD
+// This is injected into the existing expense form.
+// ============================================================
+
+function createInitialPaymentField() {
+    if (!expenseForm) return;
+
+    if (
+        document.getElementById(
+            "initialExpensePaymentField"
+        )
+    ) {
+        initialPaymentInput =
+            document.getElementById(
+                "initialExpensePayment"
+            );
+
+        return;
+    }
+
+    const target =
+        document.querySelector(
+            "#expenseForm .form-grid-bottom"
+        );
+
+    if (!target) return;
+
+    const wrapper =
+        document.createElement("div");
+
+    wrapper.className =
+        "form-field";
+
+    wrapper.id =
+        "initialExpensePaymentField";
+
+    wrapper.innerHTML = `
+        <label for="initialExpensePayment">
+            Paid Now (PKR)
+        </label>
+
+        <input
+            id="initialExpensePayment"
+            type="number"
+            min="0"
+            step="0.01"
+            value="0"
+            placeholder="0"
+        >
+
+        <small id="initialExpensePaymentHelp">
+            Record the amount paid immediately against this invoice.
+            The remaining amount becomes outstanding.
+        </small>
+    `;
+
+    initialPaymentField =
+        wrapper;
+
+    initialPaymentInput =
+        wrapper.querySelector(
+            "#initialExpensePayment"
+        );
+
+    const notesField =
+        expenseNotes?.closest(
+            ".form-field"
+        );
+
+    if (
+        notesField &&
+        notesField.parentElement === target
+    ) {
+        target.insertBefore(
+            wrapper,
+            notesField
+        );
+    }
+    else {
+        target.insertBefore(
+            wrapper,
+            target.lastElementChild
+        );
+    }
+}
+
+function updatePaymentValidationHint() {
+    if (!initialPaymentInput) return;
+
+    const amount =
+        currentFormType === "salary"
+            ? Number(salaryNetPaid?.value || 0)
+            : Number(expenseAmount?.value || 0);
+
+    const paid =
+        Number(initialPaymentInput.value || 0);
+
+    const help =
+        document.getElementById(
+            "initialExpensePaymentHelp"
+        );
+
+    if (!help) return;
+
+    if (
+        paid > amount &&
+        amount > 0
+    ) {
+        help.textContent =
+            `Payment cannot exceed the invoice total of PKR ${formatMoney(amount)}.`;
+    }
+    else {
+        const outstanding =
+            Math.max(
+                amount - paid,
+                0
+            );
+
+        help.textContent =
+            `Paid now: PKR ${formatMoney(paid)} · Initial outstanding: PKR ${formatMoney(outstanding)}.`;
+    }
+}
+
+
+// ============================================================
+// PROFILE PAYMENT BUTTON
+// Injected into the existing profile details modal.
+// ============================================================
+
+function getPaymentAwareProfileHeaderActions() {
+    let container =
+        document.getElementById(
+            "profilePaymentHeaderActions"
+        );
+
+    if (container) return container;
+
+    if (!expenseProfileDetailsModal) {
+        return null;
+    }
+
+    const body =
+        expenseProfileDetailsModal
+            .querySelector(
+                ".profile-details-body"
+            );
+
+    if (!body) return null;
+
+    container =
+        document.createElement("div");
+
+    container.id =
+        "profilePaymentHeaderActions";
+
+    container.style.cssText = `
+        display:flex;
+        justify-content:flex-end;
+        align-items:center;
+        gap:8px;
+        margin:0 0 14px;
+        flex-wrap:wrap;
+    `;
+
+    const periodControls =
+        body.querySelector(
+            ".profile-period-controls"
+        );
+
+    if (
+        periodControls &&
+        periodControls.parentElement === body
+    ) {
+        body.insertBefore(
+            container,
+            periodControls.nextSibling
+        );
+    }
+    else {
+        body.insertBefore(
+            container,
+            body.firstChild
+        );
+    }
+
+    const button =
+        document.createElement("button");
+
+    button.type = "button";
+
+    button.className =
+        "btn-primary";
+
+    button.id =
+        "recordProfilePaymentBtn";
+
+    button.textContent =
+        "Record Payment";
+
+    button.addEventListener(
+        "click",
+        () => {
+            if (!selectedProfileForDetails) {
+                return;
+            }
+
+            openEmbeddedPaymentModal(
+                selectedProfileForDetails._id
+            );
+        }
+    );
+
+    container.appendChild(button);
+
+    return container;
+}
+
+
+// ============================================================
+// PROFILE DETAIL PAYMENT STATS
+// ============================================================
+
+function ensureProfilePaymentStats() {
+    const stats =
+        document.querySelector(
+            "#expenseProfileDetailsModal .profile-detail-stats"
+        );
+
+    if (!stats) return null;
+
+    let paidStat =
+        document.getElementById(
+            "profileTotalPaidValue"
+        );
+
+    if (!paidStat) {
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "profile-detail-stat";
+
+        card.innerHTML = `
+            <span>Total Paid</span>
+            <strong id="profileTotalPaidValue">
+                PKR 0
+            </strong>
+        `;
+
+        stats.appendChild(card);
+
+        paidStat =
+            document.getElementById(
+                "profileTotalPaidValue"
+            );
+    }
+
+    let outstandingStat =
+        document.getElementById(
+            "profileOutstandingValue"
+        );
+
+    if (!outstandingStat) {
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "profile-detail-stat";
+
+        card.innerHTML = `
+            <span>Current Outstanding</span>
+            <strong id="profileOutstandingValue">
+                PKR 0
+            </strong>
+        `;
+
+        stats.appendChild(card);
+
+        outstandingStat =
+            document.getElementById(
+                "profileOutstandingValue"
+            );
+    }
+
+    return {
+        paidStat,
+        outstandingStat
+    };
+}
+
+
+// ============================================================
+// PAYMENT HISTORY SECTION
+// Injected below the existing invoice table.
+// ============================================================
+
+function ensureProfilePaymentHistorySection() {
+    if (!expenseProfileDetailsModal) {
+        return null;
+    }
+
+    let section =
+        document.getElementById(
+            "profilePaymentHistorySection"
+        );
+
+    if (section) return section;
+
+    const body =
+        expenseProfileDetailsModal
+            .querySelector(
+                ".profile-details-body"
+            );
+
+    if (!body) return null;
+
+    section =
+        document.createElement("div");
+
+    section.id =
+        "profilePaymentHistorySection";
+
+    section.style.cssText =
+        "margin-top:18px;";
+
+    section.innerHTML = `
+        <div style="margin-bottom:10px;">
+            <h4 style="margin:0 0 4px;">
+                Payment History
+            </h4>
+
+            <p
+                class="panel-note"
+                style="margin:0;"
+            >
+                Payments are recorded inside their existing expense invoices.
+            </p>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Invoice</th>
+                        <th>Amount (PKR)</th>
+                        <th>Notes</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody id="profilePaymentHistoryBody"></tbody>
+            </table>
+        </div>
+    `;
+
+    const invoiceTableWrap =
+        body.querySelector(
+            ".profile-detail-table-wrap"
+        );
+
+    if (invoiceTableWrap) {
+        invoiceTableWrap.insertAdjacentElement(
+            "afterend",
+            section
+        );
+    }
+    else {
+        body.appendChild(section);
+    }
+
+    const paymentBody =
+        document.getElementById(
+            "profilePaymentHistoryBody"
+        );
+
+    paymentBody?.addEventListener(
+        "click",
+        event => {
+            const button =
+                event.target.closest(
+                    "[data-payment-action]"
+                );
+
+            if (!button) return;
+
+            const action =
+                button.dataset.paymentAction;
+
+            const paymentId =
+                button.dataset.paymentId;
+
+            if (action === "edit") {
+                openEmbeddedPaymentEdit(
+                    paymentId
+                );
+            }
+            else if (action === "delete") {
+                deleteEmbeddedPayment(
+                    paymentId
+                );
+            }
+        }
+    );
+
+    return section;
+}
+
+function renderProfilePaymentHistory() {
+    const body =
+        document.getElementById(
+            "profilePaymentHistoryBody"
+        );
+
+    if (
+        !body ||
+        !selectedProfileForDetails
+    ) {
+        return;
+    }
+
+    const range =
+        getProfileDetailsDateRange();
+
+    const records =
+        getProfilePaymentRecords(
+            selectedProfileForDetails._id
+        )
+            .filter(payment => {
+                if (!range) {
+                    return true;
+                }
+
+                const date =
+                    parseExpenseDate(
+                        payment.date
+                    );
+
+                return (
+                    date &&
+                    date >= range.start &&
+                    date < range.end
+                );
+            })
+            .sort(
+                (a, b) => {
+                    const dateA =
+                        parseExpenseDate(a.date)
+                            ?.getTime() || 0;
+
+                    const dateB =
+                        parseExpenseDate(b.date)
+                            ?.getTime() || 0;
+
+                    if (dateB !== dateA) {
+                        return dateB - dateA;
+                    }
+
+                    return String(b.id)
+                        .localeCompare(
+                            String(a.id)
+                        );
+                }
+            );
+
+    body.innerHTML = "";
+
+    if (records.length === 0) {
+        body.innerHTML = `
+            <tr>
+                <td
+                    class="empty-history"
+                    colspan="5"
+                >
+                    No payments found for the selected period.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    records.forEach(payment => {
+        const row =
+            document.createElement("tr");
+
+        row.innerHTML = `
+            <td>
+                ${escapeHTML(
+                    formatDate(payment.date)
+                )}
+            </td>
+
+            <td>
+                <button
+                    type="button"
+                    class="invoice-link"
+                    data-profile-expense-id="${escapeHTML(payment.expenseId)}"
+                >
+                    ${escapeHTML(payment.invoiceNo)}
+                </button>
+            </td>
+
+            <td class="amount-cell">
+                ${formatMoney(payment.amount)}
+            </td>
+
+            <td>
+                ${escapeHTML(
+                    payment.notes || "-"
+                )}
+            </td>
+
+            <td>
+                <div class="action-group">
+                    <button
+                        type="button"
+                        class="action-btn"
+                        data-payment-action="edit"
+                        data-payment-id="${escapeHTML(payment.id)}"
+                    >
+                        Edit
+                    </button>
+
+                    <button
+                        type="button"
+                        class="action-btn danger"
+                        data-payment-action="delete"
+                        data-payment-id="${escapeHTML(payment.id)}"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </td>
+        `;
+
+        body.appendChild(row);
+    });
+}
+
+
+// ============================================================
+// PAYMENT-AWARE PROFILE DETAILS
+// ============================================================
+
+function renderPaymentAwareProfileDetails() {
+    if (!selectedProfileForDetails) {
+        return;
+    }
+
+    const profile =
+        selectedProfileForDetails;
+
+    const allExpenses =
+        Array.isArray(profileDetailsExpenses)
+            ? profileDetailsExpenses
+            : getProfileExpenses(
+                profile._id
+            );
+
+    const range =
+        getProfileDetailsDateRange();
+
+    const periodExpenses =
+        allExpenses.filter(
+            expense =>
+                invoiceMatchesRange(
+                    expense,
+                    range
+                )
+        );
+
+    const allTimeTotal =
+        allExpenses.reduce(
+            (sum, expense) =>
+                sum +
+                Number(
+                    expense?.amount || 0
+                ),
+            0
+        );
+
+    const paymentRecords =
+        getProfilePaymentRecords(
+            profile._id
+        );
+
+    const selectedPeriodPaid =
+        paymentRecords.reduce(
+            (sum, payment) => {
+                if (!range) {
+                    return (
+                        sum +
+                        Number(
+                            payment.amount || 0
+                        )
+                    );
+                }
+
+                const date =
+                    parseExpenseDate(
+                        payment.date
+                    );
+
+                if (
+                    date &&
+                    date >= range.start &&
+                    date < range.end
+                ) {
+                    return (
+                        sum +
+                        Number(
+                            payment.amount || 0
+                        )
+                    );
+                }
+
+                return sum;
+            },
+            0
+        );
+
+    const allTimePaid =
+        getProfileTotalPaid(
+            profile._id
+        );
+
+    const openingBalance =
+        Number(
+            profile.openingBalance || 0
+        );
+
+    const recordedObligation =
+        openingBalance +
+        allTimeTotal;
+
+    const outstanding =
+        Math.max(
+            recordedObligation -
+            allTimePaid,
+            0
+        );
+
+    const paymentStats =
+        ensureProfilePaymentStats();
+
+    if (paymentStats?.paidStat) {
+        paymentStats.paidStat.textContent =
+            `PKR ${formatMoney(allTimePaid)}`;
+    }
+
+    if (paymentStats?.outstandingStat) {
+        paymentStats.outstandingStat.textContent =
+            `PKR ${formatMoney(outstanding)}`;
+    }
+
+    let periodPaidStat =
+        document.getElementById(
+            "profilePeriodPaidValue"
+        );
+
+    if (!periodPaidStat) {
+        const stats =
+            document.querySelector(
+                "#expenseProfileDetailsModal .profile-detail-stats"
+            );
+
+        if (stats) {
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "profile-detail-stat";
+
+            card.innerHTML = `
+                <span>Selected Period Paid</span>
+                <strong id="profilePeriodPaidValue">
+                    PKR 0
+                </strong>
+            `;
+
+            stats.insertBefore(
+                card,
+                stats.children[2] || null
+            );
+
+            periodPaidStat =
+                document.getElementById(
+                    "profilePeriodPaidValue"
+                );
+        }
+    }
+
+    if (periodPaidStat) {
+        periodPaidStat.textContent =
+            `PKR ${formatMoney(selectedPeriodPaid)}`;
+    }
+
+    const headerActions =
+        getPaymentAwareProfileHeaderActions();
+
+    const payableInvoiceExists =
+        allExpenses.some(
+            expense =>
+                getExpenseOutstanding(expense) > 0
+        );
+
+    const recordPaymentButton =
+        document.getElementById(
+            "recordProfilePaymentBtn"
+        );
+
+    if (recordPaymentButton) {
+        recordPaymentButton.disabled =
+            !payableInvoiceExists;
+
+        recordPaymentButton.title =
+            payableInvoiceExists
+                ? "Record a payment against an existing expense invoice."
+                : "No outstanding invoice balance is available for payment.";
+    }
+
+    if (headerActions) {
+        if (
+            !document.getElementById(
+                "profilePaymentHeaderHint"
+            )
+        ) {
+            const hint =
+                document.createElement(
+                    "div"
+                );
+
+            hint.id =
+                "profilePaymentHeaderHint";
+
+            hint.className =
+                "panel-note";
+
+            hint.style.cssText =
+                "margin-right:auto;align-self:center;";
+
+            headerActions.prepend(
+                hint
+            );
+        }
+
+        const hint =
+            document.getElementById(
+                "profilePaymentHeaderHint"
+            );
+
+        if (hint) {
+            hint.textContent =
+                paymentRecords.length > 0
+                    ? `${paymentRecords.length} payment${paymentRecords.length === 1 ? "" : "s"} recorded · Current outstanding PKR ${formatMoney(outstanding)}`
+                    : `Current outstanding PKR ${formatMoney(outstanding)}`;
+        }
+    }
+
+    if (profileDetailSummaryLine) {
+        profileDetailSummaryLine.textContent =
+            `${periodExpenses.length} invoice${periodExpenses.length === 1 ? "" : "s"} in the selected period · ${paymentRecords.length} payment${paymentRecords.length === 1 ? "" : "s"} recorded all time · Selected period paid PKR ${formatMoney(selectedPeriodPaid)} · Current outstanding PKR ${formatMoney(outstanding)}.`;
+    }
+
+    ensureProfilePaymentHistorySection();
+
+    renderProfilePaymentHistory();
+}
+
+const originalRenderProfileDetails =
+    renderProfileDetails;
+
+renderProfileDetails =
+    function () {
+        originalRenderProfileDetails();
+        renderPaymentAwareProfileDetails();
+    };
+
+
+// ============================================================
+// PROFILE CARD PAYMENT STATS
+// ============================================================
+
+const originalRenderExpenseProfiles =
+    renderExpenseProfiles;
+
+renderExpenseProfiles =
+    function () {
+        originalRenderExpenseProfiles();
+
+        if (!expenseProfilesGrid) {
+            return;
+        }
+
+        expenseProfilesGrid
+            .querySelectorAll(
+                ".profile-card"
+            )
+            .forEach(card => {
+                const viewButton =
+                    card.querySelector(
+                        "[data-profile-action=\"view\"]"
+                    );
+
+                const profileId =
+                    viewButton?.dataset.id;
+
+                if (!profileId) return;
+
+                const stats =
+                    card.querySelector(
+                        ".profile-card-stats"
+                    );
+
+                if (!stats) return;
+
+                if (
+                    stats.querySelector(
+                        "[data-payment-stat=\"paid\"]"
+                    )
+                ) {
+                    return;
+                }
+
+                const paid =
+                    getProfileTotalPaid(
+                        profileId
+                    );
+
+                const outstanding =
+                    getProfileOutstanding(
+                        profileId
+                    );
+
+                const paidStat =
+                    document.createElement(
+                        "div"
+                    );
+
+                paidStat.className =
+                    "profile-mini-stat";
+
+                paidStat.dataset.paymentStat =
+                    "paid";
+
+                paidStat.innerHTML = `
+                    <span>Total Paid</span>
+                    <strong>
+                        PKR ${formatMoney(paid)}
+                    </strong>
+                `;
+
+                const outstandingStat =
+                    document.createElement(
+                        "div"
+                    );
+
+                outstandingStat.className =
+                    "profile-mini-stat";
+
+                outstandingStat.dataset.paymentStat =
+                    "outstanding";
+
+                outstandingStat.innerHTML = `
+                    <span>Outstanding</span>
+                    <strong>
+                        PKR ${formatMoney(outstanding)}
+                    </strong>
+                `;
+
+                stats.appendChild(
+                    paidStat
+                );
+
+                stats.appendChild(
+                    outstandingStat
+                );
+            });
+    };
+
+
+// ============================================================
+// HISTORY PAYMENT STATS
+// ============================================================
+
+const originalRenderHistory =
+    renderHistory;
+
+renderHistory =
+    function () {
+        originalRenderHistory();
+
+        if (!expenseHistoryBody) {
+            return;
+        }
+
+        expenseHistoryBody
+            .querySelectorAll("tr")
+            .forEach(row => {
+                const viewButton =
+                    row.querySelector(
+                        "[data-action=\"view\"]"
+                    );
+
+                if (!viewButton) {
+                    return;
+                }
+
+                const expense =
+                    expenses.find(item =>
+                        String(
+                            item?.id || ""
+                        ) ===
+                        String(
+                            viewButton.dataset.id || ""
+                        )
+                    );
+
+                if (!expense) {
+                    return;
+                }
+
+                const paymentCell =
+                    row.children[7];
+
+                if (!paymentCell) {
+                    return;
+                }
+
+                paymentCell.innerHTML = `
+                    <div>
+                        ${escapeHTML(
+                            expense.paymentMethod || "-"
+                        )}
+                    </div>
+
+                    <div
+                        class="profile-details-meta"
+                    >
+                        Paid:
+                        PKR ${formatMoney(
+                            getExpensePaidAmount(
+                                expense
+                            )
+                        )}
+
+                        · Due:
+                        PKR ${formatMoney(
+                            getExpenseOutstanding(
+                                expense
+                            )
+                        )}
+                    </div>
+                `;
+            });
+    };
+
+
+// ============================================================
+// DYNAMIC PAYMENT MODAL
+// ============================================================
+
+function createEmbeddedPaymentModal() {
+    if (
+        document.getElementById(
+            "embeddedExpensePaymentModal"
+        )
+    ) {
+        embeddedPaymentModal =
+            document.getElementById(
+                "embeddedExpensePaymentModal"
+            );
+
+        embeddedPaymentForm =
+            document.getElementById(
+                "embeddedExpensePaymentForm"
+            );
+
+        embeddedPaymentInvoiceSelect =
+            document.getElementById(
+                "embeddedExpensePaymentInvoice"
+            );
+
+        embeddedPaymentAmountInput =
+            document.getElementById(
+                "embeddedExpensePaymentAmount"
+            );
+
+        embeddedPaymentDateInput =
+            document.getElementById(
+                "embeddedExpensePaymentDate"
+            );
+
+        embeddedPaymentNotesInput =
+            document.getElementById(
+                "embeddedExpensePaymentNotes"
+            );
+
+        embeddedPaymentSaveButton =
+            document.getElementById(
+                "embeddedExpensePaymentSave"
+            );
+
+        embeddedPaymentCancelButton =
+            document.getElementById(
+                "embeddedExpensePaymentCancel"
+            );
+
+        embeddedPaymentFullButton =
+            document.getElementById(
+                "embeddedExpensePaymentFull"
+            );
+
+        embeddedPaymentProfileLabel =
+            document.getElementById(
+                "embeddedExpensePaymentProfile"
+            );
+
+        embeddedPaymentHint =
+            document.getElementById(
+                "embeddedExpensePaymentHint"
+            );
+
+        return;
+    }
+
+    embeddedPaymentModal =
+        document.createElement(
+            "div"
+        );
+
+    embeddedPaymentModal.className =
+        "modal";
+
+    embeddedPaymentModal.id =
+        "embeddedExpensePaymentModal";
+
+    embeddedPaymentModal.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+    embeddedPaymentModal.innerHTML = `
+        <div class="modal-card profile-form-modal-card">
+
+            <div class="modal-head">
+                <div>
+                    <div class="modal-kicker">
+                        Expense Payment
+                    </div>
+
+                    <h3 id="embeddedExpensePaymentTitle">
+                        Record Payment
+                    </h3>
+                </div>
+
+                <button
+                    class="modal-close"
+                    id="embeddedExpensePaymentClose"
+                    type="button"
+                >
+                    ×
+                </button>
+            </div>
+
+            <form
+                id="embeddedExpensePaymentForm"
+                class="profile-form"
+                novalidate
+            >
+                <div class="form-grid">
+
+                    <div class="form-field form-field-wide">
+                        <label>
+                            Profile
+                        </label>
+
+                        <div
+                            id="embeddedExpensePaymentProfile"
+                            class="invoice-item-value"
+                        >
+                            -
+                        </div>
+                    </div>
+
+                    <div class="form-field form-field-wide">
+                        <label
+                            for="embeddedExpensePaymentInvoice"
+                        >
+                            Expense Invoice
+                        </label>
+
+                        <select
+                            id="embeddedExpensePaymentInvoice"
+                        >
+                            <option value="">
+                                Select expense invoice
+                            </option>
+                        </select>
+
+                        <small
+                            id="embeddedExpensePaymentHint"
+                        >
+                            Select an existing invoice with an outstanding balance.
+                        </small>
+                    </div>
+
+                    <div class="form-field">
+                        <label
+                            for="embeddedExpensePaymentAmount"
+                        >
+                            Payment Amount (PKR)
+                        </label>
+
+                        <input
+                            id="embeddedExpensePaymentAmount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Enter payment amount"
+                        >
+                    </div>
+
+                    <div class="form-field">
+                        <label
+                            for="embeddedExpensePaymentDate"
+                        >
+                            Payment Date
+                        </label>
+
+                        <input
+                            id="embeddedExpensePaymentDate"
+                            type="date"
+                        >
+                    </div>
+
+                    <div class="form-field form-field-wide">
+                        <label
+                            for="embeddedExpensePaymentNotes"
+                        >
+                            Notes
+                        </label>
+
+                        <textarea
+                            id="embeddedExpensePaymentNotes"
+                            rows="3"
+                            placeholder="Optional notes"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+
+                    <button
+                        class="btn-secondary"
+                        id="embeddedExpensePaymentFull"
+                        type="button"
+                    >
+                        Pay Full Outstanding
+                    </button>
+
+                    <button
+                        class="btn-secondary"
+                        id="embeddedExpensePaymentCancel"
+                        type="button"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        class="btn-primary"
+                        id="embeddedExpensePaymentSave"
+                        type="submit"
+                    >
+                        Record Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(
+        embeddedPaymentModal
+    );
+
+    embeddedPaymentForm =
+        document.getElementById(
+            "embeddedExpensePaymentForm"
+        );
+
+    embeddedPaymentInvoiceSelect =
+        document.getElementById(
+            "embeddedExpensePaymentInvoice"
+        );
+
+    embeddedPaymentAmountInput =
+        document.getElementById(
+            "embeddedExpensePaymentAmount"
+        );
+
+    embeddedPaymentDateInput =
+        document.getElementById(
+            "embeddedExpensePaymentDate"
+        );
+
+    embeddedPaymentNotesInput =
+        document.getElementById(
+            "embeddedExpensePaymentNotes"
+        );
+
+    embeddedPaymentSaveButton =
+        document.getElementById(
+            "embeddedExpensePaymentSave"
+        );
+
+    embeddedPaymentCancelButton =
+        document.getElementById(
+            "embeddedExpensePaymentCancel"
+        );
+
+    embeddedPaymentFullButton =
+        document.getElementById(
+            "embeddedExpensePaymentFull"
+        );
+
+    embeddedPaymentProfileLabel =
+        document.getElementById(
+            "embeddedExpensePaymentProfile"
+        );
+
+    embeddedPaymentHint =
+        document.getElementById(
+            "embeddedExpensePaymentHint"
+        );
+
+    document
+        .getElementById(
+            "embeddedExpensePaymentClose"
+        )
+        ?.addEventListener(
+            "click",
+            closeEmbeddedPaymentModal
+        );
+
+    embeddedPaymentCancelButton?.addEventListener(
+        "click",
+        closeEmbeddedPaymentModal
+    );
+
+    embeddedPaymentModal.addEventListener(
+        "click",
+        event => {
+            if (
+                event.target ===
+                embeddedPaymentModal
+            ) {
+                closeEmbeddedPaymentModal();
+            }
+        }
+    );
+
+    embeddedPaymentInvoiceSelect?.addEventListener(
+        "change",
+        updateEmbeddedPaymentInvoiceState
+    );
+
+    embeddedPaymentFullButton?.addEventListener(
+        "click",
+        () => {
+            const selected =
+                getSelectedPaymentExpense();
+
+            if (!selected) return;
+
+            embeddedPaymentAmountInput.value =
+                getExpenseOutstanding(
+                    selected
+                );
+
+            updateEmbeddedPaymentInvoiceState();
+        }
+    );
+
+    embeddedPaymentForm?.addEventListener(
+        "submit",
+        async event => {
+            event.preventDefault();
+
+            await saveEmbeddedExpensePayment();
+        }
+    );
+
+    embeddedPaymentAmountInput?.addEventListener(
+        "input",
+        updateEmbeddedPaymentInvoiceState
+    );
+}
+
+
+// ============================================================
+// PAYMENT MODAL HELPERS
+// ============================================================
+
+function getPayableProfileExpenses(
+    profileId
+) {
+    return getProfileExpenses(
+        profileId
+    )
+        .filter(expense =>
+            getExpenseOutstanding(
+                expense
+            ) > 0
+        )
+        .sort((a, b) => {
+            const dateA =
+                parseExpenseDate(
+                    a?.date
+                )?.getTime() || 0;
+
+            const dateB =
+                parseExpenseDate(
+                    b?.date
+                )?.getTime() || 0;
+
+            return dateB - dateA;
+        });
+}
+
+function getSelectedPaymentExpense() {
+    const expenseId =
+        embeddedPaymentInvoiceSelect?.value || "";
+
+    return expenses.find(expense =>
+        String(expense?.id || "") ===
+        String(expenseId)
+    ) || null;
+}
+
+function populateEmbeddedPaymentInvoiceSelect(
+    profileId,
+    selectedExpenseId = ""
+) {
+    if (!embeddedPaymentInvoiceSelect) {
+        return;
+    }
+
+    const payableExpenses =
+        getPayableProfileExpenses(
+            profileId
+        );
+
+    embeddedPaymentInvoiceSelect.innerHTML = `
+        <option value="">
+            Select expense invoice
+        </option>
+
+        ${payableExpenses
+            .map(expense => `
+                <option value="${escapeHTML(expense.id)}">
+                    ${escapeHTML(
+                        expense.invoiceNo ||
+                        expense.id
+                    )}
+
+                    · Due PKR
+                    ${formatMoney(
+                        getExpenseOutstanding(
+                            expense
+                        )
+                    )}
+                </option>
+            `)
+            .join("")}
+    `;
+
+    if (
+        selectedExpenseId &&
+        payableExpenses.some(
+            expense =>
+                String(expense.id) ===
+                String(selectedExpenseId)
+        )
+    ) {
+        embeddedPaymentInvoiceSelect.value =
+            String(selectedExpenseId);
+    }
+    else if (
+        payableExpenses.length === 1
+    ) {
+        embeddedPaymentInvoiceSelect.value =
+            String(
+                payableExpenses[0].id
+            );
+    }
+
+    updateEmbeddedPaymentInvoiceState();
+}
+
+function updateEmbeddedPaymentInvoiceState() {
+    const expense =
+        getSelectedPaymentExpense();
+
+    if (!expense) {
+        if (embeddedPaymentHint) {
+            embeddedPaymentHint.textContent =
+                "Select an existing invoice with an outstanding balance.";
+        }
+
+        return;
+    }
+
+    const outstanding =
+        getExpenseOutstanding(
+            expense
+        );
+
+    const amount =
+        Number(
+            embeddedPaymentAmountInput?.value || 0
+        );
+
+    if (embeddedPaymentHint) {
+        if (
+            amount > outstanding
+        ) {
+            embeddedPaymentHint.textContent =
+                `Invoice total PKR ${formatMoney(expense.amount)} · Already paid PKR ${formatMoney(getExpensePaidAmount(expense))} · Outstanding PKR ${formatMoney(outstanding)} · Payment exceeds outstanding.`;
+        }
+        else {
+            embeddedPaymentHint.textContent =
+                `Invoice total PKR ${formatMoney(expense.amount)} · Already paid PKR ${formatMoney(getExpensePaidAmount(expense))} · Outstanding PKR ${formatMoney(outstanding)}.`;
+        }
+    }
+}
+
+function resetEmbeddedPaymentForm() {
+    editingEmbeddedPaymentId =
+        null;
+
+    editingEmbeddedPaymentExpenseId =
+        null;
+
+    embeddedPaymentForm?.reset();
+
+    if (embeddedPaymentDateInput) {
+        embeddedPaymentDateInput.value =
+            toInputDate(
+                new Date()
+            );
+    }
+
+    if (embeddedPaymentSaveButton) {
+        embeddedPaymentSaveButton.textContent =
+            "Record Payment";
+    }
+
+    const title =
+        document.getElementById(
+            "embeddedExpensePaymentTitle"
+        );
+
+    if (title) {
+        title.textContent =
+            "Record Payment";
+    }
+}
+
+function openEmbeddedPaymentModal(
+    profileId,
+    expenseId = null
+) {
+    createEmbeddedPaymentModal();
+
+    resetEmbeddedPaymentForm();
+
+    const profile =
+        getProfileById(
+            profileId
+        ) ||
+        selectedProfileForDetails;
+
+    if (!profile) return;
+
+    if (embeddedPaymentProfileLabel) {
+        embeddedPaymentProfileLabel.textContent =
+            `${profile.name || "Profile"} · ${getExpenseProfileTypeLabel(profile.profileType)}`;
+    }
+
+    if (embeddedPaymentDateInput) {
+        embeddedPaymentDateInput.value =
+            toInputDate(
+                new Date()
+            );
+    }
+
+    populateEmbeddedPaymentInvoiceSelect(
+        profile._id,
+        expenseId || ""
+    );
+
+    const payable =
+        getPayableProfileExpenses(
+            profile._id
+        );
+
+    if (payable.length === 0) {
+        if (embeddedPaymentHint) {
+            embeddedPaymentHint.textContent =
+                "This profile has no outstanding balance on its existing expense invoices. Opening balance is not payable through an invoice payment because it is not an invoice.";
+        }
+    }
+
+    embeddedPaymentModal?.classList.add(
+        "show"
+    );
+
+    embeddedPaymentModal?.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+}
+
+function closeEmbeddedPaymentModal() {
+    embeddedPaymentModal?.classList.remove(
+        "show"
+    );
+
+    embeddedPaymentModal?.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+    resetEmbeddedPaymentForm();
+}
+
+function replaceExpenseInState(
+    updatedExpense
+) {
+    if (!updatedExpense?.id) {
+        return;
+    }
+
+    const index =
+        expenses.findIndex(
+            expense =>
+                String(
+                    expense?.id || ""
+                ) ===
+                String(
+                    updatedExpense.id
+                )
+        );
+
+    if (index >= 0) {
+        expenses[index] =
+            updatedExpense;
+    }
+    else {
+        expenses.push(
+            updatedExpense
+        );
+    }
+}
+
+async function sendEmbeddedPaymentRequest(
+    endpoint,
+    method,
+    body
+) {
+    const response =
+        await fetch(
+            `${API}${endpoint}`,
+            {
+                method,
+                headers: body
+                    ? {
+                        "Content-Type":
+                            "application/json"
+                    }
+                    : undefined,
+                credentials: "include",
+                body:
+                    body
+                        ? JSON.stringify(body)
+                        : undefined
+            }
+        );
+
+    if (response.status === 401) {
+        window.location.href =
+            "login.html";
+
+        return null;
+    }
+
+    const data =
+        await response
+            .json()
+            .catch(
+                () => null
+            );
+
+    if (!response.ok) {
+        throw new Error(
+            data?.message ||
+            `Expense payment request failed: ${response.status}`
+        );
+    }
+
+    return data;
+}
+
+
+// ============================================================
+// SAVE / UPDATE PAYMENT
+// ============================================================
+
+async function saveEmbeddedExpensePayment() {
+    const selectedExpense =
+        getSelectedPaymentExpense();
+
+    if (!selectedExpense) {
+        alert(
+            "Please select an existing expense invoice."
+        );
+        return;
+    }
+
+    const amount =
+        Number(
+            embeddedPaymentAmountInput?.value || 0
+        );
+
+    const date =
+        embeddedPaymentDateInput?.value ||
+        toInputDate(
+            new Date()
+        );
+
+    const notes =
+        String(
+            embeddedPaymentNotesInput?.value || ""
+        ).trim();
+
+    const currentPayment =
+        editingEmbeddedPaymentId
+            ? findEmbeddedPayment(
+                editingEmbeddedPaymentId,
+                editingEmbeddedPaymentExpenseId
+            )
+            : null;
+
+    const oldAmount =
+        Number(
+            currentPayment?.payment?.amount || 0
+        );
+
+    const availableOutstanding =
+        editingEmbeddedPaymentId
+            ? Math.max(
+                getExpenseOutstanding(
+                    selectedExpense
+                ) +
+                oldAmount,
+                0
+            )
+            : getExpenseOutstanding(
+                selectedExpense
+            );
+
+    if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+    ) {
+        alert(
+            "Please enter a valid payment amount."
+        );
+
+        return;
+    }
+
+    if (
+        amount >
+        availableOutstanding
+    ) {
+        alert(
+            `Payment cannot be greater than the available outstanding balance of PKR ${formatMoney(availableOutstanding)}.`
+        );
+
+        return;
+    }
+
+    if (!date) {
+        alert(
+            "Please select the payment date."
+        );
+
+        return;
+    }
+
+    if (embeddedPaymentSaveButton) {
+        embeddedPaymentSaveButton.disabled =
+            true;
+    }
+
+    try {
+        if (
+            editingEmbeddedPaymentId &&
+            currentPayment
+        ) {
+            const updatedHistory =
+                getExpensePaymentHistory(
+                    selectedExpense
+                )
+                    .map(
+                        payment =>
+                            String(
+                                payment?.id || ""
+                            ) ===
+                            String(
+                                editingEmbeddedPaymentId
+                            )
+                                ? {
+                                    ...payment,
+                                    amount,
+                                    date,
+                                    notes
+                                }
+                                : payment
+                    );
+
+            const updatedLocalExpense = {
+                ...selectedExpense,
+                paymentHistory:
+                    updatedHistory,
+                updatedAt:
+                    new Date().toISOString()
+            };
+
+            await saveToOfflineDB(
+                "expenses",
+                updatedLocalExpense
+            );
+
+            replaceExpenseInState(
+                updatedLocalExpense
+            );
+
+            if (!navigator.onLine) {
+                await addToSyncQueue({
+                    endpoint:
+                        `/expense-payments/${encodeURIComponent(editingEmbeddedPaymentId)}`,
+                    method: "PUT",
+                    body: {
+                        id:
+                            editingEmbeddedPaymentId,
+                        expenseId:
+                            selectedExpense.id,
+                        invoiceId:
+                            selectedExpense.id,
+                        profileId:
+                            selectedExpense.profileId,
+                        amount,
+                        date,
+                        notes
+                    },
+                    resource:
+                        "embeddedExpensePayment"
+                });
+
+                setSyncStatus(
+                    "Payment edited offline · pending sync"
+                );
+            }
+            else {
+                const data =
+                    await sendEmbeddedPaymentRequest(
+                        `/expense-payments/${encodeURIComponent(editingEmbeddedPaymentId)}`,
+                        "PUT",
+                        {
+                            id:
+                                editingEmbeddedPaymentId,
+                            expenseId:
+                                selectedExpense.id,
+                            invoiceId:
+                                selectedExpense.id,
+                            profileId:
+                                selectedExpense.profileId,
+                            amount,
+                            date,
+                            notes
+                        }
+                    );
+
+                if (
+                    data?.expense?.id
+                ) {
+                    replaceExpenseInState(
+                        data.expense
+                    );
+
+                    await saveToOfflineDB(
+                        "expenses",
+                        data.expense
+                    );
+                }
+
+                setSyncStatus(
+                    "Payment updated and synced"
+                );
+            }
+        }
+        else {
+            const payment = {
+                id:
+                    generateExpensePaymentId(),
+                amount,
+                date,
+                notes
+            };
+
+            const updatedLocalExpense = {
+                ...selectedExpense,
+                paymentHistory: [
+                    ...getExpensePaymentHistory(
+                        selectedExpense
+                    ),
+                    payment
+                ],
+                updatedAt:
+                    new Date().toISOString()
+            };
+
+            await saveToOfflineDB(
+                "expenses",
+                updatedLocalExpense
+            );
+
+            replaceExpenseInState(
+                updatedLocalExpense
+            );
+
+            if (!navigator.onLine) {
+                await addToSyncQueue({
+                    endpoint:
+                        "/expense-payments",
+                    method:
+                        "POST",
+                    body: {
+                        id:
+                            payment.id,
+                        expenseId:
+                            selectedExpense.id,
+                        invoiceId:
+                            selectedExpense.id,
+                        profileId:
+                            selectedExpense.profileId,
+                        amount,
+                        date,
+                        notes
+                    },
+                    resource:
+                        "embeddedExpensePayment"
+                });
+
+                setSyncStatus(
+                    "Payment recorded offline · pending sync"
+                );
+            }
+            else {
+                const data =
+                    await sendEmbeddedPaymentRequest(
+                        "/expense-payments",
+                        "POST",
+                        {
+                            id:
+                                payment.id,
+                            expenseId:
+                                selectedExpense.id,
+                            invoiceId:
+                                selectedExpense.id,
+                            profileId:
+                                selectedExpense.profileId,
+                            amount,
+                            date,
+                            notes
+                        }
+                    );
+
+                if (
+                    data?.expense?.id
+                ) {
+                    replaceExpenseInState(
+                        data.expense
+                    );
+
+                    await saveToOfflineDB(
+                        "expenses",
+                        data.expense
+                    );
+                }
+
+                setSyncStatus(
+                    "Payment recorded and synced"
+                );
+            }
+        }
+
+        renderExpenseProfiles();
+        renderHistory();
+        updateStats();
+
+        if (
+            selectedProfileForDetails
+        ) {
+            profileDetailsExpenses =
+                getProfileExpenses(
+                    selectedProfileForDetails._id
+                );
+
+            renderProfileDetails();
+        }
+
+        closeEmbeddedPaymentModal();
+
+        alert(
+            editingEmbeddedPaymentId
+                ? "Expense payment updated successfully."
+                : "Expense payment recorded successfully."
+        );
+    }
+    catch (error) {
+        console.error(
+            "Expense payment save failed:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Failed to save the expense payment."
+        );
+    }
+    finally {
+        if (embeddedPaymentSaveButton) {
+            embeddedPaymentSaveButton.disabled =
+                false;
+        }
+    }
+}
+
+
+// ============================================================
+// EDIT PAYMENT
+// ============================================================
+
+function openEmbeddedPaymentEdit(
+    paymentId
+) {
+    const found =
+        findEmbeddedPayment(
+            paymentId
+        );
+
+    if (!found) return;
+
+    const profileId =
+        found.expense?.profileId;
+
+    createEmbeddedPaymentModal();
+    resetEmbeddedPaymentForm();
+
+    const profile =
+        getProfileById(
+            profileId
+        );
+
+    if (embeddedPaymentProfileLabel) {
+        embeddedPaymentProfileLabel.textContent =
+            `${profile?.name || "Profile"} · ${getExpenseProfileTypeLabel(profile?.profileType)}`;
+    }
+
+    editingEmbeddedPaymentId =
+        String(
+            found.payment.id
+        );
+
+    editingEmbeddedPaymentExpenseId =
+        String(
+            found.expense.id
+        );
+
+    populateEmbeddedPaymentInvoiceSelect(
+        profileId,
+        found.expense.id
+    );
+
+    if (
+        embeddedPaymentInvoiceSelect &&
+        !Array.from(
+            embeddedPaymentInvoiceSelect.options
+        )
+            .some(option =>
+                String(option.value) ===
+                String(found.expense.id)
+            )
+    ) {
+        const option =
+            document.createElement(
+                "option"
+            );
+
+        option.value =
+            found.expense.id;
+
+        option.textContent =
+            `${found.expense.invoiceNo || found.expense.id} · Current paid PKR ${formatMoney(getExpensePaidAmount(found.expense))}`;
+
+        embeddedPaymentInvoiceSelect
+            .appendChild(
+                option
+            );
+    }
+
+    embeddedPaymentInvoiceSelect.value =
+        String(
+            found.expense.id
+        );
+
+    if (embeddedPaymentAmountInput) {
+        embeddedPaymentAmountInput.value =
+            Number(
+                found.payment.amount || 0
+            );
+    }
+
+    if (embeddedPaymentDateInput) {
+        embeddedPaymentDateInput.value =
+            toInputDate(
+                found.payment.date
+            );
+    }
+
+    if (embeddedPaymentNotesInput) {
+        embeddedPaymentNotesInput.value =
+            found.payment.notes || "";
+    }
+
+    const title =
+        document.getElementById(
+            "embeddedExpensePaymentTitle"
+        );
+
+    if (title) {
+        title.textContent =
+            "Edit Payment";
+    }
+
+    if (embeddedPaymentSaveButton) {
+        embeddedPaymentSaveButton.textContent =
+            "Save Payment Changes";
+    }
+
+    if (embeddedPaymentHint) {
+        embeddedPaymentHint.textContent =
+            "Edit the payment amount, date or notes. The invoice outstanding balance is recalculated automatically.";
+    }
+
+    embeddedPaymentModal?.classList.add(
+        "show"
+    );
+
+    embeddedPaymentModal?.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+}
+
+
+// ============================================================
+// DELETE PAYMENT
+// ============================================================
+
+async function deleteEmbeddedPayment(
+    paymentId
+) {
+    const found =
+        findEmbeddedPayment(
+            paymentId
+        );
+
+    if (!found) return;
+
+    const confirmed =
+        confirm(
+            `Delete payment of PKR ${formatMoney(found.payment.amount)} from invoice ${found.expense.invoiceNo}?`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const updatedLocalExpense = {
+        ...found.expense,
+
+        paymentHistory:
+            getExpensePaymentHistory(
+                found.expense
+            )
+                .filter(
+                    payment =>
+                        String(
+                            payment?.id || ""
+                        ) !==
+                        String(
+                            paymentId
+                        )
+                ),
+
+        updatedAt:
+            new Date().toISOString()
+    };
+
+    try {
+        await saveToOfflineDB(
+            "expenses",
+            updatedLocalExpense
+        );
+
+        replaceExpenseInState(
+            updatedLocalExpense
+        );
+
+        if (!navigator.onLine) {
+            await addToSyncQueue({
+                endpoint:
+                    `/expense-payments/${encodeURIComponent(paymentId)}`,
+                method:
+                    "DELETE",
+                body:
+                    null,
+                resource:
+                    "embeddedExpensePayment"
+            });
+
+            setSyncStatus(
+                "Payment deleted offline · pending sync"
+            );
+        }
+        else {
+            await sendEmbeddedPaymentRequest(
+                `/expense-payments/${encodeURIComponent(paymentId)}`,
+                "DELETE",
+                null
+            );
+
+            setSyncStatus(
+                "Payment deleted and synced"
+            );
+        }
+
+        renderExpenseProfiles();
+        renderHistory();
+        updateStats();
+
+        if (
+            selectedProfileForDetails
+        ) {
+            profileDetailsExpenses =
+                getProfileExpenses(
+                    selectedProfileForDetails._id
+                );
+
+            renderProfileDetails();
+        }
+    }
+    catch (error) {
+        console.error(
+            "Expense payment delete failed:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Failed to delete the expense payment."
+        );
+    }
+}
+
+
+// ============================================================
+// PAYMENT-AWARE PROFILE STARTUP
+// ============================================================
+
+function initializeEmbeddedExpensePayments() {
+    createInitialPaymentField();
+    createEmbeddedPaymentModal();
+
+    if (initialPaymentInput) {
+        initialPaymentInput.addEventListener(
+            "input",
+            updatePaymentValidationHint
+        );
+    }
+
+    expenseAmount?.addEventListener(
+        "input",
+        updatePaymentValidationHint
+    );
+
+    baseSalary?.addEventListener(
+        "input",
+        updatePaymentValidationHint
+    );
+
+    extraPayment?.addEventListener(
+        "input",
+        updatePaymentValidationHint
+    );
+
+    salaryDeductions?.addEventListener(
+        "input",
+        updatePaymentValidationHint
+    );
+
+    getPaymentAwareProfileHeaderActions();
+
+    updatePaymentValidationHint();
+}
+
+
+// ============================================================
 // START
 // ============================================================
+
+initializeEmbeddedExpensePayments();
 
 initializeExpensesPage();

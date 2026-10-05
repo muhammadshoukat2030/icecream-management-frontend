@@ -3,464 +3,997 @@
 // ============================================================
 
 const DB_NAME = "IceCreamManagementDB";
-const DB_VERSION = 10;
+
+const DB_VERSION = 11;
+
 
 // ============================================================
 // STORE NAMES
 // ============================================================
 
 const STORES = {
-    CATEGORIES: "categories",
-    SUPPLIERS: "suppliers",
-    PRODUCTS: "products",
-    SALESMEN: "salesmen",
-    INVOICES: "invoices",
-    EXPENSES: "expenses",
-    EXPENSE_PROFILES: "expenseProfiles",
-    SYNC_QUEUE: "syncQueue",
-    SYNC_META: "syncMeta"
+
+    CATEGORIES:
+        "categories",
+
+    SUPPLIERS:
+        "suppliers",
+
+    PRODUCTS:
+        "products",
+
+    SALESMEN:
+        "salesmen",
+
+    INVOICES:
+        "invoices",
+
+    EXPENSES:
+        "expenses",
+
+    EXPENSE_PROFILES:
+        "expenseProfiles",
+
+    PAYMENT_TRANSACTIONS:
+        "expensePayments",
+
+    SYNC_QUEUE:
+        "syncQueue",
+
+    SYNC_META:
+        "syncMeta"
+
 };
+
 
 // ============================================================
 // OPEN DATABASE
 // ============================================================
 
 function openOfflineDB() {
+
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        request.onupgradeneeded = function (event) {
-            const db = event.target.result;
+        const request =
+            indexedDB.open(
+                DB_NAME,
+                DB_VERSION
+            );
 
-            // Categories
-            if (!db.objectStoreNames.contains(STORES.CATEGORIES)) {
-                db.createObjectStore(STORES.CATEGORIES, {
-                    keyPath: "id"
-                });
-            }
 
-            // Suppliers
-            if (!db.objectStoreNames.contains(STORES.SUPPLIERS)) {
-                db.createObjectStore(STORES.SUPPLIERS, {
-                    keyPath: "id"
-                });
-            }
+        request.onupgradeneeded =
+            function (event) {
 
-            // Products
-            if (!db.objectStoreNames.contains(STORES.PRODUCTS)) {
-                db.createObjectStore(STORES.PRODUCTS, {
-                    keyPath: "id"
-                });
-            }
+                const db =
+                    event.target.result;
 
-            // Salesmen
-            if (!db.objectStoreNames.contains(STORES.SALESMEN)) {
-                db.createObjectStore(STORES.SALESMEN, {
-                    keyPath: "id"
-                });
-            }
 
-            // Invoices
-            if (!db.objectStoreNames.contains(STORES.INVOICES)) {
-                db.createObjectStore(STORES.INVOICES, {
-                    keyPath: "id"
-                });
-            }
+                // ================= CATEGORIES =================
 
-            // Expenses
-            if (!db.objectStoreNames.contains(STORES.EXPENSES)) {
-                db.createObjectStore(STORES.EXPENSES, {
-                    keyPath: "id"
-                });
-            }
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.CATEGORIES
+                    )
+                ) {
 
-            // Expense profiles
-            if (!db.objectStoreNames.contains(STORES.EXPENSE_PROFILES)) {
-                db.createObjectStore(STORES.EXPENSE_PROFILES, {
-                    keyPath: "_id"
-                });
-            }
+                    db.createObjectStore(
+                        STORES.CATEGORIES,
+                        {
+                            keyPath: "id"
+                        }
+                    );
 
-            // Global sync queue
-            if (!db.objectStoreNames.contains(STORES.SYNC_QUEUE)) {
-                const syncStore = db.createObjectStore(
-                    STORES.SYNC_QUEUE,
-                    {
-                        keyPath: "queueId",
-                        autoIncrement: true
-                    }
+                }
+
+
+                // ================= SUPPLIERS =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.SUPPLIERS
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.SUPPLIERS,
+                        {
+                            keyPath: "id"
+                        }
+                    );
+
+                }
+
+
+                // ================= PRODUCTS =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.PRODUCTS
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.PRODUCTS,
+                        {
+                            keyPath: "id"
+                        }
+                    );
+
+                }
+
+
+                // ================= SALESMEN =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.SALESMEN
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.SALESMEN,
+                        {
+                            keyPath: "id"
+                        }
+                    );
+
+                }
+
+
+                // ================= INVOICES =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.INVOICES
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.INVOICES,
+                        {
+                            keyPath: "id"
+                        }
+                    );
+
+                }
+
+
+                // ================= EXPENSES =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.EXPENSES
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.EXPENSES,
+                        {
+                            keyPath: "id"
+                        }
+                    );
+
+                }
+
+
+                // ================= EXPENSE PROFILES =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.EXPENSE_PROFILES
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.EXPENSE_PROFILES,
+                        {
+                            keyPath: "_id"
+                        }
+                    );
+
+                }
+
+
+                // ================= EXPENSE PAYMENTS =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.PAYMENT_TRANSACTIONS
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.PAYMENT_TRANSACTIONS,
+                        {
+                            keyPath: "id"
+                        }
+                    );
+
+                }
+
+
+                // ================= SYNC QUEUE =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.SYNC_QUEUE
+                    )
+                ) {
+
+                    const syncStore =
+                        db.createObjectStore(
+                            STORES.SYNC_QUEUE,
+                            {
+                                keyPath: "queueId",
+                                autoIncrement: true
+                            }
+                        );
+
+
+                    syncStore.createIndex(
+                        "status",
+                        "status",
+                        {
+                            unique: false
+                        }
+                    );
+
+                }
+
+
+                // ================= SYNC META =================
+
+                if (
+                    !db.objectStoreNames.contains(
+                        STORES.SYNC_META
+                    )
+                ) {
+
+                    db.createObjectStore(
+                        STORES.SYNC_META,
+                        {
+                            keyPath: "key"
+                        }
+                    );
+
+                }
+
+            };
+
+
+        request.onsuccess =
+            function () {
+
+                resolve(
+                    request.result
                 );
 
-                syncStore.createIndex(
-                    "status",
-                    "status",
-                    {
-                        unique: false
-                    }
+            };
+
+
+        request.onerror =
+            function () {
+
+                reject(
+                    request.error
                 );
-            }
 
-            // Synchronization metadata
-            if (!db.objectStoreNames.contains(STORES.SYNC_META)) {
-                db.createObjectStore(
-                    STORES.SYNC_META,
-                    {
-                        keyPath: "key"
-                    }
-                );
-            }
-        };
+            };
 
-        request.onsuccess = function () {
-            resolve(request.result);
-        };
-
-        request.onerror = function () {
-            reject(request.error);
-        };
     });
+
 }
+
 
 // ============================================================
 // SAVE ONE RECORD
 // ============================================================
 
-async function saveToOfflineDB(storeName, data) {
-    const db = await openOfflineDB();
+async function saveToOfflineDB(
+    storeName,
+    data
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            storeName,
-            "readwrite"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store = transaction.objectStore(storeName);
 
-        store.put(data);
+    return new Promise(
+        (resolve, reject) => {
 
-        transaction.oncomplete = function () {
-            resolve();
-        };
+            const transaction =
+                db.transaction(
+                    storeName,
+                    "readwrite"
+                );
 
-        transaction.onerror = function () {
-            reject(transaction.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+
+            store.put(data);
+
+
+            transaction.oncomplete =
+                function () {
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                function () {
+
+                    reject(
+                        transaction.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // SAVE MANY RECORDS
 // ============================================================
 
-async function saveManyToOfflineDB(storeName, records) {
-    if (!Array.isArray(records) || records.length === 0) {
+async function saveManyToOfflineDB(
+    storeName,
+    records
+) {
+
+    if (
+        !Array.isArray(records) ||
+        records.length === 0
+    ) {
+
         return;
+
     }
 
-    const db = await openOfflineDB();
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            storeName,
-            "readwrite"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store = transaction.objectStore(storeName);
 
-        records.forEach(record => {
-            store.put(record);
-        });
+    return new Promise(
+        (resolve, reject) => {
 
-        transaction.oncomplete = function () {
-            resolve();
-        };
+            const transaction =
+                db.transaction(
+                    storeName,
+                    "readwrite"
+                );
 
-        transaction.onerror = function () {
-            reject(transaction.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+
+            records.forEach(
+                record => {
+
+                    store.put(record);
+
+                }
+            );
+
+
+            transaction.oncomplete =
+                function () {
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                function () {
+
+                    reject(
+                        transaction.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // GET ALL RECORDS
 // ============================================================
 
-async function getAllFromOfflineDB(storeName) {
-    const db = await openOfflineDB();
+async function getAllFromOfflineDB(
+    storeName
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            storeName,
-            "readonly"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store = transaction.objectStore(storeName);
 
-        const request = store.getAll();
+    return new Promise(
+        (resolve, reject) => {
 
-        request.onsuccess = function () {
-            resolve(request.result || []);
-        };
+            const transaction =
+                db.transaction(
+                    storeName,
+                    "readonly"
+                );
 
-        request.onerror = function () {
-            reject(request.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+
+            const request =
+                store.getAll();
+
+
+            request.onsuccess =
+                function () {
+
+                    resolve(
+                        request.result || []
+                    );
+
+                };
+
+
+            request.onerror =
+                function () {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // DELETE ONE RECORD
 // ============================================================
 
-async function deleteFromOfflineDB(storeName, id) {
-    const db = await openOfflineDB();
+async function deleteFromOfflineDB(
+    storeName,
+    id
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            storeName,
-            "readwrite"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store = transaction.objectStore(storeName);
 
-        store.delete(id);
+    return new Promise(
+        (resolve, reject) => {
 
-        transaction.oncomplete = function () {
-            resolve();
-        };
+            const transaction =
+                db.transaction(
+                    storeName,
+                    "readwrite"
+                );
 
-        transaction.onerror = function () {
-            reject(transaction.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+
+            store.delete(id);
+
+
+            transaction.oncomplete =
+                function () {
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                function () {
+
+                    reject(
+                        transaction.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // CLEAR STORE
 // ============================================================
 
-async function clearOfflineStore(storeName) {
-    const db = await openOfflineDB();
+async function clearOfflineStore(
+    storeName
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            storeName,
-            "readwrite"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store = transaction.objectStore(storeName);
 
-        store.clear();
+    return new Promise(
+        (resolve, reject) => {
 
-        transaction.oncomplete = function () {
-            resolve();
-        };
+            const transaction =
+                db.transaction(
+                    storeName,
+                    "readwrite"
+                );
 
-        transaction.onerror = function () {
-            reject(transaction.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+
+            store.clear();
+
+
+            transaction.oncomplete =
+                function () {
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                function () {
+
+                    reject(
+                        transaction.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // SYNC QUEUE
 // ============================================================
 
-async function addToSyncQueue(operation) {
-    const db = await openOfflineDB();
+async function addToSyncQueue(
+    operation
+) {
+
+    const db =
+        await openOfflineDB();
+
 
     const queueItem = {
+
         ...operation,
-        status: "pending",
-        createdAt: new Date().toISOString()
+
+        status:
+            "pending",
+
+        createdAt:
+            new Date().toISOString()
+
     };
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            STORES.SYNC_QUEUE,
-            "readwrite"
-        );
 
-        const store =
-            transaction.objectStore(STORES.SYNC_QUEUE);
+    return new Promise(
+        (resolve, reject) => {
 
-        const request = store.add(queueItem);
+            const transaction =
+                db.transaction(
+                    STORES.SYNC_QUEUE,
+                    "readwrite"
+                );
 
-        request.onsuccess = function () {
-            resolve(request.result);
-        };
 
-        request.onerror = function () {
-            reject(request.error);
-        };
-    });
+            const store =
+                transaction.objectStore(
+                    STORES.SYNC_QUEUE
+                );
+
+
+            const request =
+                store.add(
+                    queueItem
+                );
+
+
+            request.onsuccess =
+                function () {
+
+                    resolve(
+                        request.result
+                    );
+
+                };
+
+
+            request.onerror =
+                function () {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // GET PENDING SYNC QUEUE
 // ============================================================
 
 async function getPendingSyncQueue() {
-    const db = await openOfflineDB();
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            STORES.SYNC_QUEUE,
-            "readonly"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store =
-            transaction.objectStore(STORES.SYNC_QUEUE);
 
-        const index = store.index("status");
+    return new Promise(
+        (resolve, reject) => {
 
-        const request =
-            index.getAll("pending");
+            const transaction =
+                db.transaction(
+                    STORES.SYNC_QUEUE,
+                    "readonly"
+                );
 
-        request.onsuccess = function () {
-            resolve(request.result || []);
-        };
 
-        request.onerror = function () {
-            reject(request.error);
-        };
-    });
+            const store =
+                transaction.objectStore(
+                    STORES.SYNC_QUEUE
+                );
+
+
+            const index =
+                store.index(
+                    "status"
+                );
+
+
+            const request =
+                index.getAll(
+                    "pending"
+                );
+
+
+            request.onsuccess =
+                function () {
+
+                    resolve(
+                        request.result || []
+                    );
+
+                };
+
+
+            request.onerror =
+                function () {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // REMOVE FROM SYNC QUEUE
 // ============================================================
 
-async function removeFromSyncQueue(queueId) {
-    const db = await openOfflineDB();
+async function removeFromSyncQueue(
+    queueId
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            STORES.SYNC_QUEUE,
-            "readwrite"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store =
-            transaction.objectStore(STORES.SYNC_QUEUE);
 
-        store.delete(queueId);
+    return new Promise(
+        (resolve, reject) => {
 
-        transaction.oncomplete = function () {
-            resolve();
-        };
+            const transaction =
+                db.transaction(
+                    STORES.SYNC_QUEUE,
+                    "readwrite"
+                );
 
-        transaction.onerror = function () {
-            reject(transaction.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    STORES.SYNC_QUEUE
+                );
+
+
+            store.delete(
+                queueId
+            );
+
+
+            transaction.oncomplete =
+                function () {
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                function () {
+
+                    reject(
+                        transaction.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // UPDATE SYNC QUEUE ITEM
 // ============================================================
 
-async function updateSyncQueueItem(queueId, changes) {
-    const db = await openOfflineDB();
+async function updateSyncQueueItem(
+    queueId,
+    changes
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            STORES.SYNC_QUEUE,
-            "readwrite"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store =
-            transaction.objectStore(STORES.SYNC_QUEUE);
 
-        const request = store.get(queueId);
+    return new Promise(
+        (resolve, reject) => {
 
-        request.onsuccess = function () {
-            const item = request.result;
+            const transaction =
+                db.transaction(
+                    STORES.SYNC_QUEUE,
+                    "readwrite"
+                );
 
-            if (!item) {
-                resolve();
-                return;
-            }
 
-            Object.assign(item, changes);
+            const store =
+                transaction.objectStore(
+                    STORES.SYNC_QUEUE
+                );
 
-            store.put(item);
-        };
 
-        request.onerror = function () {
-            reject(request.error);
-        };
+            const request =
+                store.get(
+                    queueId
+                );
 
-        transaction.oncomplete = function () {
-            resolve();
-        };
 
-        transaction.onerror = function () {
-            reject(transaction.error);
-        };
-    });
+            request.onsuccess =
+                function () {
+
+                    const item =
+                        request.result;
+
+
+                    if (!item) {
+
+                        resolve();
+
+                        return;
+
+                    }
+
+
+                    Object.assign(
+                        item,
+                        changes
+                    );
+
+
+                    store.put(
+                        item
+                    );
+
+                };
+
+
+            request.onerror =
+                function () {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+
+            transaction.oncomplete =
+                function () {
+
+                    resolve();
+
+                };
+
+
+            transaction.onerror =
+                function () {
+
+                    reject(
+                        transaction.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // GET ONE SYNC QUEUE ITEM
 // ============================================================
 
-async function getSyncQueueItem(queueId) {
-    const db = await openOfflineDB();
+async function getSyncQueueItem(
+    queueId
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            STORES.SYNC_QUEUE,
-            "readonly"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store =
-            transaction.objectStore(STORES.SYNC_QUEUE);
 
-        const request = store.get(queueId);
+    return new Promise(
+        (resolve, reject) => {
 
-        request.onsuccess = function () {
-            resolve(request.result || null);
-        };
+            const transaction =
+                db.transaction(
+                    STORES.SYNC_QUEUE,
+                    "readonly"
+                );
 
-        request.onerror = function () {
-            reject(request.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    STORES.SYNC_QUEUE
+                );
+
+
+            const request =
+                store.get(
+                    queueId
+                );
+
+
+            request.onsuccess =
+                function () {
+
+                    resolve(
+                        request.result ||
+                        null
+                    );
+
+                };
+
+
+            request.onerror =
+                function () {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // SYNC METADATA
 // ============================================================
 
-async function getSyncMeta(key) {
-    const db = await openOfflineDB();
+async function getSyncMeta(
+    key
+) {
 
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(
-            STORES.SYNC_META,
-            "readonly"
-        );
+    const db =
+        await openOfflineDB();
 
-        const store =
-            transaction.objectStore(STORES.SYNC_META);
 
-        const request = store.get(key);
+    return new Promise(
+        (resolve, reject) => {
 
-        request.onsuccess = function () {
-            resolve(request.result || null);
-        };
+            const transaction =
+                db.transaction(
+                    STORES.SYNC_META,
+                    "readonly"
+                );
 
-        request.onerror = function () {
-            reject(request.error);
-        };
-    });
+
+            const store =
+                transaction.objectStore(
+                    STORES.SYNC_META
+                );
+
+
+            const request =
+                store.get(
+                    key
+                );
+
+
+            request.onsuccess =
+                function () {
+
+                    resolve(
+                        request.result ||
+                        null
+                    );
+
+                };
+
+
+            request.onerror =
+                function () {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // SAVE SYNC METADATA
 // ============================================================
 
-async function saveSyncMeta(key, value) {
+async function saveSyncMeta(
+    key,
+    value
+) {
+
     await saveToOfflineDB(
         STORES.SYNC_META,
         {
@@ -468,7 +1001,9 @@ async function saveSyncMeta(key, value) {
             value
         }
     );
+
 }
+
 
 // ============================================================
 // INITIAL DATABASE SYNCHRONIZATION
@@ -476,180 +1011,321 @@ async function saveSyncMeta(key, value) {
 
 async function initialDatabaseSync() {
 
-    if (!navigator.onLine) {
+    if (
+        !navigator.onLine
+    ) {
+
         console.log(
             "Offline. Initial database synchronization skipped."
         );
+
         return false;
+
     }
 
+
     try {
+
         const initialSync =
             await getSyncMeta(
                 "initialDatabaseSyncCompleted"
             );
 
+
         if (
             initialSync &&
             initialSync.value === true
         ) {
+
             console.log(
                 "Initial database synchronization already completed."
             );
+
             return true;
+
         }
+
 
         console.log(
             "Starting initial database synchronization..."
         );
 
+
         const [
+
             categoriesResponse,
+
             suppliersResponse,
+
             productsResponse,
+
             salesmenResponse,
+
             invoicesResponse
+
         ] = await Promise.all([
-            fetch(`${window.APP_CONFIG.API}/categories`, {
-                method: "GET",
-                credentials: "include"
-            }),
-            fetch(`${window.APP_CONFIG.API}/suppliers`, {
-                method: "GET",
-                credentials: "include"
-            }),
-            fetch(`${window.APP_CONFIG.API}/products`, {
-                method: "GET",
-                credentials: "include"
-            }),
-            fetch(`${window.APP_CONFIG.API}/allSalesmen`, {
-                method: "GET",
-                credentials: "include"
-            }),
-            fetch(`${window.APP_CONFIG.API}/invoices`, {
-                method: "GET",
-                credentials: "include"
-            })
+
+            fetch(
+                `${window.APP_CONFIG.API}/categories`,
+                {
+                    method:
+                        "GET",
+
+                    credentials:
+                        "include"
+                }
+            ),
+
+            fetch(
+                `${window.APP_CONFIG.API}/suppliers`,
+                {
+                    method:
+                        "GET",
+
+                    credentials:
+                        "include"
+                }
+            ),
+
+            fetch(
+                `${window.APP_CONFIG.API}/products`,
+                {
+                    method:
+                        "GET",
+
+                    credentials:
+                        "include"
+                }
+            ),
+
+            fetch(
+                `${window.APP_CONFIG.API}/allSalesmen`,
+                {
+                    method:
+                        "GET",
+
+                    credentials:
+                        "include"
+                }
+            ),
+
+            fetch(
+                `${window.APP_CONFIG.API}/invoices`,
+                {
+                    method:
+                        "GET",
+
+                    credentials:
+                        "include"
+                }
+            )
+
         ]);
 
+
         const responses = [
+
             categoriesResponse,
+
             suppliersResponse,
+
             productsResponse,
+
             salesmenResponse,
+
             invoicesResponse
+
         ];
 
-        if (
-            responses.some(
-                response => response.status === 401
-            )
-        ) {
-            window.location.href = "login.html";
-            return false;
-        }
 
         if (
             responses.some(
-                response => !response.ok
+                response =>
+                    response.status === 401
             )
         ) {
+
+            window.location.href =
+                "login.html";
+
+            return false;
+
+        }
+
+
+        if (
+            responses.some(
+                response =>
+                    !response.ok
+            )
+        ) {
+
             throw new Error(
                 "One or more initial synchronization requests failed."
             );
+
         }
 
+
         const [
+
             categoriesData,
+
             suppliersData,
+
             productsData,
+
             salesmenData,
+
             invoicesData
+
         ] = await Promise.all([
+
             categoriesResponse.json(),
+
             suppliersResponse.json(),
+
             productsResponse.json(),
+
             salesmenResponse.json(),
+
             invoicesResponse.json()
+
         ]);
 
-        if (!Array.isArray(categoriesData.categories)) {
+
+        if (
+            !Array.isArray(
+                categoriesData.categories
+            )
+        ) {
+
             throw new Error(
                 "Invalid categories response."
             );
+
         }
 
-        if (!Array.isArray(suppliersData.suppliers)) {
+
+        if (
+            !Array.isArray(
+                suppliersData.suppliers
+            )
+        ) {
+
             throw new Error(
                 "Invalid suppliers response."
             );
+
         }
 
-        if (!Array.isArray(productsData.products)) {
+
+        if (
+            !Array.isArray(
+                productsData.products
+            )
+        ) {
+
             throw new Error(
                 "Invalid products response."
             );
+
         }
 
-        if (!Array.isArray(salesmenData.data)) {
+
+        if (
+            !Array.isArray(
+                salesmenData.data
+            )
+        ) {
+
             throw new Error(
                 "Invalid salesmen response."
             );
+
         }
 
-        if (!Array.isArray(invoicesData.invoices)) {
+
+        if (
+            !Array.isArray(
+                invoicesData.invoices
+            )
+        ) {
+
             throw new Error(
                 "Invalid invoices response."
             );
+
         }
 
+
         await Promise.all([
+
             saveManyToOfflineDB(
                 STORES.CATEGORIES,
                 categoriesData.categories
             ),
+
             saveManyToOfflineDB(
                 STORES.SUPPLIERS,
                 suppliersData.suppliers
             ),
+
             saveManyToOfflineDB(
                 STORES.PRODUCTS,
                 productsData.products
             ),
+
             saveManyToOfflineDB(
                 STORES.SALESMEN,
                 salesmenData.data
             ),
+
             saveManyToOfflineDB(
                 STORES.INVOICES,
                 invoicesData.invoices
             )
+
         ]);
+
 
         console.log(
             "Initial database synchronization completed:",
             {
-                categories: categoriesData.categories.length,
-                suppliers: suppliersData.suppliers.length,
-                products: productsData.products.length,
-                salesmen: salesmenData.data.length,
-                invoices: invoicesData.invoices.length
+                categories:
+                    categoriesData.categories.length,
+
+                suppliers:
+                    suppliersData.suppliers.length,
+
+                products:
+                    productsData.products.length,
+
+                salesmen:
+                    salesmenData.data.length,
+
+                invoices:
+                    invoicesData.invoices.length
             }
         );
+
 
         await saveSyncMeta(
             "initialDatabaseSyncCompleted",
             true
         );
 
+
         await saveSyncMeta(
             "invoicesLastSyncAt",
             new Date().toISOString()
         );
 
+
         return true;
 
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
             "Initial database synchronization failed:",
@@ -657,8 +1333,11 @@ async function initialDatabaseSync() {
         );
 
         return false;
+
     }
+
 }
+
 
 // ============================================================
 // INVOICE SYNCHRONIZATION
@@ -666,125 +1345,148 @@ async function initialDatabaseSync() {
 
 async function syncInvoicesToOfflineDB() {
 
-    if (!navigator.onLine) {
-        console.log("Offline. Invoice sync skipped.");
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Invoice sync skipped."
+        );
+
         return null;
+
     }
+
 
     try {
 
-        // ----------------------------------------------------
-        // Check whether this device has completed
-        // its initial invoice synchronization.
-        // ----------------------------------------------------
-
         const syncMeta =
-            await getSyncMeta("invoicesLastSyncAt");
+            await getSyncMeta(
+                "invoicesLastSyncAt"
+            );
+
 
         const syncStartedAt =
             new Date().toISOString();
 
-        let endpoint = "/invoices";
 
-        // First synchronization:
-        // download EVERYTHING.
-        //
-        // Later synchronization:
-        // download EVERYTHING created since the
-        // previous successful synchronization.
-        if (syncMeta && syncMeta.value) {
+        let endpoint =
+            "/invoices";
+
+
+        if (
+            syncMeta &&
+            syncMeta.value
+        ) {
+
             endpoint =
                 `/invoices?since=${encodeURIComponent(
                     syncMeta.value
                 )}`;
+
         }
+
 
         console.log(
             "Invoice synchronization endpoint:",
             endpoint
         );
 
-        const response = await fetch(
-            `${window.APP_CONFIG.API}${endpoint}`,
-            {
-                method: "GET",
-                credentials: "include"
-            }
-        );
 
-        // ----------------------------------------------------
-        // Authentication expired
-        // ----------------------------------------------------
+        const response =
+            await fetch(
+                `${window.APP_CONFIG.API}${endpoint}`,
+                {
+                    method:
+                        "GET",
 
-        if (response.status === 401) {
-            window.location.href = "login.html";
+                    credentials:
+                        "include"
+                }
+            );
+
+
+        if (
+            response.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
             return null;
+
         }
 
-        if (!response.ok) {
+
+        if (
+            !response.ok
+        ) {
+
             throw new Error(
                 `Invoice sync failed: ${response.status}`
             );
+
         }
 
-        const data = await response.json();
 
-        if (!Array.isArray(data.invoices)) {
+        const data =
+            await response.json();
+
+
+        if (
+            !Array.isArray(
+                data.invoices
+            )
+        ) {
+
             throw new Error(
                 "Invalid invoice response."
             );
+
         }
 
-        // ----------------------------------------------------
-        // Upsert invoices into IndexedDB
-        // ----------------------------------------------------
 
-        if (data.invoices.length > 0) {
+        if (
+            data.invoices.length > 0
+        ) {
+
             await saveManyToOfflineDB(
                 STORES.INVOICES,
                 data.invoices
             );
+
         }
 
-        // ----------------------------------------------------
-        // Save the START time of this synchronization.
-        //
-        // This is intentional.
-        //
-        // If another computer creates an invoice while
-        // this request is running, the next synchronization
-        // will still pick it up.
-        // ----------------------------------------------------
 
         await saveSyncMeta(
             "invoicesLastSyncAt",
             syncStartedAt
         );
 
+
         console.log(
             "Invoices synchronized:",
             data.invoices.length
         );
 
+
         return data.invoices;
 
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
             "Invoice synchronization error:",
             error
         );
 
-        // IMPORTANT:
-        // Do NOT update invoicesLastSyncAt when sync fails.
-        //
-        // That means the next successful synchronization
-        // will retry everything since the previous successful
-        // synchronization point.
 
         return null;
+
     }
+
 }
+
 
 // ============================================================
 // GLOBAL SYNC QUEUE PROCESSING
@@ -792,128 +1494,184 @@ async function syncInvoicesToOfflineDB() {
 
 let isSyncing = false;
 
+
 async function processSyncQueue() {
 
-    if (!navigator.onLine) {
+    if (
+        !navigator.onLine
+    ) {
+
         console.log(
             "Offline. Sync queue processing skipped."
         );
 
         return;
+
     }
 
+
     if (isSyncing) {
+
         console.log(
             "Sync already running. Skipping duplicate call."
         );
 
         return;
+
     }
 
+
     isSyncing = true;
+
 
     try {
 
         const queueItems =
             await getPendingSyncQueue();
 
-        if (queueItems.length === 0) {
+
+        if (
+            queueItems.length === 0
+        ) {
 
             console.log(
                 "Sync queue is empty."
             );
 
             return;
+
         }
+
 
         console.log(
             `Processing ${queueItems.length} queued operation(s)...`
         );
 
-        for (const operation of queueItems) {
 
-            if (!navigator.onLine) {
+        for (
+            const operation
+            of queueItems
+        ) {
+
+            if (
+                !navigator.onLine
+            ) {
 
                 console.log(
                     "Internet lost during sync. Stopping."
                 );
 
                 break;
+
             }
+
 
             try {
 
                 const requestOptions = {
-                    method: operation.method,
-                    credentials: "include"
+
+                    method:
+                        operation.method,
+
+                    credentials:
+                        "include"
+
                 };
 
+
                 // ------------------------------------------------
-                // IMPORTANT:
-                // Only attach JSON body when a real body exists.
-                //
-                // This prevents DELETE requests from receiving
-                // body:null.
+                // BODY
                 // ------------------------------------------------
 
                 if (
                     operation.body !== null &&
                     operation.body !== undefined
                 ) {
+
                     requestOptions.headers = {
-                        "Content-Type": "application/json"
+
+                        "Content-Type":
+                            "application/json"
+
                     };
 
+
                     requestOptions.body =
-                        JSON.stringify(operation.body);
+                        JSON.stringify(
+                            operation.body
+                        );
+
                 }
 
-                const response = await fetch(
-                    `${window.APP_CONFIG.API}${operation.endpoint}`,
-                    requestOptions
-                );
+
+                const response =
+                    await fetch(
+                        `${window.APP_CONFIG.API}${operation.endpoint}`,
+                        requestOptions
+                    );
+
 
                 // ------------------------------------------------
-                // Authentication expired
+                // AUTHENTICATION
                 // ------------------------------------------------
 
-                if (response.status === 401) {
+                if (
+                    response.status === 401
+                ) {
 
                     console.log(
                         "Authentication expired during sync."
                     );
 
-                    window.location.href = "login.html";
+
+                    window.location.href =
+                        "login.html";
+
 
                     break;
+
                 }
 
+
                 // ------------------------------------------------
-                // Read response if JSON
+                // RESPONSE
                 // ------------------------------------------------
 
-                let responseData = null;
+                let responseData =
+                    null;
+
 
                 const contentType =
-                    response.headers.get("content-type") || "";
+                    response.headers.get(
+                        "content-type"
+                    ) || "";
+
 
                 if (
                     contentType.includes(
                         "application/json"
                     )
                 ) {
+
                     responseData =
                         await response.json();
-                } else {
+
+                }
+                else {
+
                     responseData =
                         await response.text();
+
                 }
 
+
                 // ------------------------------------------------
-                // Request failed
+                // FAILED REQUEST
                 // ------------------------------------------------
 
-                if (!response.ok) {
+                if (
+                    !response.ok
+                ) {
 
                     console.error(
                         "Queued operation failed:",
@@ -922,31 +1680,102 @@ async function processSyncQueue() {
                         responseData
                     );
 
-                    // DELETE + 404 means record is already gone
-                    // on backend, so remove stale queue item.
+
+                    // =================================================
+                    // EXPENSE PAYMENT FAILURE
+                    //
+                    // Example:
+                    // A payment was created offline for 10,000.
+                    // While offline someone else may have paid the
+                    // vendor, reducing the actual outstanding amount.
+                    //
+                    // Backend rejects the queued payment.
+                    // Remove the invalid local payment so the local
+                    // ledger does not display a payment that never
+                    // actually happened on the backend.
+                    // =================================================
+
                     if (
-                        operation.method === "DELETE" &&
-                        response.status === 404
+                        operation.resource ===
+                            "expensePayment" &&
+                        [
+                            400,
+                            404,
+                            409
+                        ].includes(
+                            response.status
+                        )
                     ) {
+
                         await removeFromSyncQueue(
                             operation.queueId
                         );
+
+
+                        if (
+                            operation.method ===
+                                "POST" &&
+                            operation.recordId
+                        ) {
+
+                            await deleteFromOfflineDB(
+                                STORES.PAYMENT_TRANSACTIONS,
+                                operation.recordId
+                            );
+
+                        }
+                        else if (
+                            operation.previousRecord
+                        ) {
+
+                            await saveToOfflineDB(
+                                STORES.PAYMENT_TRANSACTIONS,
+                                operation.previousRecord
+                            );
+
+                        }
+
+
+                        continue;
+
                     }
 
-                    // Keep other failed operations pending.
+
+                    // =================================================
+                    // DELETE + 404
+                    //
+                    // Backend already removed the record.
+                    // The queue item is therefore stale.
+                    // =================================================
+
+                    if (
+                        operation.method ===
+                            "DELETE" &&
+                        response.status === 404
+                    ) {
+
+                        await removeFromSyncQueue(
+                            operation.queueId
+                        );
+
+                    }
+
+
+                    // Keep other failures pending.
                     continue;
+
                 }
 
-                // ------------------------------------------------
-                // Successful invoice creation
-                //
-                // POST /invoices does not return the complete
-                // invoice, so cache the original queued invoice.
-                // ------------------------------------------------
+
+                // =====================================================
+                // SUCCESSFUL INVOICE CREATION
+                // =====================================================
 
                 if (
-                    operation.method === "POST" &&
-                    operation.endpoint === "/invoices" &&
+                    operation.method ===
+                        "POST" &&
+                    operation.endpoint ===
+                        "/invoices" &&
                     operation.body
                 ) {
 
@@ -955,18 +1784,22 @@ async function processSyncQueue() {
                         operation.body
                     );
 
+
                     console.log(
                         "Queued invoice cached locally:",
                         operation.body.id
                     );
+
                 }
 
-                // ------------------------------------------------
-                // Successful latest-invoice update
-                // ------------------------------------------------
+
+                // =====================================================
+                // SUCCESSFUL LATEST-INVOICE UPDATE
+                // =====================================================
 
                 if (
-                    operation.method === "PUT" &&
+                    operation.method ===
+                        "PUT" &&
                     operation.endpoint.includes(
                         "/update-last"
                     ) &&
@@ -979,63 +1812,108 @@ async function processSyncQueue() {
                         responseData.invoice
                     );
 
+
                     console.log(
                         "Updated invoice cached locally:",
                         responseData.invoice.id
                     );
+
                 }
 
-                // ------------------------------------------------
-                // Successful operation
-                // ------------------------------------------------
+
+                // =====================================================
+                // SUCCESSFUL EXPENSE PAYMENT
+                // =====================================================
+
+                if (
+                    operation.resource ===
+                        "expensePayment" &&
+                    (
+                        operation.method ===
+                            "POST" ||
+                        operation.method ===
+                            "PUT"
+                    ) &&
+                    responseData &&
+                    responseData.payment
+                ) {
+
+                    await saveToOfflineDB(
+                        STORES.PAYMENT_TRANSACTIONS,
+                        responseData.payment
+                    );
+
+                }
+
+
+                // =====================================================
+                // SUCCESSFUL OPERATION
+                // =====================================================
 
                 await removeFromSyncQueue(
                     operation.queueId
                 );
+
 
                 console.log(
                     "Queued operation synchronized:",
                     operation.endpoint
                 );
 
-            } catch (operationError) {
+            }
+            catch (operationError) {
 
-                // Network/server error.
-                // Keep operation pending.
+                // Network/server failure.
+                // Keep the queue item pending.
 
                 console.error(
                     "Sync operation error:",
                     operationError
                 );
+
             }
+
         }
 
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
             "Sync queue processing error:",
             error
         );
 
-    } finally {
+    }
+    finally {
 
         isSyncing = false;
+
     }
+
 }
+
 
 // ============================================================
 // ONLINE EVENT
 // ============================================================
 
-window.addEventListener("online", async function () {
+window.addEventListener(
+    "online",
+    async function () {
 
-    console.log(
-        "Internet restored. Starting synchronization..."
-    );
+        console.log(
+            "Internet restored. Starting synchronization..."
+        );
 
-    // First send pending offline operations.
-    await processSyncQueue();
 
-    // Then synchronize invoices from backend.
-    await syncInvoicesToOfflineDB();
-});
+        // First synchronize queued changes.
+
+        await processSyncQueue();
+
+
+        // Then refresh invoices.
+
+        await syncInvoicesToOfflineDB();
+
+    }
+);
