@@ -25,6 +25,8 @@ let currentSupplierId = null;
 
 let products = [];
 
+let categories = [];
+
 let purchasedItems = [];
 
 let arrears = 0;
@@ -324,6 +326,401 @@ async function fetchSuppliers() {
 
 
 // ===========================================================
+// CATEGORIES
+// ===========================================================
+
+async function fetchCategories() {
+
+    // =======================================================
+    // LOAD CACHE FIRST
+    // =======================================================
+
+    try {
+
+        const cachedCategories =
+            await getAllFromOfflineDB(
+                "categories"
+            );
+
+
+        categories =
+            cachedCategories
+                .map(
+                    (category, index) => {
+
+                        if (
+                            typeof category ===
+                            "string"
+                        ) {
+
+                            return {
+
+                                id:
+                                    index + 1,
+
+                                name:
+                                    category
+
+                            };
+
+                        }
+
+
+                        return {
+
+                            id:
+                                Number(
+                                    category.id ??
+                                    category.category_id ??
+                                    index + 1
+                                ),
+
+                            name:
+                                category.name ??
+                                category.categoryName ??
+                                category.category_name ??
+                                category.category ??
+                                ""
+
+                        };
+
+                    }
+                )
+                .filter(
+                    category =>
+                        category.name
+                );
+
+
+        console.log(
+            "Categories from IndexedDB:",
+            categories
+        );
+
+
+        renderCategoryDropdown();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Category cache load failed:",
+            error
+        );
+
+    }
+
+
+    // =======================================================
+    // OFFLINE
+    // =======================================================
+
+    if (
+        !navigator.onLine
+    ) {
+
+        console.log(
+            "Offline. Using cached categories."
+        );
+
+        return;
+
+    }
+
+
+    // =======================================================
+    // FETCH FRESH CATEGORIES
+    // =======================================================
+
+    try {
+
+        const res =
+            await fetch(
+                `${API}/categories`,
+                {
+                    credentials: "include"
+                }
+            );
+
+
+        if (
+            res.status === 401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (!res.ok) {
+
+            throw new Error(
+                "Failed to load categories"
+            );
+
+        }
+
+
+        const data =
+            await res.json();
+
+
+        console.log(
+            "Categories API:",
+            data
+        );
+
+
+        const freshCategories =
+            Array.isArray(data)
+                ? data
+                : Array.isArray(data.data)
+                    ? data.data
+                    : Array.isArray(data.categories)
+                        ? data.categories
+                        : [];
+
+
+        // ===================================================
+        // CACHE RAW CATEGORY OBJECTS
+        // ===================================================
+
+        await clearOfflineStore(
+            "categories"
+        );
+
+
+        await saveManyToOfflineDB(
+            "categories",
+            freshCategories
+        );
+
+
+        // ===================================================
+        // NORMALIZE FOR THIS PAGE
+        // ===================================================
+
+        categories =
+            freshCategories
+                .map(
+                    (category, index) => {
+
+                        if (
+                            typeof category ===
+                            "string"
+                        ) {
+
+                            return {
+
+                                id:
+                                    index + 1,
+
+                                name:
+                                    category
+
+                            };
+
+                        }
+
+
+                        return {
+
+                            id:
+                                Number(
+                                    category.id ??
+                                    category.category_id ??
+                                    index + 1
+                                ),
+
+                            name:
+                                category.name ??
+                                category.categoryName ??
+                                category.category_name ??
+                                category.category ??
+                                ""
+
+                        };
+
+                    }
+                )
+                .filter(
+                    category =>
+                        category.name
+                );
+
+
+        console.log(
+            "Fresh categories:",
+            categories
+        );
+
+
+        renderCategoryDropdown();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Failed to load fresh categories:",
+            error
+        );
+
+        // Cached categories remain available.
+    }
+
+}
+
+
+// ===========================================================
+// RENDER CATEGORY DROPDOWN
+// ===========================================================
+
+function renderCategoryDropdown() {
+
+    const dropdown =
+        document.getElementById(
+            "categoryFilter"
+        );
+
+
+    if (!dropdown) return;
+
+
+    const currentValue =
+        dropdown.value ||
+        "All Categories";
+
+
+    dropdown.innerHTML = "";
+
+
+    // =======================================================
+    // ALL CATEGORIES
+    // =======================================================
+
+    const allOption =
+        document.createElement(
+            "option"
+        );
+
+
+    allOption.value =
+        "All Categories";
+
+
+    allOption.textContent =
+        "All Categories";
+
+
+    dropdown.appendChild(
+        allOption
+    );
+
+
+    // =======================================================
+    // PREVENT DUPLICATE CATEGORY NAMES
+    // =======================================================
+
+    const seenCategories =
+        new Set();
+
+
+    categories.forEach(
+        category => {
+
+            const categoryName =
+                String(
+                    category.name || ""
+                ).trim();
+
+
+            if (!categoryName) return;
+
+
+            const categoryKey =
+                categoryName.toLowerCase();
+
+
+            if (
+                seenCategories.has(
+                    categoryKey
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            seenCategories.add(
+                categoryKey
+            );
+
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                categoryName;
+
+
+            option.textContent =
+                categoryName;
+
+
+            dropdown.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    // =======================================================
+    // RESTORE PREVIOUS SELECTION
+    // =======================================================
+
+    const matchingOption =
+        Array.from(
+            dropdown.options
+        )
+        .find(
+            option =>
+                option.value.toLowerCase() ===
+                String(
+                    currentValue
+                ).toLowerCase()
+        );
+
+
+    if (
+        matchingOption
+    ) {
+
+        dropdown.value =
+            matchingOption.value;
+
+    }
+
+    else {
+
+        dropdown.value =
+            "All Categories";
+
+    }
+
+}
+
+
+// ===========================================================
 // PRODUCTS
 // ===========================================================
 
@@ -617,6 +1014,7 @@ async function initializePurchaseStockPage() {
 
     await Promise.all([
         fetchSuppliers(),
+        fetchCategories(),
         fetchProducts()
     ]);
 
@@ -637,6 +1035,7 @@ function updateDate() {
 
     const date =
         new Date();
+
 
     const datePill =
         document.getElementById(
@@ -822,6 +1221,13 @@ function setSupplier(id) {
             `${supplier.phone} . ${supplier.address}`;
 
     }
+
+
+    // =======================================================
+    // REFRESH PRODUCT GRID FOR SELECTED SUPPLIER
+    // =======================================================
+
+    renderProductGrid();
 
 
     updateSubtotal();
@@ -1010,15 +1416,82 @@ function renderProductGrid() {
 
 
     const category =
-        categoryInput?.value ||
-        "All Categories";
+        (
+            categoryInput?.value ||
+            "All Categories"
+        )
+        .trim()
+        .toLowerCase();
 
 
     grid.innerHTML = "";
 
 
+    // =======================================================
+    // GET SELECTED SUPPLIER
+    // =======================================================
+
+    const selectedSupplier =
+        suppliers.find(
+            supplier =>
+                Number(
+                    supplier.id
+                ) ===
+                Number(
+                    currentSupplierId
+                )
+        );
+
+
+    const selectedSupplierName =
+        (
+            selectedSupplier?.name ||
+            ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    // =======================================================
+    // FILTER AND RENDER PRODUCTS
+    // =======================================================
+
     products.forEach(
         product => {
+
+            // -------------------------------------------------
+            // SUPPLIER FILTER
+            // -------------------------------------------------
+
+            if (
+                currentSupplierId &&
+                selectedSupplierName
+            ) {
+
+                const productCompany =
+                    (
+                        product.company ||
+                        ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                if (
+                    productCompany !==
+                    selectedSupplierName
+                ) {
+
+                    return;
+
+                }
+
+            }
+
+
+            // -------------------------------------------------
+            // SEARCH FILTER
+            // -------------------------------------------------
 
             if (
                 search &&
@@ -1034,12 +1507,32 @@ function renderProductGrid() {
             }
 
 
+            // -------------------------------------------------
+            // CATEGORY FILTER
+            // -------------------------------------------------
+
             if (
-                category !== "All Categories" &&
-                product.category !== category
+                category &&
+                category !== "all categories"
             ) {
 
-                return;
+                const productCategory =
+                    (
+                        product.category ||
+                        ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                if (
+                    productCategory !==
+                    category
+                ) {
+
+                    return;
+
+                }
 
             }
 
