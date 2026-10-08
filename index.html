@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#5b4b8a">
 
-<title>Dashboard — FrostyOps</title>
+    <title>Dashboard — FrostyOps</title>
 
-<link rel="stylesheet" href="shared-layout.css">
-<link rel="stylesheet" href="index.css">
-
+    <link rel="stylesheet" href="shared-layout.css">
+    <link rel="stylesheet" href="index.css">
 
 </head>
 
@@ -286,25 +286,33 @@
 
         </a>
 
-        <a
-    class="navlink"
-    data-nav="expenses"
-    href="expenses.html"
->
-    <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-    >
-        <path d="M12 2v20"></path>
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"></path>
-    </svg>
 
-    Expenses
-</a>
+        <a
+            class="navlink"
+            data-nav="expenses"
+            href="expenses.html"
+        >
+
+            <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+
+                <path d="M12 2v20"></path>
+
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7"></path>
+
+            </svg>
+
+            Expenses
+
+        </a>
+
+
         <div class="navdivider"></div>
 
 
@@ -339,6 +347,7 @@
 <!-- ================= MAIN ================= -->
 
 <div class="main">
+
 
     <!-- ================= TOPBAR ================= -->
 
@@ -590,119 +599,119 @@
 
                 </div>
 
-                <!-- COMMISSION PROFIT -->
 
-<!-- COMMISSION / TOTAL PROFIT -->
+                <!-- COMMISSION / CASH RECEIVED -->
 
-<div class="stat-card">
+                <div class="stat-card">
 
-    <div class="stat-icon">
+                    <div class="stat-icon">
 
-        <img src="assets/money 1.png"
-             alt="Total Profit">
+                        <img src="assets/money 1.png"
+                             alt="Cash Received">
 
-    </div>
+                    </div>
 
-    <div style="min-width:0;">
+                    <div style="min-width:0;">
 
-        <div class="stat-title">
-            Total Profit
-        </div>
+                        <div class="stat-title">
+                            Cash Received
+                        </div>
 
-        <div class="stat-num"
-             id="commissionProfit">
+                        <div class="stat-num"
+                             id="commissionProfit">
 
-            PKR 0
+                            PKR 0
 
-        </div>
+                        </div>
 
-        <div class="stat-sub">
-          Product profit + net commission − expenses
-        </div>
+                        <div class="stat-sub">
+                            Cash received − expenses
+                        </div>
 
-       <select
-    id="profitPeriodFilter"
-    style="
-        margin-top:6px;
-        width:100%;
-        max-width:170px;
-        padding:4px 6px;
-        font-size:11px;
-        border:1px solid #ddd;
-        border-radius:5px;
-        background:#fff;
-        color:#555;
-    "
->
+                        <select
+                            id="profitPeriodFilter"
+                            style="
+                                margin-top:6px;
+                                width:100%;
+                                max-width:170px;
+                                padding:4px 6px;
+                                font-size:11px;
+                                border:1px solid #ddd;
+                                border-radius:5px;
+                                background:#fff;
+                                color:#555;
+                            "
+                        >
 
-    
-      <option value="thisMonth">
-        This Month
-    </option>
-    <option value="today">
-        Today
-    </option>
+                            <option value="thisMonth">
+                                This Month
+                            </option>
 
-    <option value="yesterday">
-        Yesterday
-    </option>
+                            <option value="today">
+                                Today
+                            </option>
 
-    <option value="7days">
-        Last 7 Days
-    </option>
+                            <option value="yesterday">
+                                Yesterday
+                            </option>
 
-    <option value="previousMonth">
-        Previous Month
-    </option>
+                            <option value="7days">
+                                Last 7 Days
+                            </option>
 
-    <option value="custom">
-        Custom Range
-    </option>
+                            <option value="previousMonth">
+                                Previous Month
+                            </option>
 
-</select>
+                            <option value="custom">
+                                Custom Range
+                            </option>
+
+                        </select>
 
 
-        <div
-            id="profitCustomRange"
-            style="
-                display:none;
-                margin-top:6px;
-                width:100%;
-            "
-        >
+                        <div
+                            id="profitCustomRange"
+                            style="
+                                display:none;
+                                margin-top:6px;
+                                width:100%;
+                            "
+                        >
 
-            <input
-                type="date"
-                id="profitStartDate"
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    margin-bottom:4px;
-                    padding:4px 6px;
-                    font-size:11px;
-                    border:1px solid #ddd;
-                    border-radius:5px;
-                "
-            >
+                            <input
+                                type="date"
+                                id="profitStartDate"
+                                style="
+                                    width:100%;
+                                    box-sizing:border-box;
+                                    margin-bottom:4px;
+                                    padding:4px 6px;
+                                    font-size:11px;
+                                    border:1px solid #ddd;
+                                    border-radius:5px;
+                                "
+                            >
 
-            <input
-                type="date"
-                id="profitEndDate"
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    padding:4px 6px;
-                    font-size:11px;
-                    border:1px solid #ddd;
-                    border-radius:5px;
-                "
-            >
+                            <input
+                                type="date"
+                                id="profitEndDate"
+                                style="
+                                    width:100%;
+                                    box-sizing:border-box;
+                                    padding:4px 6px;
+                                    font-size:11px;
+                                    border:1px solid #ddd;
+                                    border-radius:5px;
+                                "
+                            >
 
-        </div>
+                        </div>
 
-    </div>
+                    </div>
 
-</div>
+                </div>
+
             </div>
 
 
@@ -1029,6 +1038,7 @@
 
 
 </div>
+
 
 <script src="config.js"></script>
 

@@ -1,4 +1,3 @@
-
 // ============================================================
 // FROSTYOPS - DASHBOARD
 // Offline-first dashboard
@@ -29,26 +28,11 @@ function escapeHTML(value) {
     return String(
         value ?? ""
     )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
 }
 
@@ -60,9 +44,7 @@ function escapeHTML(value) {
 function getLocalStorageUser() {
 
     const user =
-        localStorage.getItem(
-            "user"
-        );
+        localStorage.getItem("user");
 
 
     if (!user) {
@@ -77,9 +59,7 @@ function getLocalStorageUser() {
 
     try {
 
-        return JSON.parse(
-            user
-        );
+        return JSON.parse(user);
 
     }
     catch (error) {
@@ -107,9 +87,7 @@ adminUser =
 if (adminUser) {
 
     const adminElement =
-        document.getElementById(
-            "admin"
-        );
+        document.getElementById("admin");
 
 
     if (adminElement) {
@@ -127,81 +105,88 @@ if (adminUser) {
 // ============================================================
 
 const totalProductsElement =
-    document.getElementById(
-        "totalProducts"
-    );
+    document.getElementById("totalProducts");
 
 
 const totalStocksElement =
-    document.getElementById(
-        "totalStocks"
-    );
+    document.getElementById("totalStocks");
 
 
 const totalSalesmenElement =
-    document.getElementById(
-        "totalSalesmen"
-    );
+    document.getElementById("totalSalesmen");
 
 
 const todayIssuedElement =
-    document.getElementById(
-        "todayIssued"
-    );
+    document.getElementById("todayIssued");
 
 
 const todaySalesValueElement =
-    document.getElementById(
-        "todaySalesValue"
-    );
+    document.getElementById("todaySalesValue");
 
 
-const commissionProfitElement =
-    document.getElementById(
-        "commissionProfit"
-    );
+// ============================================================
+// NET CASH ELEMENT
+// ============================================================
+//
+// New dashboard ID:
+// #cashReceived
+//
+// Fallback:
+// #commissionProfit
+//
+// The fallback prevents the dashboard from breaking if the
+// HTML has not yet been updated.
+// ============================================================
+
+const cashReceivedElement =
+    document.getElementById("cashReceived") ||
+    document.getElementById("commissionProfit");
 
 
-const profitPeriodFilter =
-    document.getElementById(
-        "profitPeriodFilter"
-    );
+// ============================================================
+// CASH PERIOD FILTER
+// ============================================================
+//
+// New dashboard IDs:
+// #cashPeriodFilter
+// #cashCustomRange
+// #cashStartDate
+// #cashEndDate
+//
+// Fallback to the previous profit IDs so the existing dashboard
+// continues working while HTML is being updated.
+// ============================================================
+
+const cashPeriodFilter =
+    document.getElementById("cashPeriodFilter") ||
+    document.getElementById("profitPeriodFilter");
 
 
-const profitCustomRange =
-    document.getElementById(
-        "profitCustomRange"
-    );
+const cashCustomRange =
+    document.getElementById("cashCustomRange") ||
+    document.getElementById("profitCustomRange");
 
 
-const profitStartDate =
-    document.getElementById(
-        "profitStartDate"
-    );
+const cashStartDate =
+    document.getElementById("cashStartDate") ||
+    document.getElementById("profitStartDate");
 
 
-const profitEndDate =
-    document.getElementById(
-        "profitEndDate"
-    );
+const cashEndDate =
+    document.getElementById("cashEndDate") ||
+    document.getElementById("profitEndDate");
 
 
 const stockTableBody =
-    document.getElementById(
-        "Values"
-    );
+    document.getElementById("Values");
 
 
 const invoiceTableBody =
-    document.getElementById(
-        "Values2"
-    );
+    document.getElementById("Values2");
 
 
 const salesmenList =
-    document.getElementById(
-        "salesmenList"
-    );
+    document.getElementById("salesmenList");
 
 
 // ============================================================
@@ -226,30 +211,20 @@ let activeAnalyticsPeriod =
 // FORMAT MONEY
 // ============================================================
 
-function formatMoney(
-    value
-) {
+function formatMoney(value) {
 
     const number =
-        Number(
-            value
-        );
+        Number(value);
 
 
-    if (
-        !Number.isFinite(
-            number
-        )
-    ) {
+    if (!Number.isFinite(number)) {
 
         return "0";
 
     }
 
 
-    return number.toLocaleString(
-        "en-PK"
-    );
+    return number.toLocaleString("en-PK");
 
 }
 
@@ -258,49 +233,33 @@ function formatMoney(
 // FORMAT COMPACT MONEY
 // ============================================================
 
-function formatCompactMoney(
-    value
-) {
+function formatCompactMoney(value) {
 
     const number =
-        Number(
-            value || 0
-        );
+        Number(value || 0);
 
 
-    if (
-        number >=
-        1000000
-    ) {
+    if (number >= 1000000) {
 
         return (
-            number /
-            1000000
-        ).toFixed(1) +
-        "M";
+            number / 1000000
+        ).toFixed(1) + "M";
 
     }
 
 
-    if (
-        number >=
-        1000
-    ) {
+    if (number >= 1000) {
 
         return (
-            number /
-            1000
-        ).toFixed(1) +
-        "K";
+            number / 1000
+        ).toFixed(1) + "K";
 
     }
 
 
     return Math.round(
         number
-    ).toLocaleString(
-        "en-PK"
-    );
+    ).toLocaleString("en-PK");
 
 }
 
@@ -309,9 +268,7 @@ function formatCompactMoney(
 // FORMAT DATE
 // ============================================================
 
-function formatDate(
-    dateValue
-) {
+function formatDate(dateValue) {
 
     if (!dateValue) {
 
@@ -321,16 +278,10 @@ function formatDate(
 
 
     const date =
-        new Date(
-            dateValue
-        );
+        new Date(dateValue);
 
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
+    if (Number.isNaN(date.getTime())) {
 
         return "-";
 
@@ -356,9 +307,7 @@ function formatDate(
 function showCurrentDate() {
 
     const element =
-        document.getElementById(
-            "currentDate"
-        );
+        document.getElementById("currentDate");
 
 
     if (!element) {
@@ -389,9 +338,7 @@ function showCurrentDate() {
 // CHECK TODAY
 // ============================================================
 
-function isToday(
-    dateValue
-) {
+function isToday(dateValue) {
 
     if (!dateValue) {
 
@@ -401,16 +348,10 @@ function isToday(
 
 
     const date =
-        new Date(
-            dateValue
-        );
+        new Date(dateValue);
 
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
+    if (Number.isNaN(date.getTime())) {
 
         return false;
 
@@ -439,9 +380,7 @@ function isToday(
 // INVOICE SALES VALUE
 // ============================================================
 
-function getInvoiceSalesValue(
-    invoice
-) {
+function getInvoiceSalesValue(invoice) {
 
     const value =
         Number(
@@ -452,9 +391,37 @@ function getInvoiceSalesValue(
         );
 
 
-    return Number.isFinite(
-        value
-    )
+    return Number.isFinite(value)
+        ? value
+        : 0;
+
+}
+
+
+// ============================================================
+// INVOICE CASH VALUE
+// ============================================================
+//
+// Cash received is taken directly from the invoice cash field.
+//
+// Primary field:
+// invoice.cash
+//
+// Fallback:
+// invoice.Cash
+// ============================================================
+
+function getInvoiceCashValue(invoice) {
+
+    const value =
+        Number(
+            invoice?.cash ??
+            invoice?.Cash ??
+            0
+        );
+
+
+    return Number.isFinite(value)
         ? value
         : 0;
 
@@ -465,14 +432,10 @@ function getInvoiceSalesValue(
 // INVOICE NET UNITS
 // ============================================================
 
-function getInvoiceNetUnits(
-    invoice
-) {
+function getInvoiceNetUnits(invoice) {
 
     const items =
-        Array.isArray(
-            invoice?.items
-        )
+        Array.isArray(invoice?.items)
             ? invoice.items
             : [];
 
@@ -500,8 +463,7 @@ function getInvoiceNetUnits(
             return (
                 total +
                 Math.max(
-                    quantity -
-                    returned,
+                    quantity - returned,
                     0
                 )
             );
@@ -540,11 +502,12 @@ async function loadDashboard() {
 
         }
 
-        // =====================================================
-// LOAD EXPENSES
-// =====================================================
 
-await loadDashboardExpenses();
+        // =====================================================
+        // LOAD EXPENSES
+        // =====================================================
+
+        await loadDashboardExpenses();
 
 
         // =====================================================
@@ -574,33 +537,32 @@ await loadDashboardExpenses();
 
 
         dashboardProducts =
-            Array.isArray(
-                products
-            )
+            Array.isArray(products)
                 ? products
                 : [];
 
 
         dashboardSalesmen =
-            Array.isArray(
-                salesmen
-            )
+            Array.isArray(salesmen)
                 ? salesmen
                 : [];
 
 
         // =====================================================
         // ALL INVOICES
-        // Used for commission and product profit calculation.
+        // Used for cash received calculation.
         // =====================================================
 
         dashboardAllInvoices =
-            Array.isArray(
-                invoices
-            )
+            Array.isArray(invoices)
                 ? invoices
                 : [];
 
+
+        // =====================================================
+        // SALESMAN INVOICES
+        // Used for salesman-related dashboard sections.
+        // =====================================================
 
         dashboardInvoices =
             dashboardAllInvoices
@@ -631,17 +593,13 @@ await loadDashboardExpenses();
 
 
                         const safeDateA =
-                            Number.isFinite(
-                                dateA
-                            )
+                            Number.isFinite(dateA)
                                 ? dateA
                                 : 0;
 
 
                         const safeDateB =
-                            Number.isFinite(
-                                dateB
-                            )
+                            Number.isFinite(dateB)
                                 ? dateB
                                 : 0;
 
@@ -662,12 +620,8 @@ await loadDashboardExpenses();
 
 
                         return (
-                            Number(
-                                b?.id
-                            ) -
-                            Number(
-                                a?.id
-                            )
+                            Number(b?.id) -
+                            Number(a?.id)
                         );
 
                     }
@@ -687,16 +641,28 @@ await loadDashboardExpenses();
 
 
         console.log(
+            "Dashboard all invoices:",
+            dashboardAllInvoices
+        );
+
+
+        console.log(
             "Dashboard salesman invoices:",
             dashboardInvoices
         );
 
 
+        console.log(
+            "Dashboard expenses:",
+            dashboardExpenses
+        );
+
+
         // =====================================================
-        // TOTAL PROFIT
+        // NET CASH
         // =====================================================
 
-        updateDashboardProfit();
+        updateDashboardCashReceived();
 
 
         // =====================================================
@@ -764,13 +730,7 @@ await loadDashboardExpenses();
         );
 
 
-        // =====================================================
-        // PROFIT FALLBACK
-        // =====================================================
-
-        renderCommissionProfit(
-            0
-        );
+        renderCashReceived(0);
 
 
         renderStats({
@@ -861,6 +821,219 @@ await loadDashboardExpenses();
 
 
 // ============================================================
+// LOAD DASHBOARD EXPENSES
+// ============================================================
+//
+// Expenses are loaded from IndexedDB first.
+//
+// When online:
+// - pending expense operations are respected
+// - server expenses are downloaded
+// - IndexedDB is refreshed
+//
+// When offline:
+// - existing IndexedDB expenses are kept
+//
+// This preserves the existing offline-first behavior.
+// ============================================================
+
+async function loadDashboardExpenses() {
+
+    try {
+
+        const localExpenses =
+            await getAllFromOfflineDB(
+                "expenses"
+            );
+
+
+        dashboardExpenses =
+            Array.isArray(localExpenses)
+                ? localExpenses
+                : [];
+
+
+        // =====================================================
+        // OFFLINE
+        // =====================================================
+
+        if (!navigator.onLine) {
+
+            console.log(
+                "Offline: using local dashboard expenses."
+            );
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // CHECK PENDING EXPENSE SYNC
+        // =====================================================
+
+        let pendingExpenseSync =
+            false;
+
+
+        try {
+
+            const queue =
+                await getAllFromOfflineDB(
+                    "syncQueue"
+                );
+
+
+            if (Array.isArray(queue)) {
+
+                pendingExpenseSync =
+                    queue.some(
+                        item => {
+
+                            const url =
+                                String(
+                                    item?.url ||
+                                    item?.endpoint ||
+                                    ""
+                                );
+
+
+                            return (
+                                url.includes(
+                                    "/expenses"
+                                )
+                            );
+
+                        }
+                    );
+
+            }
+
+        }
+        catch (queueError) {
+
+            console.warn(
+                "Could not inspect expense sync queue:",
+                queueError
+            );
+
+        }
+
+
+        // =====================================================
+        // DO NOT OVERWRITE LOCAL CHANGES
+        // =====================================================
+
+        if (pendingExpenseSync) {
+
+            console.log(
+                "Pending expense sync detected. Keeping local expenses."
+            );
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // FETCH SERVER EXPENSES
+        // =====================================================
+
+        const response =
+            await fetch(
+                `${API_URL}/expenses`,
+                {
+                    credentials:
+                        "include"
+                }
+            );
+
+
+        if (
+            response.status ===
+            401
+        ) {
+
+            window.location.href =
+                "login.html";
+
+            return;
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Expenses request failed: ${response.status}`
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !data ||
+            !Array.isArray(
+                data.expenses
+            )
+        ) {
+
+            throw new Error(
+                "Invalid expenses response."
+            );
+
+        }
+
+
+        // =====================================================
+        // REFRESH LOCAL EXPENSES
+        // =====================================================
+
+        await clearOfflineStore(
+            "expenses"
+        );
+
+
+        for (
+            const expense
+            of data.expenses
+        ) {
+
+            await saveToOfflineDB(
+                "expenses",
+                expense
+            );
+
+        }
+
+
+        dashboardExpenses =
+            data.expenses;
+
+
+        console.log(
+            "Dashboard expenses synchronized:",
+            dashboardExpenses
+        );
+
+    }
+    catch (error) {
+
+        console.warn(
+            "Dashboard expense sync failed. Keeping local expenses:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
 // CALCULATE DASHBOARD STATS
 // ============================================================
 
@@ -871,25 +1044,19 @@ function calculateStats(
 ) {
 
     const safeProducts =
-        Array.isArray(
-            products
-        )
+        Array.isArray(products)
             ? products
             : [];
 
 
     const safeSalesmen =
-        Array.isArray(
-            salesmen
-        )
+        Array.isArray(salesmen)
             ? salesmen
             : [];
 
 
     const safeInvoices =
-        Array.isArray(
-            invoices
-        )
+        Array.isArray(invoices)
             ? invoices
             : [];
 
@@ -988,265 +1155,10 @@ function calculateStats(
 
 
 // ============================================================
-// CALCULATE COMMISSION PROFIT
+// CASH / EXPENSE DATE HELPERS
 // ============================================================
 
-function calculateCommissionProfit(
-    invoices
-) {
-
-    const safeInvoices =
-        Array.isArray(
-            invoices
-        )
-            ? invoices
-            : [];
-
-
-    const supplierCommission =
-        safeInvoices
-            .filter(
-                invoice =>
-                    String(
-                        invoice?.type ||
-                        ""
-                    ).toLowerCase() ===
-                    "supplier"
-            )
-            .reduce(
-                (
-                    total,
-                    invoice
-                ) =>
-                    total +
-                    Number(
-                        invoice?.commission ||
-                        0
-                    ),
-                0
-            );
-
-
-    const salesmanCommission =
-        safeInvoices
-            .filter(
-                invoice =>
-                    String(
-                        invoice?.type ||
-                        ""
-                    ).toLowerCase() ===
-                    "salesman"
-            )
-            .reduce(
-                (
-                    total,
-                    invoice
-                ) =>
-                    total +
-                    Number(
-                        invoice?.commission ||
-                        0
-                    ),
-                0
-            );
-
-
-    return (
-        supplierCommission -
-        salesmanCommission
-    );
-
-}
-
-
-// ============================================================
-// CALCULATE PRODUCT PROFIT
-// ============================================================
-//
-// Product profit is calculated from salesman invoices.
-//
-// Formula:
-// (Sale Price - Purchase Price) * Net Quantity Sold
-//
-// Returns are deducted from the sold quantity.
-//
-// ============================================================
-
-function calculateProductProfit(
-    invoices,
-    products
-) {
-
-    const safeInvoices =
-        Array.isArray(
-            invoices
-        )
-            ? invoices
-            : [];
-
-
-    const safeProducts =
-        Array.isArray(
-            products
-        )
-            ? products
-            : [];
-
-
-    // ==========================================================
-    // PRODUCT PURCHASE PRICE LOOKUP
-    // ==========================================================
-
-    const productMap =
-        new Map();
-
-
-    safeProducts.forEach(
-        product => {
-
-            const productId =
-                product?.id;
-
-
-            if (
-                productId === null ||
-                productId === undefined
-            ) {
-
-                return;
-
-            }
-
-
-            productMap.set(
-                String(
-                    productId
-                ),
-                Number(
-                    product?.purchasePrice
-                ) || 0
-            );
-
-        }
-    );
-
-
-    // ==========================================================
-    // CALCULATE PRODUCT PROFIT
-    // ==========================================================
-
-    return safeInvoices
-        .filter(
-            invoice =>
-                String(
-                    invoice?.type ||
-                    ""
-                ).toLowerCase() ===
-                "salesman"
-        )
-        .reduce(
-            (
-                totalProfit,
-                invoice
-            ) => {
-
-                const items =
-                    Array.isArray(
-                        invoice?.items
-                    )
-                        ? invoice.items
-                        : [];
-
-
-                const invoiceProfit =
-                    items.reduce(
-                        (
-                            total,
-                            item
-                        ) => {
-
-                            const productId =
-                                item?.productId;
-
-
-                            const purchasePrice =
-                                productMap.get(
-                                    String(
-                                        productId
-                                    )
-                                ) || 0;
-
-
-                            const salePrice =
-                                Number(
-                                    item?.price
-                                ) || 0;
-
-
-                            const quantity =
-                                Number(
-                                    item?.quantity
-                                ) || 0;
-
-
-                            const returned =
-                                Number(
-                                    item?.returnQuantity ??
-                                    item?.returnedQuantity ??
-                                    0
-                                ) || 0;
-
-
-                            const netQuantity =
-                                Math.max(
-                                    quantity -
-                                    returned,
-                                    0
-                                );
-
-
-                            const profitPerUnit =
-                                salePrice -
-                                purchasePrice;
-
-
-                            return (
-                                total +
-                                (
-                                    profitPerUnit *
-                                    netQuantity
-                                )
-                            );
-
-                        },
-                        0
-                    );
-
-
-                return (
-                    totalProfit +
-                    invoiceProfit
-                );
-
-            },
-            0
-        );
-
-}
-
-
-// ============================================================
-// PROFIT DATE HELPERS
-// ============================================================
-//
-// These helpers keep the profit filter based on local calendar
-// dates and avoid timezone issues with YYYY-MM-DD values.
-//
-// ============================================================
-
-function parseProfitDate(
-    dateValue
-) {
+function parseCashDate(dateValue) {
 
     if (!dateValue) {
 
@@ -1255,15 +1167,8 @@ function parseProfitDate(
     }
 
 
-    // ==========================================================
-    // DATE-ONLY VALUE
-    // Example: "2026-09-20"
-    // Treat as local midnight.
-    // ==========================================================
-
     if (
-        typeof dateValue ===
-        "string" &&
+        typeof dateValue === "string" &&
         /^\d{4}-\d{2}-\d{2}$/.test(
             dateValue
         )
@@ -1276,9 +1181,7 @@ function parseProfitDate(
         ] =
             dateValue
                 .split("-")
-                .map(
-                    Number
-                );
+                .map(Number);
 
 
         const localDate =
@@ -1298,14 +1201,8 @@ function parseProfitDate(
     }
 
 
-    // ==========================================================
-    // FULL DATE / TIMESTAMP
-    // ==========================================================
-
     const date =
-        new Date(
-            dateValue
-        );
+        new Date(dateValue);
 
 
     return Number.isNaN(
@@ -1321,9 +1218,7 @@ function parseProfitDate(
 // CREATE LOCAL DATE FROM INPUT VALUE
 // ============================================================
 
-function createProfitInputDate(
-    value
-) {
+function createCashInputDate(value) {
 
     if (!value) {
 
@@ -1339,9 +1234,7 @@ function createProfitInputDate(
     ] =
         value
             .split("-")
-            .map(
-                Number
-            );
+            .map(Number);
 
 
     const date =
@@ -1362,68 +1255,13 @@ function createProfitInputDate(
 
 
 // ============================================================
-// GET LAST MONTH START DATE
+// GET CASH DATE RANGE
 // ============================================================
 
-function getPreviousMonthSameDay(
-    date
-) {
-
-    const year =
-        date.getFullYear();
-
-
-    const month =
-        date.getMonth();
-
-
-    const day =
-        date.getDate();
-
-
-    const targetMonthDate =
-        new Date(
-            year,
-            month,
-            1
-        );
-
-
-    targetMonthDate.setMonth(
-        targetMonthDate.getMonth() -
-        1
-    );
-
-
-    const lastDayOfTargetMonth =
-        new Date(
-            targetMonthDate.getFullYear(),
-            targetMonthDate.getMonth() + 1,
-            0
-        ).getDate();
-
-
-    targetMonthDate.setDate(
-        Math.min(
-            day,
-            lastDayOfTargetMonth
-        )
-    );
-
-
-    return targetMonthDate;
-
-}
-
-
-// ============================================================
-// GET PROFIT DATE RANGE
-// ============================================================
-
-function getProfitDateRange() {
+function getCashDateRange() {
 
     const period =
-        profitPeriodFilter?.value ||
+        cashPeriodFilter?.value ||
         "thisMonth";
 
 
@@ -1434,25 +1272,15 @@ function getProfitDateRange() {
 
 
     const tomorrow =
-        new Date(
-            today
-        );
+        new Date(today);
 
 
     tomorrow.setDate(
-        tomorrow.getDate() +
-        1
+        tomorrow.getDate() + 1
     );
 
 
-    // ==========================================================
-    // TODAY
-    // ==========================================================
-
-    if (
-        period ===
-        "today"
-    ) {
+    if (period === "today") {
 
         return {
 
@@ -1467,24 +1295,14 @@ function getProfitDateRange() {
     }
 
 
-    // ==========================================================
-    // YESTERDAY
-    // ==========================================================
-
-    if (
-        period ===
-        "yesterday"
-    ) {
+    if (period === "yesterday") {
 
         const start =
-            new Date(
-                today
-            );
+            new Date(today);
 
 
         start.setDate(
-            start.getDate() -
-            1
+            start.getDate() - 1
         );
 
 
@@ -1500,25 +1318,14 @@ function getProfitDateRange() {
     }
 
 
-    // ==========================================================
-    // LAST 7 DAYS
-    // Today + previous 6 calendar days
-    // ==========================================================
-
-    if (
-        period ===
-        "7days"
-    ) {
+    if (period === "7days") {
 
         const start =
-            new Date(
-                today
-            );
+            new Date(today);
 
 
         start.setDate(
-            start.getDate() -
-            6
+            start.getDate() - 6
         );
 
 
@@ -1534,15 +1341,7 @@ function getProfitDateRange() {
     }
 
 
-    // ==========================================================
-    // THIS MONTH
-    // 1st day of current month -> tomorrow
-    // ==========================================================
-
-    if (
-        period ===
-        "thisMonth"
-    ) {
+    if (period === "thisMonth") {
 
         const start =
             new Date(
@@ -1564,21 +1363,12 @@ function getProfitDateRange() {
     }
 
 
-    // ==========================================================
-    // PREVIOUS MONTH
-    // 1st day -> last day of previous month
-    // ==========================================================
-
-    if (
-        period ===
-        "previousMonth"
-    ) {
+    if (period === "previousMonth") {
 
         const start =
             new Date(
                 today.getFullYear(),
-                today.getMonth() -
-                1,
+                today.getMonth() - 1,
                 1
             );
 
@@ -1602,38 +1392,27 @@ function getProfitDateRange() {
     }
 
 
-    // ==========================================================
-    // CUSTOM RANGE
-    // ==========================================================
-
-    if (
-        period ===
-        "custom"
-    ) {
+    if (period === "custom") {
 
         const start =
-            createProfitInputDate(
-                profitStartDate?.value
+            createCashInputDate(
+                cashStartDate?.value
             );
 
 
         const selectedEnd =
-            createProfitInputDate(
-                profitEndDate?.value
+            createCashInputDate(
+                cashEndDate?.value
             );
 
 
-        if (
-            !start ||
-            !selectedEnd
-        ) {
+        if (!start || !selectedEnd) {
 
             return null;
 
         }
 
 
-        // End date is inclusive.
         const end =
             new Date(
                 selectedEnd
@@ -1641,14 +1420,11 @@ function getProfitDateRange() {
 
 
         end.setDate(
-            end.getDate() +
-            1
+            end.getDate() + 1
         );
 
 
-        if (
-            start >= end
-        ) {
+        if (start >= end) {
 
             return null;
 
@@ -1670,24 +1446,21 @@ function getProfitDateRange() {
 
 }
 
+
 // ============================================================
-// FILTER PROFIT INVOICES
+// FILTER CASH INVOICES
 // ============================================================
 
-function getProfitFilteredInvoices(
-    invoices
-) {
+function getCashFilteredInvoices(invoices) {
 
     const safeInvoices =
-        Array.isArray(
-            invoices
-        )
+        Array.isArray(invoices)
             ? invoices
             : [];
 
 
     const range =
-        getProfitDateRange();
+        getCashDateRange();
 
 
     if (!range) {
@@ -1701,7 +1474,7 @@ function getProfitFilteredInvoices(
         invoice => {
 
             const invoiceDate =
-                parseProfitDate(
+                parseCashDate(
                     invoice?.date
                 );
 
@@ -1714,10 +1487,8 @@ function getProfitFilteredInvoices(
 
 
             return (
-                invoiceDate >=
-                    range.start &&
-                invoiceDate <
-                    range.end
+                invoiceDate >= range.start &&
+                invoiceDate < range.end
             );
 
         }
@@ -1727,265 +1498,26 @@ function getProfitFilteredInvoices(
 
 
 // ============================================================
-// LOAD DASHBOARD EXPENSES
+// FILTER EXPENSES
 // ============================================================
 //
-// Expenses are stored separately from normal invoices.
+// Uses the exact same date range as cash.
 //
-// Offline:
-// IndexedDB is used.
-//
-// Online:
-// Pending expense operations are synchronized first.
-// Then backend expenses are refreshed.
-//
-// If an expense operation is still pending after sync,
-// do NOT clear the local expense store.
-// This protects unsynchronized offline data.
-//
-
-async function loadDashboardExpenses() {
-
-    // ==========================================================
-    // LOAD LOCAL EXPENSES FIRST
-    // ==========================================================
-
-    let localExpenses = [];
-
-    try {
-
-        localExpenses =
-            await getAllFromOfflineDB(
-                "expenses"
-            );
-
-    }
-    catch (error) {
-
-        console.error(
-            "Failed to load local dashboard expenses:",
-            error
-        );
-
-    }
-
-
-    dashboardExpenses =
-        Array.isArray(
-            localExpenses
-        )
-            ? localExpenses
-            : [];
-
-
-    // ==========================================================
-    // OFFLINE
-    // ==========================================================
-
-    if (
-        !navigator.onLine
-    ) {
-
-        console.log(
-            "Offline. Dashboard is using local expenses."
-        );
-
-        return;
-
-    }
-
-
-    // ==========================================================
-    // CHECK WHETHER EXPENSE SYNC IS STILL PENDING
-    // ==========================================================
-
-    try {
-
-        const pendingQueue =
-            await getPendingSyncQueue();
-
-
-        const pendingExpenseOperations =
-            pendingQueue.filter(
-                operation => {
-
-                    const endpoint =
-                        String(
-                            operation?.endpoint ||
-                            ""
-                        );
-
-                    return endpoint ===
-                        "/expenses" ||
-
-                        endpoint.startsWith(
-                            "/expenses/"
-                        );
-
-                }
-            );
-
-
-        // ======================================================
-        // IF AN EXPENSE IS STILL UNSYNCHRONIZED,
-        // KEEP LOCAL DATA.
-        // ======================================================
-
-        if (
-            pendingExpenseOperations.length >
-            0
-        ) {
-
-            console.log(
-                "Pending expense operations remain. Keeping local expenses."
-            );
-
-            return;
-
-        }
-
-    }
-    catch (error) {
-
-        console.error(
-            "Failed to inspect pending expense operations:",
-            error
-        );
-
-        // Keep local expenses rather than risking
-        // overwriting them.
-        return;
-
-    }
-
-
-    // ==========================================================
-    // FETCH FRESH EXPENSES FROM BACKEND
-    // ==========================================================
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_URL}/expenses`,
-                {
-                    method: "GET",
-                    credentials: "include"
-                }
-            );
-
-
-        // ======================================================
-        // AUTHENTICATION EXPIRED
-        // ======================================================
-
-        if (
-            response.status ===
-            401
-        ) {
-
-            window.location.href =
-                "login.html";
-
-            return;
-
-        }
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                `Dashboard expense fetch failed: ${response.status}`
-            );
-
-        }
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !Array.isArray(
-                data.expenses
-            )
-        ) {
-
-            throw new Error(
-                "Invalid dashboard expense response."
-            );
-
-        }
-
-
-        // ======================================================
-        // REPLACE LOCAL CACHE
-        // ======================================================
-
-        await clearOfflineStore(
-            "expenses"
-        );
-
-
-        if (
-            data.expenses.length >
-            0
-        ) {
-
-            await saveManyToOfflineDB(
-                "expenses",
-                data.expenses
-            );
-
-        }
-
-
-        dashboardExpenses =
-            [...data.expenses];
-
-
-        console.log(
-            "Dashboard expenses synchronized:",
-            dashboardExpenses
-        );
-
-    }
-    catch (error) {
-
-        console.error(
-            "Dashboard expense refresh failed. Using local expenses:",
-            error
-        );
-
-    }
-
-}
-
-// ============================================================
-// FILTER PROFIT EXPENSES
-// ============================================================
-//
-// Uses the exact same date range as the dashboard
-// profit invoice filter.
-//
+// The function supports common expense date fields so it works
+// with the existing expense records without changing their
+// structure.
 // ============================================================
 
-function getProfitFilteredExpenses(
-    expenses
-) {
+function getCashFilteredExpenses(expenses) {
 
     const safeExpenses =
-        Array.isArray(
-            expenses
-        )
+        Array.isArray(expenses)
             ? expenses
             : [];
 
 
     const range =
-        getProfitDateRange();
+        getCashDateRange();
 
 
     if (!range) {
@@ -1999,8 +1531,10 @@ function getProfitFilteredExpenses(
         expense => {
 
             const expenseDate =
-                parseProfitDate(
-                    expense?.date
+                parseCashDate(
+                    expense?.date ??
+                    expense?.expenseDate ??
+                    expense?.createdAt
                 );
 
 
@@ -2012,11 +1546,8 @@ function getProfitFilteredExpenses(
 
 
             return (
-                expenseDate >=
-                    range.start &&
-
-                expenseDate <
-                    range.end
+                expenseDate >= range.start &&
+                expenseDate < range.end
             );
 
         }
@@ -2026,17 +1557,49 @@ function getProfitFilteredExpenses(
 
 
 // ============================================================
-// CALCULATE TOTAL EXPENSES
+// CALCULATE CASH RECEIVED
 // ============================================================
 
-function calculateTotalExpenses(
-    expenses
-) {
+function calculateCashReceived(invoices) {
+
+    const safeInvoices =
+        Array.isArray(invoices)
+            ? invoices
+            : [];
+
+
+    return safeInvoices.reduce(
+        (
+            total,
+            invoice
+        ) => {
+
+            return (
+                total +
+                getInvoiceCashValue(
+                    invoice
+                )
+            );
+
+        },
+        0
+    );
+
+}
+
+
+// ============================================================
+// CALCULATE TOTAL EXPENSES
+// ============================================================
+//
+// Supports the common amount fields used by expense records.
+// Primary field is amount.
+// ============================================================
+
+function calculateTotalExpenses(expenses) {
 
     const safeExpenses =
-        Array.isArray(
-            expenses
-        )
+        Array.isArray(expenses)
             ? expenses
             : [];
 
@@ -2049,8 +1612,22 @@ function calculateTotalExpenses(
 
             const amount =
                 Number(
-                    expense?.amount
-                ) || 0;
+                    expense?.amount ??
+                    expense?.totalAmount ??
+                    expense?.expenseAmount ??
+                    0
+                );
+
+
+            if (
+                !Number.isFinite(
+                    amount
+                )
+            ) {
+
+                return total;
+
+            }
 
 
             return (
@@ -2064,74 +1641,38 @@ function calculateTotalExpenses(
 
 }
 
-// ============================================================
-// UPDATE DASHBOARD PROFIT
-// ============================================================
 
 // ============================================================
-// UPDATE DASHBOARD PROFIT
+// UPDATE DASHBOARD NET CASH
 // ============================================================
 //
-// Final formula:
+// Formula:
 //
-// Product Profit
-// + Supplier Commission
-// - Salesman Commission
-// - Total Expenses
+// Net Cash
+// = Cash Received - Expenses
 //
-// = Net Company Profit
-//
-// Expenses use the exact same date filter
-// as the selected profit period.
-//
+// Both use the selected cash period.
 // ============================================================
 
-function updateDashboardProfit() {
-
-    // ==========================================================
-    // FILTER INVOICES
-    // ==========================================================
+function updateDashboardCashReceived() {
 
     const filteredInvoices =
-        getProfitFilteredInvoices(
+        getCashFilteredInvoices(
             dashboardAllInvoices
         );
 
 
-    // ==========================================================
-    // FILTER EXPENSES
-    // ==========================================================
-
     const filteredExpenses =
-        getProfitFilteredExpenses(
+        getCashFilteredExpenses(
             dashboardExpenses
         );
 
 
-    // ==========================================================
-    // COMMISSION PROFIT
-    // ==========================================================
-
-    const commissionProfit =
-        calculateCommissionProfit(
+    const cashReceived =
+        calculateCashReceived(
             filteredInvoices
         );
 
-
-    // ==========================================================
-    // PRODUCT PROFIT
-    // ==========================================================
-
-    const productProfit =
-        calculateProductProfit(
-            filteredInvoices,
-            dashboardProducts
-        );
-
-
-    // ==========================================================
-    // TOTAL EXPENSES
-    // ==========================================================
 
     const totalExpenses =
         calculateTotalExpenses(
@@ -2139,83 +1680,65 @@ function updateDashboardProfit() {
         );
 
 
-    // ==========================================================
-    // FINAL NET COMPANY PROFIT
-    // ==========================================================
-
-    const totalProfit =
-        commissionProfit +
-        productProfit -
+    const netCash =
+        cashReceived -
         totalExpenses;
 
 
-    // ==========================================================
-    // LOGGING
-    // ==========================================================
-
     console.log(
-        "Dashboard profit period:",
-        profitPeriodFilter?.value ||
-        "today"
+        "Dashboard cash period:",
+        cashPeriodFilter?.value ||
+        "thisMonth"
     );
 
 
     console.log(
-        "Profit filtered invoices:",
+        "Cash filtered invoices:",
         filteredInvoices
     );
 
 
     console.log(
-        "Profit filtered expenses:",
+        "Cash received:",
+        cashReceived
+    );
+
+
+    console.log(
+        "Cash filtered expenses:",
         filteredExpenses
     );
 
 
     console.log(
-        "Dashboard commission profit:",
-        commissionProfit
-    );
-
-
-    console.log(
-        "Dashboard product profit:",
-        productProfit
-    );
-
-
-    console.log(
-        "Dashboard total expenses:",
+        "Total expenses:",
         totalExpenses
     );
 
 
     console.log(
-        "Dashboard net company profit:",
-        totalProfit
+        "Dashboard net cash:",
+        netCash
     );
 
 
-    // ==========================================================
-    // RENDER
-    // ==========================================================
-
-    renderCommissionProfit(
-        totalProfit
+    renderCashReceived(
+        netCash
     );
 
 }
 
+
 // ============================================================
-// INITIALIZE PROFIT FILTER
+// INITIALIZE CASH FILTER
 // ============================================================
 
-function initializeProfitFilter() {
+function initializeCashFilter() {
 
-    if (!profitPeriodFilter) {
+    if (!cashPeriodFilter) {
 
         console.warn(
-            "Profit period filter #profitPeriodFilter not found."
+            "Cash period filter not found."
         );
 
         return;
@@ -2227,31 +1750,29 @@ function initializeProfitFilter() {
     // DEFAULT FILTER
     // ==========================================================
 
-    if (
-        !profitPeriodFilter.value
-    ) {
+    if (!cashPeriodFilter.value) {
 
-        profitPeriodFilter.value =
+        cashPeriodFilter.value =
             "today";
 
     }
 
 
     // ==========================================================
-    // INITIAL CUSTOM RANGE VISIBILITY
+    // CUSTOM RANGE VISIBILITY
     // ==========================================================
 
     const updateCustomRangeVisibility =
         () => {
 
             const isCustom =
-                profitPeriodFilter.value ===
+                cashPeriodFilter.value ===
                 "custom";
 
 
-            if (profitCustomRange) {
+            if (cashCustomRange) {
 
-                profitCustomRange.style.display =
+                cashCustomRange.style.display =
                     isCustom
                         ? "block"
                         : "none";
@@ -2268,42 +1789,36 @@ function initializeProfitFilter() {
     // PERIOD CHANGE
     // ==========================================================
 
-    profitPeriodFilter.addEventListener(
+    cashPeriodFilter.addEventListener(
         "change",
         () => {
 
             updateCustomRangeVisibility();
 
 
-            // For non-custom filters,
-            // calculate immediately.
             if (
-                profitPeriodFilter.value !==
+                cashPeriodFilter.value !==
                 "custom"
             ) {
 
-                updateDashboardProfit();
+                updateDashboardCashReceived();
 
                 return;
 
             }
 
 
-            // For custom range, wait until
-            // both dates have values.
             if (
-                profitStartDate?.value &&
-                profitEndDate?.value
+                cashStartDate?.value &&
+                cashEndDate?.value
             ) {
 
-                updateDashboardProfit();
+                updateDashboardCashReceived();
 
             }
             else {
 
-                renderCommissionProfit(
-                    0
-                );
+                renderCashReceived(0);
 
             }
 
@@ -2315,13 +1830,13 @@ function initializeProfitFilter() {
     // CUSTOM START DATE
     // ==========================================================
 
-    profitStartDate
+    cashStartDate
         ?.addEventListener(
             "change",
             () => {
 
                 if (
-                    profitPeriodFilter.value !==
+                    cashPeriodFilter.value !==
                     "custom"
                 ) {
 
@@ -2331,8 +1846,8 @@ function initializeProfitFilter() {
 
 
                 if (
-                    !profitStartDate.value ||
-                    !profitEndDate?.value
+                    !cashStartDate.value ||
+                    !cashEndDate?.value
                 ) {
 
                     return;
@@ -2340,7 +1855,7 @@ function initializeProfitFilter() {
                 }
 
 
-                updateDashboardProfit();
+                updateDashboardCashReceived();
 
             }
         );
@@ -2350,13 +1865,13 @@ function initializeProfitFilter() {
     // CUSTOM END DATE
     // ==========================================================
 
-    profitEndDate
+    cashEndDate
         ?.addEventListener(
             "change",
             () => {
 
                 if (
-                    profitPeriodFilter.value !==
+                    cashPeriodFilter.value !==
                     "custom"
                 ) {
 
@@ -2366,8 +1881,8 @@ function initializeProfitFilter() {
 
 
                 if (
-                    !profitStartDate?.value ||
-                    !profitEndDate.value
+                    !cashStartDate?.value ||
+                    !cashEndDate.value
                 ) {
 
                     return;
@@ -2375,7 +1890,7 @@ function initializeProfitFilter() {
                 }
 
 
-                updateDashboardProfit();
+                updateDashboardCashReceived();
 
             }
         );
@@ -2384,24 +1899,20 @@ function initializeProfitFilter() {
 
 
 // ============================================================
-// RENDER COMMISSION PROFIT
+// RENDER NET CASH
 // ============================================================
 
-function renderCommissionProfit(
-    profit
-) {
+function renderCashReceived(cash) {
 
-    if (!commissionProfitElement) {
+    if (!cashReceivedElement) {
 
         return;
 
     }
 
 
-    commissionProfitElement.textContent =
-        `PKR ${formatMoney(
-            profit
-        )}`;
+    cashReceivedElement.textContent =
+        `PKR ${formatMoney(cash)}`;
 
 }
 
@@ -2410,14 +1921,10 @@ function renderCommissionProfit(
 // STOCK OVERVIEW DATA
 // ============================================================
 
-function buildStockOverview(
-    products
-) {
+function buildStockOverview(products) {
 
     const safeProducts =
-        Array.isArray(
-            products
-        )
+        Array.isArray(products)
             ? products
             : [];
 
@@ -2490,26 +1997,19 @@ function buildRecentInvoices(
 ) {
 
     const safeInvoices =
-        Array.isArray(
-            invoices
-        )
+        Array.isArray(invoices)
             ? invoices
             : [];
 
 
     const safeSalesmen =
-        Array.isArray(
-            salesmen
-        )
+        Array.isArray(salesmen)
             ? salesmen
             : [];
 
 
     return safeInvoices
-        .slice(
-            0,
-            5
-        )
+        .slice(0, 5)
         .map(
             invoice => {
 
@@ -2529,8 +2029,7 @@ function buildRecentInvoices(
 
                     invoiceNo:
                         `INV-${
-                            invoice?.id ??
-                            "-"
+                            invoice?.id ?? "-"
                         }`,
 
                     salesman:
@@ -2560,16 +2059,6 @@ function buildRecentInvoices(
 // ============================================================
 // TOP SALESMEN DATA
 // ============================================================
-//
-// Ranking source:
-// salesman invoices in IndexedDB.
-//
-// Ranking:
-// 1. Total sales value
-// 2. Net units issued
-// 3. Salesman name
-//
-// ============================================================
 
 function buildTopSalesmen(
     invoices,
@@ -2577,24 +2066,17 @@ function buildTopSalesmen(
 ) {
 
     const safeInvoices =
-        Array.isArray(
-            invoices
-        )
+        Array.isArray(invoices)
             ? invoices
             : [];
 
 
     const safeSalesmen =
-        Array.isArray(
-            salesmen
-        )
+        Array.isArray(salesmen)
             ? salesmen
             : [];
 
 
-    /*
-     * Master salesman lookup.
-     */
     const salesmanMap =
         new Map();
 
@@ -2613,9 +2095,7 @@ function buildTopSalesmen(
             ) {
 
                 salesmanMap.set(
-                    String(
-                        id
-                    ),
+                    String(id),
                     salesman
                 );
 
@@ -2625,9 +2105,6 @@ function buildTopSalesmen(
     );
 
 
-    /*
-     * Aggregate invoice performance.
-     */
     const totals =
         new Map();
 
@@ -2660,24 +2137,15 @@ function buildTopSalesmen(
                     ).trim();
 
 
-                /*
-                 * Prefer partyId.
-                 * Fall back to name for legacy invoices.
-                 */
                 const key =
                     partyId !== null &&
                     partyId !== undefined
-                        ? `id:${String(
-                            partyId
-                        )}`
-                        : `name:${fallbackName
-                            .toLowerCase()}`;
+                        ? `id:${String(partyId)}`
+                        : `name:${fallbackName.toLowerCase()}`;
 
 
                 if (
-                    !totals.has(
-                        key
-                    )
+                    !totals.has(key)
                 ) {
 
                     totals.set(
@@ -2707,30 +2175,19 @@ function buildTopSalesmen(
 
 
                 const performance =
-                    totals.get(
-                        key
-                    );
+                    totals.get(key);
 
 
-                /*
-                 * Sales value
-                 */
                 performance.total +=
                     getInvoiceSalesValue(
                         invoice
                     );
 
 
-                /*
-                 * Number of salesman invoices
-                 */
                 performance.invoiceCount +=
                     1;
 
 
-                /*
-                 * Net units after returns
-                 */
                 performance.unitsIssued +=
                     getInvoiceNetUnits(
                         invoice
@@ -2740,9 +2197,6 @@ function buildTopSalesmen(
         );
 
 
-    /*
-     * Convert Map to array.
-     */
     const entries =
         Array.from(
             totals.values()
@@ -2792,9 +2246,6 @@ function buildTopSalesmen(
                 b
             ) => {
 
-                /*
-                 * Highest sales value first.
-                 */
                 if (
                     b.total !==
                     a.total
@@ -2808,10 +2259,6 @@ function buildTopSalesmen(
                 }
 
 
-                /*
-                 * If sales are equal,
-                 * highest units first.
-                 */
                 if (
                     b.unitsIssued !==
                     a.unitsIssued
@@ -2825,25 +2272,15 @@ function buildTopSalesmen(
                 }
 
 
-                /*
-                 * Final deterministic tie-breaker.
-                 */
                 return a.name.localeCompare(
                     b.name
                 );
 
             }
         )
-        .slice(
-            0,
-            5
-        );
+        .slice(0, 5);
 
 
-    /*
-     * Highest performer is the basis
-     * for the progress bars.
-     */
     const highestTotal =
         entries[0]?.total ||
         0;
@@ -2890,9 +2327,7 @@ function buildTopSalesmen(
 // RENDER STATS
 // ============================================================
 
-function renderStats(
-    stats
-) {
+function renderStats(stats) {
 
     if (!stats) {
 
@@ -2957,9 +2392,7 @@ function renderStats(
 // RENDER STOCK
 // ============================================================
 
-function renderStockOverview(
-    products
-) {
+function renderStockOverview(products) {
 
     if (!stockTableBody) {
 
@@ -2974,8 +2407,7 @@ function renderStockOverview(
 
     if (
         !products ||
-        products.length ===
-        0
+        products.length === 0
     ) {
 
         stockTableBody.innerHTML = `
@@ -2999,17 +2431,12 @@ function renderStockOverview(
 
 
     products
-        .slice(
-            0,
-            5
-        )
+        .slice(0, 5)
         .forEach(
             product => {
 
                 const row =
-                    document.createElement(
-                        "tr"
-                    );
+                    document.createElement("tr");
 
 
                 row.innerHTML = `
@@ -3047,9 +2474,7 @@ function renderStockOverview(
                 `;
 
 
-                stockTableBody.appendChild(
-                    row
-                );
+                stockTableBody.appendChild(row);
 
             }
         );
@@ -3061,9 +2486,7 @@ function renderStockOverview(
 // RENDER RECENT INVOICES
 // ============================================================
 
-function renderRecentInvoices(
-    invoices
-) {
+function renderRecentInvoices(invoices) {
 
     if (!invoiceTableBody) {
 
@@ -3078,8 +2501,7 @@ function renderRecentInvoices(
 
     if (
         !invoices ||
-        invoices.length ===
-        0
+        invoices.length === 0
     ) {
 
         invoiceTableBody.innerHTML = `
@@ -3106,9 +2528,7 @@ function renderRecentInvoices(
         invoice => {
 
             const row =
-                document.createElement(
-                    "tr"
-                );
+                document.createElement("tr");
 
 
             row.innerHTML = `
@@ -3144,9 +2564,7 @@ function renderRecentInvoices(
             `;
 
 
-            invoiceTableBody.appendChild(
-                row
-            );
+            invoiceTableBody.appendChild(row);
 
         }
     );
@@ -3158,9 +2576,7 @@ function renderRecentInvoices(
 // RENDER TOP SALESMEN
 // ============================================================
 
-function renderTopSalesmen(
-    salesmen
-) {
+function renderTopSalesmen(salesmen) {
 
     if (!salesmenList) {
 
@@ -3178,11 +2594,8 @@ function renderTopSalesmen(
 
 
     if (
-        !Array.isArray(
-            salesmen
-        ) ||
-        salesmen.length ===
-        0
+        !Array.isArray(salesmen) ||
+        salesmen.length === 0
     ) {
 
         salesmenList.innerHTML = `
@@ -3234,17 +2647,10 @@ function renderTopSalesmen(
 
 
             const initials =
-                String(
-                    name
-                )
+                String(name)
                     .trim()
-                    .split(
-                        /\s+/
-                    )
-                    .slice(
-                        0,
-                        2
-                    )
+                    .split(/\s+/)
+                    .slice(0, 2)
                     .map(
                         part =>
                             part
@@ -3289,28 +2695,19 @@ function renderTopSalesmen(
                 "";
 
 
-            if (
-                rank ===
-                1
-            ) {
+            if (rank === 1) {
 
                 rankClass =
                     "top-salesman-gold";
 
             }
-            else if (
-                rank ===
-                2
-            ) {
+            else if (rank === 2) {
 
                 rankClass =
                     "top-salesman-silver";
 
             }
-            else if (
-                rank ===
-                3
-            ) {
+            else if (rank === 3) {
 
                 rankClass =
                     "top-salesman-bronze";
@@ -3319,9 +2716,7 @@ function renderTopSalesmen(
 
 
             const row =
-                document.createElement(
-                    "div"
-                );
+                document.createElement("div");
 
 
             row.className =
@@ -3424,9 +2819,7 @@ function renderTopSalesmen(
             `;
 
 
-            salesmenList.appendChild(
-                row
-            );
+            salesmenList.appendChild(row);
 
         }
     );
@@ -3438,9 +2831,7 @@ function renderTopSalesmen(
 // SALES ANALYTICS
 // ============================================================
 
-function renderSalesAnalytics(
-    period
-) {
+function renderSalesAnalytics(period) {
 
     activeAnalyticsPeriod =
         period;
@@ -3468,9 +2859,7 @@ function renderSalesAnalytics(
 // ANALYTICS PERIOD DATA
 // ============================================================
 
-function getAnalyticsPeriodData(
-    period
-) {
+function getAnalyticsPeriodData(period) {
 
     if (
         period ===
@@ -3490,14 +2879,6 @@ function getAnalyticsPeriodData(
 // ============================================================
 // WEEKLY ANALYTICS
 // ============================================================
-//
-// Current period:
-// last 7 calendar days.
-//
-// Previous period:
-// 7 calendar days immediately before that.
-//
-// ============================================================
 
 function buildWeeklyAnalytics() {
 
@@ -3508,38 +2889,29 @@ function buildWeeklyAnalytics() {
 
 
     const currentStart =
-        new Date(
-            today
-        );
+        new Date(today);
 
 
     currentStart.setDate(
-        currentStart.getDate() -
-        6
+        currentStart.getDate() - 6
     );
 
 
     const previousStart =
-        new Date(
-            currentStart
-        );
+        new Date(currentStart);
 
 
     previousStart.setDate(
-        previousStart.getDate() -
-        7
+        previousStart.getDate() - 7
     );
 
 
     const previousEnd =
-        new Date(
-            currentStart
-        );
+        new Date(currentStart);
 
 
     previousEnd.setDate(
-        previousEnd.getDate() -
-        1
+        previousEnd.getDate() - 1
     );
 
 
@@ -3555,26 +2927,20 @@ function buildWeeklyAnalytics() {
     ) {
 
         const currentDate =
-            new Date(
-                currentStart
-            );
+            new Date(currentStart);
 
 
         currentDate.setDate(
-            currentDate.getDate() +
-            i
+            currentDate.getDate() + i
         );
 
 
         const previousDate =
-            new Date(
-                previousStart
-            );
+            new Date(previousStart);
 
 
         previousDate.setDate(
-            previousDate.getDate() +
-            i
+            previousDate.getDate() + i
         );
 
 
@@ -3698,17 +3064,6 @@ function buildWeeklyAnalytics() {
 // ============================================================
 // MONTHLY ANALYTICS
 // ============================================================
-//
-// Current period:
-// current calendar month.
-//
-// Previous period:
-// previous calendar month.
-//
-// Chart:
-// last 6 months.
-//
-// ============================================================
 
 function buildMonthlyAnalytics() {
 
@@ -3727,8 +3082,7 @@ function buildMonthlyAnalytics() {
     const previousMonthStart =
         new Date(
             now.getFullYear(),
-            now.getMonth() -
-            1,
+            now.getMonth() - 1,
             1
         );
 
@@ -3736,8 +3090,7 @@ function buildMonthlyAnalytics() {
     const nextMonthStart =
         new Date(
             now.getFullYear(),
-            now.getMonth() +
-            1,
+            now.getMonth() + 1,
             1
         );
 
@@ -3768,8 +3121,7 @@ function buildMonthlyAnalytics() {
         const start =
             new Date(
                 now.getFullYear(),
-                now.getMonth() -
-                i,
+                now.getMonth() - i,
                 1
             );
 
@@ -3777,9 +3129,7 @@ function buildMonthlyAnalytics() {
         const end =
             new Date(
                 now.getFullYear(),
-                now.getMonth() -
-                i +
-                1,
+                now.getMonth() - i + 1,
                 1
             );
 
@@ -3849,9 +3199,7 @@ function buildMonthlyAnalytics() {
 // START OF DAY
 // ============================================================
 
-function startOfDay(
-    date
-) {
+function startOfDay(date) {
 
     return new Date(
         date.getFullYear(),
@@ -3866,25 +3214,18 @@ function startOfDay(
 // GET SALES FOR DATE
 // ============================================================
 
-function getSalesForDate(
-    date
-) {
+function getSalesForDate(date) {
 
     const start =
-        startOfDay(
-            date
-        );
+        startOfDay(date);
 
 
     const end =
-        new Date(
-            start
-        );
+        new Date(start);
 
 
     end.setDate(
-        end.getDate() +
-        1
+        end.getDate() + 1
     );
 
 
@@ -3956,9 +3297,7 @@ function getSalesBetween(
 // ANALYTICS SUMMARY
 // ============================================================
 
-function updateAnalyticsSummary(
-    data
-) {
+function updateAnalyticsSummary(data) {
 
     const currentElement =
         document.getElementById(
@@ -4048,9 +3387,7 @@ function updateAnalyticsSummary(
         0;
 
 
-    if (
-        previous > 0
-    ) {
+    if (previous > 0) {
 
         growth =
             (
@@ -4063,9 +3400,7 @@ function updateAnalyticsSummary(
             100;
 
     }
-    else if (
-        current > 0
-    ) {
+    else if (current > 0) {
 
         growth =
             100;
@@ -4087,10 +3422,7 @@ function updateAnalyticsSummary(
             "analytics-mini-growth";
 
 
-        if (
-            growth >
-            0
-        ) {
+        if (growth > 0) {
 
             growthLabel.classList.add(
                 "growth-positive"
@@ -4101,10 +3433,7 @@ function updateAnalyticsSummary(
                 "Growing vs previous period";
 
         }
-        else if (
-            growth <
-            0
-        ) {
+        else if (growth < 0) {
 
             growthLabel.classList.add(
                 "growth-negative"
@@ -4136,9 +3465,7 @@ function updateAnalyticsSummary(
 // BUILD SVG CHART
 // ============================================================
 
-function renderSalesChart(
-    data
-) {
+function renderSalesChart(data) {
 
     const svg =
         document.getElementById(
@@ -4165,8 +3492,7 @@ function renderSalesChart(
 
     if (
         !data.points ||
-        data.points.length ===
-        0
+        data.points.length === 0
     ) {
 
         svg.style.display =
@@ -4268,9 +3594,7 @@ function renderSalesChart(
     // ========================================================
 
     const gridGroup =
-        svgElement(
-            "g"
-        );
+        svgElement("g");
 
 
     for (
@@ -4314,9 +3638,7 @@ function renderSalesChart(
             );
 
 
-        gridGroup.appendChild(
-            line
-        );
+        gridGroup.appendChild(line);
 
 
         const value =
@@ -4333,12 +3655,10 @@ function renderSalesChart(
                 "text",
                 {
                     x:
-                        padding.left -
-                        10,
+                        padding.left - 10,
 
                     y:
-                        y +
-                        4,
+                        y + 4,
 
                     "text-anchor":
                         "end",
@@ -4358,16 +3678,12 @@ function renderSalesChart(
             );
 
 
-        gridGroup.appendChild(
-            label
-        );
+        gridGroup.appendChild(label);
 
     }
 
 
-    svg.appendChild(
-        gridGroup
-    );
+    svg.appendChild(gridGroup);
 
 
     // ========================================================
@@ -4384,14 +3700,12 @@ function renderSalesChart(
                 const x =
                     padding.left +
                     (
-                        data.points.length ===
-                        1
+                        data.points.length === 1
                             ? chartWidth / 2
                             : (
                                 index /
                                 (
-                                    data.points.length -
-                                    1
+                                    data.points.length - 1
                                 )
                             ) *
                             chartWidth
@@ -4453,8 +3767,7 @@ function renderSalesChart(
 
     const lastPoint =
         points[
-            points.length -
-            1
+            points.length - 1
         ];
 
 
@@ -4476,9 +3789,7 @@ function renderSalesChart(
 
 
     const defs =
-        svgElement(
-            "defs"
-        );
+        svgElement("defs");
 
 
     const gradient =
@@ -4537,14 +3848,10 @@ function renderSalesChart(
     );
 
 
-    defs.appendChild(
-        gradient
-    );
+    defs.appendChild(gradient);
 
 
-    svg.appendChild(
-        defs
-    );
+    svg.appendChild(defs);
 
 
     svg.appendChild(
@@ -4606,8 +3913,7 @@ function renderSalesChart(
                             point.x,
 
                         y:
-                            height -
-                            14,
+                            height - 14,
 
                         "text-anchor":
                             "middle",
@@ -4625,9 +3931,7 @@ function renderSalesChart(
                 point.label;
 
 
-            svg.appendChild(
-                label
-            );
+            svg.appendChild(label);
 
         }
     );
@@ -4694,9 +3998,7 @@ function renderSalesChart(
             );
 
 
-            svg.appendChild(
-                circle
-            );
+            svg.appendChild(circle);
 
         }
     );
@@ -4706,15 +4008,11 @@ function renderSalesChart(
     // CURRENT VALUE LABEL
     // ========================================================
 
-    if (
-        points.length >
-        0
-    ) {
+    if (points.length > 0) {
 
         const last =
             points[
-                points.length -
-                1
+                points.length - 1
             ];
 
 
@@ -4727,8 +4025,7 @@ function renderSalesChart(
 
                     y:
                         Math.max(
-                            last.y -
-                            14,
+                            last.y - 14,
                             16
                         ),
 
@@ -4753,9 +4050,7 @@ function renderSalesChart(
             )}`;
 
 
-        svg.appendChild(
-            label
-        );
+        svg.appendChild(label);
 
     }
 
@@ -4807,57 +4102,38 @@ function svgElement(
 // NICE CHART MAXIMUM
 // ============================================================
 
-function getNiceMaximum(
-    value
-) {
+function getNiceMaximum(value) {
 
-    if (
-        value <=
-        1000
-    ) {
+    if (value <= 1000) {
 
         return Math.ceil(
-            value /
-            250
-        ) *
-        250;
+            value / 250
+        ) * 250;
 
     }
 
 
-    if (
-        value <=
-        10000
-    ) {
+    if (value <= 10000) {
 
         return Math.ceil(
-            value /
-            1000
-        ) *
-        1000;
+            value / 1000
+        ) * 1000;
 
     }
 
 
-    if (
-        value <=
-        100000
-    ) {
+    if (value <= 100000) {
 
         return Math.ceil(
-            value /
-            10000
-        ) *
-        10000;
+            value / 10000
+        ) * 10000;
 
     }
 
 
     return Math.ceil(
-        value /
-        100000
-    ) *
-    100000;
+        value / 100000
+    ) * 100000;
 
 }
 
@@ -4901,9 +4177,7 @@ function showChartTooltip(
     `;
 
 
-    tooltip.classList.add(
-        "show"
-    );
+    tooltip.classList.add("show");
 
 
     tooltip.style.left =
@@ -4926,9 +4200,7 @@ function hideChartTooltip() {
 
     if (tooltip) {
 
-        tooltip.classList.remove(
-            "show"
-        );
+        tooltip.classList.remove("show");
 
     }
 
@@ -4940,9 +4212,7 @@ function hideChartTooltip() {
 // ============================================================
 
 document
-    .querySelectorAll(
-        ".period-btn"
-    )
+    .querySelectorAll(".period-btn")
     .forEach(
         button => {
 
@@ -4988,9 +4258,7 @@ document
 // ============================================================
 
 document
-    .getElementById(
-        "viewAllStock"
-    )
+    .getElementById("viewAllStock")
     ?.addEventListener(
         "click",
         () => {
@@ -5007,9 +4275,7 @@ document
 // ============================================================
 
 document
-    .getElementById(
-        "viewAllInvoices"
-    )
+    .getElementById("viewAllInvoices")
     ?.addEventListener(
         "click",
         () => {
@@ -5026,9 +4292,7 @@ document
 // ============================================================
 
 document
-    .getElementById(
-        "viewAllSalesmen"
-    )
+    .getElementById("viewAllSalesmen")
     ?.addEventListener(
         "click",
         () => {
@@ -5069,9 +4333,7 @@ invoiceTableBody
 
 
             if (
-                Number.isFinite(
-                    id
-                )
+                Number.isFinite(id)
             ) {
 
                 window.location.href =
@@ -5231,10 +4493,10 @@ window.addEventListener(
 
 
 // ============================================================
-// PROFIT FILTER INITIALIZATION
+// CASH FILTER INITIALIZATION
 // ============================================================
 
-initializeProfitFilter();
+initializeCashFilter();
 
 
 // ============================================================
@@ -5244,4 +4506,3 @@ initializeProfitFilter();
 showCurrentDate();
 
 loadDashboard();
-
