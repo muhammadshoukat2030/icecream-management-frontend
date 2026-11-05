@@ -1,4 +1,4 @@
-const CACHE_NAME = "frostyops-v18";
+const CACHE_NAME = "frostyops-v20";
 
 const APP_FILES = [
 "/",
