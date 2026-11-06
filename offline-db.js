@@ -1194,31 +1194,26 @@ async function initialDatabaseSync() {
         ]);
 
 
-        if (
-            !Array.isArray(
-                categoriesData.categories
-            )
-        ) {
-
-            throw new Error(
-                "Invalid categories response."
-            );
-
-        }
+       if (
+    !Array.isArray(
+        categoriesData.data
+    )
+) {
+    throw new Error(
+        "Invalid categories response."
+    );
+}
 
 
-        if (
-            !Array.isArray(
-                suppliersData.suppliers
-            )
-        ) {
-
-            throw new Error(
-                "Invalid suppliers response."
-            );
-
-        }
-
+      if (
+    !Array.isArray(
+        suppliersData
+    )
+) {
+    throw new Error(
+        "Invalid suppliers response."
+    );
+}
 
         if (
             !Array.isArray(
@@ -1263,12 +1258,12 @@ async function initialDatabaseSync() {
 
             saveManyToOfflineDB(
                 STORES.CATEGORIES,
-                categoriesData.categories
+               categoriesData.data
             ),
 
             saveManyToOfflineDB(
                 STORES.SUPPLIERS,
-                suppliersData.suppliers
+                suppliersData
             ),
 
             saveManyToOfflineDB(
@@ -1292,11 +1287,11 @@ async function initialDatabaseSync() {
         console.log(
             "Initial database synchronization completed:",
             {
-                categories:
-                    categoriesData.categories.length,
+              categories:
+    categoriesData.data.length,
 
-                suppliers:
-                    suppliersData.suppliers.length,
+suppliers:
+    suppliersData.length,
 
                 products:
                     productsData.products.length,
