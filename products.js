@@ -726,7 +726,54 @@ async function getCompanies() {
 // INITIALIZE PAGE
 // ===========================================================
 
+// ===========================================================
+// INITIALIZE PAGE
+// ===========================================================
+
 async function initializePage() {
+
+    // ========================================
+    // PRODUCTS PAGE ACCESS CHECK
+    // ========================================
+
+    if (
+        !FROSTYOPS_ACCESS.requirePagePermission(
+            "products:read"
+        )
+    ) {
+        return;
+    }
+
+    // ========================================
+// CREATE PRODUCT ACCESS
+// ========================================
+
+const canCreateProducts =
+    FROSTYOPS_ACCESS.hasPermission("products:create");
+
+const openAddButton =
+    document.getElementById("openAddBtn");
+
+if (openAddButton) {
+    openAddButton.hidden = !canCreateProducts;
+}
+
+
+// ========================================
+// EDIT PRODUCT ACCESS
+// ========================================
+
+const editProductButton =
+    document.getElementById("editProductBtn");
+
+if (editProductButton) {
+    editProductButton.hidden =
+        !FROSTYOPS_ACCESS.hasPermission("products:update");
+}
+
+    // ========================================
+    // EXISTING INITIALIZATION
+    // ========================================
 
     await getCategories();
 
@@ -763,6 +810,13 @@ function renderProductsTable() {
 
 
     tbody.innerHTML = "";
+
+
+const canUpdateProducts =
+    FROSTYOPS_ACCESS.hasPermission("products:update");
+
+    const canDeleteProducts =
+    FROSTYOPS_ACCESS.hasPermission("products:delete");
 
 
     const query =
@@ -832,19 +886,23 @@ function renderProductsTable() {
 
                 <div class="action-cell">
 
-                    <button
-                        class="btn btn-edit"
-                        data-idx="${idx}"
-                        data-action="edit">
-                        &#9998; Edit
-                    </button>
+                  ${canUpdateProducts ? `
+    <button
+        class="btn btn-edit"
+        data-idx="${idx}"
+        data-action="edit">
+        &#9998; Edit
+    </button>
+` : ""}
 
-                    <button
-                        class="btn btn-delete"
-                        data-idx="${idx}"
-                        data-action="delete">
-                        &#128465; Delete
-                    </button>
+                   ${canDeleteProducts ? `
+    <button
+        class="btn btn-delete"
+        data-idx="${idx}"
+        data-action="delete">
+        &#128465; Delete
+    </button>
+` : ""}
 
                 </div>
 
@@ -1133,18 +1191,18 @@ async function loadProductActivity(productId) {
 
 function showProductDetails(idx) {
 
-    product_detailsId=idx 
-
     const row =
         products[idx];
 
-
     if (!row) return;
 
+    // Store the actual database product ID,
+    // not the array index.
+    product_detailsId =
+        row.id;
 
     selectedIndex =
         idx;
-
 
     document.getElementById(
         "editProductForm"
@@ -1273,12 +1331,28 @@ function showProductDetails(idx) {
 // product Details page transfer
 //////////////////////////////////////////////////////////////
 
-document.getElementById('viewDetailsBtn').addEventListener('click',(e)=>{
-    console.log(product_detailsId);
-    
-   window.location.href =
-    `product-details.html?id=${product_detailsId+0}`;
-   })
+document
+    .getElementById("viewDetailsBtn")
+    .addEventListener("click", () => {
+
+        if (
+            product_detailsId === undefined ||
+            product_detailsId === null ||
+            product_detailsId === ""
+        ) {
+            alert("Product ID is missing. Please select a product.");
+            return;
+        }
+
+        console.log(
+            "Opening product details:",
+            product_detailsId
+        );
+
+        window.location.href =
+            `product-details.html?id=${encodeURIComponent(product_detailsId)}`;
+
+    });
 /////////////////////////////////////////////////////////////////
 
 
@@ -1293,6 +1367,13 @@ document
     .addEventListener(
         "click",
         () => {
+
+            if (
+    !FROSTYOPS_ACCESS.hasPermission("products:update")
+) {
+    alert("You do not have permission to edit products.");
+    return;
+}
 
             if (
                 selectedIndex === null
@@ -1387,6 +1468,12 @@ document
     .addEventListener(
         "click",
         async () => {
+            if (
+    !FROSTYOPS_ACCESS.hasPermission("products:update")
+) {
+    alert("You do not have permission to update products.");
+    return;
+}
 
             if (
                 selectedIndex === null
@@ -1969,6 +2056,15 @@ document
                 "delete"
             ) {
 
+
+                if (
+    !FROSTYOPS_ACCESS.hasPermission("products:delete")
+) {
+    alert("You do not have permission to delete products.");
+    return;
+}
+
+
                 e.stopPropagation();
 
 
@@ -2258,7 +2354,13 @@ document
                 btn.dataset.action ===
                 "edit"
             ) {
-
+                
+                if (
+    !FROSTYOPS_ACCESS.hasPermission("products:update")
+) {
+    alert("You do not have permission to edit products.");
+    return;
+}
                 e.stopPropagation();
 
 
@@ -2812,6 +2914,13 @@ document
         "click",
         async () => {
 
+            if (
+    !FROSTYOPS_ACCESS.hasPermission("products:create")
+) {
+    alert("You do not have permission to create products.");
+    return;
+}
+
             // =================================================
             // VALIDATE ROWS
             // =================================================
@@ -3276,17 +3385,19 @@ document
 // ===========================================================
 
 document
-    .getElementById(
-        "openAddBtn"
-    )
-    .addEventListener(
-        "click",
-        () => {
+    .getElementById("openAddBtn")
+    .addEventListener("click", () => {
 
-            showManualEntry();
-
+        if (
+            !FROSTYOPS_ACCESS.hasPermission("products:create")
+        ) {
+            alert("You do not have permission to add products.");
+            return;
         }
-    );
+
+        showManualEntry();
+
+    });
 
 
 // ===========================================================

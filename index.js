@@ -203,6 +203,8 @@ let dashboardProducts = [];
 
 let dashboardExpenses = [];
 
+let dashboardSuppliers = [];
+
 let activeAnalyticsPeriod =
     "weekly";
 
@@ -481,6 +483,20 @@ function getInvoiceNetUnits(invoice) {
 
 async function loadDashboard() {
 
+
+        // ========================================
+    // DASHBOARD ACCESS CHECK
+    // ========================================
+
+    if (
+        !FROSTYOPS_ACCESS.requirePagePermission(
+            "dashboard:read"
+        )
+    ) {
+        return;
+    }
+
+
     try {
 
         console.log(
@@ -510,30 +526,35 @@ async function loadDashboard() {
         await loadDashboardExpenses();
 
 
-        // =====================================================
-        // READ LOCAL DATA
-        // =====================================================
+       // =====================================================
+// READ LOCAL DATA
+// =====================================================
 
-        const [
-            products,
-            salesmen,
-            invoices
-        ] =
-            await Promise.all([
+const [
+    products,
+    salesmen,
+    suppliers,
+    invoices
+] =
+    await Promise.all([
 
-                getAllFromOfflineDB(
-                    "products"
-                ),
+        getAllFromOfflineDB(
+            "products"
+        ),
 
-                getAllFromOfflineDB(
-                    "salesmen"
-                ),
+        getAllFromOfflineDB(
+            "salesmen"
+        ),
 
-                getAllFromOfflineDB(
-                    "invoices"
-                )
+        getAllFromOfflineDB(
+            "suppliers"
+        ),
 
-            ]);
+        getAllFromOfflineDB(
+            "invoices"
+        )
+
+    ]);
 
 
         dashboardProducts =
@@ -546,6 +567,18 @@ async function loadDashboard() {
             Array.isArray(salesmen)
                 ? salesmen
                 : [];
+
+
+        dashboardSuppliers =
+    Array.isArray(suppliers)
+        ? suppliers
+        : [];
+
+
+    // Update Financial Overview cards
+updateDashboardTotalExpenses();
+updateDashboardOutstandingBalances();
+
 
 
         // =====================================================
@@ -1447,6 +1480,87 @@ function getCashDateRange() {
 }
 
 
+function getDashboardExpensesDateRange() {
+    const period =
+        document.getElementById("dashboardExpensesPeriodFilter")?.value
+        || "thisMonth";
+
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    const start = new Date(today);
+    const end = new Date(today);
+
+    // End date is exclusive.
+    end.setDate(end.getDate() + 1);
+
+    switch (period) {
+
+        case "today":
+            break;
+
+        case "yesterday":
+            start.setDate(start.getDate() - 1);
+            end.setDate(end.getDate() - 1);
+            break;
+
+        case "7days":
+            start.setDate(start.getDate() - 6);
+            break;
+
+        case "previousMonth":
+            start.setDate(1);
+            start.setMonth(start.getMonth() - 1);
+
+            end.setDate(1);
+            break;
+
+        case "custom": {
+            const startValue =
+                document.getElementById("dashboardExpensesStartDate")?.value;
+
+            const endValue =
+                document.getElementById("dashboardExpensesEndDate")?.value;
+
+            if (!startValue || !endValue) {
+                return null;
+            }
+
+            const customStart = parseCashDate(startValue);
+            const customEnd = parseCashDate(endValue);
+
+            if (
+                !customStart ||
+                !customEnd ||
+                customEnd < customStart
+            ) {
+                return null;
+            }
+
+            customStart.setHours(0, 0, 0, 0);
+            customEnd.setHours(0, 0, 0, 0);
+            customEnd.setDate(customEnd.getDate() + 1);
+
+            return {
+                start: customStart,
+                end: customEnd
+            };
+        }
+
+        case "thisMonth":
+        default:
+            start.setDate(1);
+            break;
+    }
+
+    return {
+        start,
+        end
+    };
+}
+
+
 // ============================================================
 // FILTER CASH INVOICES
 // ============================================================
@@ -1639,6 +1753,129 @@ function calculateTotalExpenses(expenses) {
         0
     );
 
+}
+
+function updateDashboardTotalExpenses() {
+    const totalElement =
+        document.getElementById("dashboardTotalExpenses");
+
+    const periodLabelElement =
+        document.getElementById("dashboardExpensesPeriodLabel");
+
+    if (!totalElement) return;
+
+    const range = getDashboardExpensesDateRange();
+
+    if (!range) {
+        totalElement.textContent = "PKR 0";
+
+        if (periodLabelElement) {
+            periodLabelElement.textContent =
+                "Select a valid date range";
+        }
+
+        return;
+    }
+
+    const filteredExpenses = dashboardExpenses.filter(expense => {
+        const expenseDate = parseCashDate(
+            expense.date || expense.createdAt
+        );
+
+        if (!expenseDate) return false;
+
+        return (
+            expenseDate >= range.start &&
+            expenseDate < range.end
+        );
+    });
+
+    const total = calculateTotalExpenses(filteredExpenses);
+
+    totalElement.textContent =
+        `PKR ${total.toLocaleString("en-PK")}`;
+
+    if (periodLabelElement) {
+        const period =
+            document.getElementById(
+                "dashboardExpensesPeriodFilter"
+            )?.value || "thisMonth";
+
+        const labels = {
+            thisMonth: "This month",
+            today: "Today",
+            yesterday: "Yesterday",
+            "7days": "Last 7 days",
+            previousMonth: "Previous month",
+            custom: "Custom date range"
+        };
+
+        periodLabelElement.textContent =
+            labels[period] || "Selected period";
+    }
+}
+
+
+function updateDashboardOutstandingBalances() {
+
+    // ------------------------------------
+    // SALESMEN OUTSTANDING
+    // ------------------------------------
+
+    const salesmenOutstandingElement =
+        document.getElementById("dashboardSalesmenOutstanding");
+
+    const salesmenCountElement =
+        document.getElementById("dashboardSalesmenOutstandingCount");
+
+    const salesmenWithBalance = dashboardSalesmen.filter(salesman => {
+        return Number(salesman.outstandingBalance) !== 0;
+    });
+
+    const totalSalesmenOutstanding =
+        dashboardSalesmen.reduce((total, salesman) => {
+            return total + (Number(salesman.outstandingBalance) || 0);
+        }, 0);
+
+    if (salesmenOutstandingElement) {
+        salesmenOutstandingElement.textContent =
+            `PKR ${totalSalesmenOutstanding.toLocaleString("en-PK")}`;
+    }
+
+    if (salesmenCountElement) {
+        salesmenCountElement.textContent =
+            `${salesmenWithBalance.length} salesmen with balance`;
+    }
+
+
+    // ------------------------------------
+    // SUPPLIERS OUTSTANDING
+    // ------------------------------------
+
+    const suppliersOutstandingElement =
+        document.getElementById("dashboardSuppliersOutstanding");
+
+    const suppliersCountElement =
+        document.getElementById("dashboardSuppliersOutstandingCount");
+
+    const suppliersWithBalance = dashboardSuppliers.filter(supplier => {
+        return Number(supplier.outstandingBalance) !== 0;
+    });
+
+    const totalSuppliersOutstanding =
+        dashboardSuppliers.reduce((total, supplier) => {
+            return total + (Number(supplier.outstandingBalance) || 0);
+        }, 0);
+
+    if (suppliersOutstandingElement) {
+        suppliersOutstandingElement.textContent =
+            `PKR ${totalSuppliersOutstanding.toLocaleString("en-PK")}`;
+    }
+
+    if (suppliersCountElement) {
+        suppliersCountElement.textContent =
+            `${suppliersWithBalance.length} suppliers with balance`;
+    }
 }
 
 
@@ -1895,6 +2132,49 @@ function initializeCashFilter() {
             }
         );
 
+}
+
+
+function initializeDashboardExpensesFilter() {
+
+    const periodFilter =
+        document.getElementById("dashboardExpensesPeriodFilter");
+
+    const customRange =
+        document.getElementById("dashboardExpensesCustomRange");
+
+    const startDate =
+        document.getElementById("dashboardExpensesStartDate");
+
+    const endDate =
+        document.getElementById("dashboardExpensesEndDate");
+
+    if (!periodFilter) return;
+
+    function updateExpenseFilter() {
+
+        const isCustom =
+            periodFilter.value === "custom";
+
+        if (customRange) {
+            customRange.style.display =
+                isCustom ? "flex" : "none";
+        }
+
+        updateDashboardTotalExpenses();
+    }
+
+    periodFilter.addEventListener("change", updateExpenseFilter);
+
+    startDate?.addEventListener("change", () => {
+        updateDashboardTotalExpenses();
+    });
+
+    endDate?.addEventListener("change", () => {
+        updateDashboardTotalExpenses();
+    });
+
+    updateExpenseFilter();
 }
 
 
@@ -4497,7 +4777,7 @@ window.addEventListener(
 // ============================================================
 
 initializeCashFilter();
-
+initializeDashboardExpensesFilter();
 
 // ============================================================
 // START

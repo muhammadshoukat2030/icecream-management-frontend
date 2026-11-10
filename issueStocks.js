@@ -856,20 +856,45 @@ async function syncInitialInvoices() {
 // INITIAL DATA LOAD
 // ===========================================================
 
+// ===========================================================
+// INITIAL DATA LOAD
+// ===========================================================
+
 async function initializeIssueStockPage() {
 
-    /*
-     * Load entity caches first.
-     */
+    // ========================================
+    // ISSUE STOCK PAGE ACCESS CHECK
+    // ========================================
+
+    const requiredPermissions = [
+        "invoices:create",
+        "invoices:read",
+        "products:read",
+        "salesmen:read"
+    ];
+
+    if (
+        !FROSTYOPS_ACCESS.hasAllPermissions(
+            requiredPermissions
+        )
+    ) {
+
+        FROSTYOPS_ACCESS.showAccessDenied(
+            "You do not have all the required permissions to create issue-stock invoices. Please contact your administrator."
+        );
+
+        return;
+
+    }
+
+
+    // ========================================
+    // EXISTING INITIALIZATION
+    // ========================================
 
     await fetchSalesmen();
 
     await fetchProducts();
-
-
-    /*
-     * Then synchronize invoices.
-     */
 
     await syncInitialInvoices();
 
@@ -3005,6 +3030,11 @@ document
         "click",
         async () => {
 
+            if (!FROSTYOPS_ACCESS.hasPermission("invoices:create")) {
+    alert("You do not have permission to create invoices. Please contact your administrator.");
+    return;
+}
+
             if (
                 issuedItems.length ===
                 0
@@ -3649,7 +3679,7 @@ const invoiceNumber =
 // PRINT A4 INVOICE
 // ===========================================================
 
-function printRealInvoice(
+async function printRealInvoice(
     invoice
 ) {
 
@@ -3670,6 +3700,49 @@ function printRealInvoice(
         return;
 
     }
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let companyHeaderHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyHeaderHTML =
+        buildCompanyHeaderHTML(
+            settings.company,
+            {
+                showLogo: false,
+                showCompanyName: true,
+                showAddress: true,
+                showContacts: true
+            },
+            {
+                title: "INVOICE"
+            }
+        );
+
+} catch (error) {
+
+    console.error(
+        "Company settings loading error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -3992,32 +4065,7 @@ body {
 
 <div class="invoice">
 
-    <div class="header">
-
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
-
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784 &nbsp;&nbsp;
-            Mobile # 0345-9101300 / 0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-        <div class="invoice-title">
-            INVOICE
-        </div>
-
-    </div>
+${companyHeaderHTML}
 
 
     <table class="info-table">
@@ -4355,7 +4403,7 @@ window.onafterprint = function() {
 // THERMAL PRINT
 // ===========================================================
 
-function printThermalInvoice(
+async function printThermalInvoice(
     invoice
 ) {
 
@@ -4376,6 +4424,49 @@ function printThermalInvoice(
         return;
 
     }
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let companyHeaderHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyHeaderHTML =
+        buildCompanyHeaderHTML(
+            settings.company,
+            {
+                showLogo: false,
+                showCompanyName: true,
+                showAddress: true,
+                showContacts: true
+            },
+            {
+                title: "SALES INVOICE"
+            }
+        );
+
+} catch (error) {
+
+    console.error(
+        "Thermal company settings loading error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -4883,33 +4974,7 @@ body {
 
 <div class="receipt">
 
-    <div class="header">
-
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
-
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            <br>
-
-            Mobile # 0345-9101300 / 0317-1234570
-
-        </div>
-
-        <div class="invoice-title">
-            SALES INVOICE
-        </div>
-
-    </div>
-
+   ${companyHeaderHTML}
 
     <div class="info">
 
@@ -5662,6 +5727,204 @@ function escapeHTML(
 }
 
 
+// ============================================================
+// DYNAMIC COMPANY HEADER FOR PRINTING
+// ============================================================
+
+function buildCompanyHeaderHTML(company, header, template) {
+
+    const showLogo = header?.showLogo;
+    const showName = header?.showCompanyName;
+    const showAddress = header?.showAddress;
+    const showContacts = header?.showContacts;
+
+    const logoUrl = String(company.logoUrl || "").trim();
+
+    const safeLogoUrl =
+        /^https?:\/\//i.test(logoUrl)
+            ? escapeHTML(logoUrl)
+            : "";
+
+    let html = `<div class="header">`;
+
+    if (showLogo && safeLogoUrl) {
+        html += `
+            <div class="company-logo">
+                <img
+                    src="${safeLogoUrl}"
+                    alt="Company Logo"
+                    style="max-width:150px;max-height:75px;object-fit:contain;"
+                >
+            </div>
+        `;
+    }
+
+    if (showName && company.companyName) {
+        html += `
+            <div class="company-name">
+                ${escapeHTML(company.companyName)}
+            </div>
+        `;
+    }
+
+    if (showAddress) {
+
+        const addressLines = Array.isArray(company.addressLines)
+            ? company.addressLines
+            : [];
+
+        html += `<div class="company-address">`;
+
+        if (company.headOfficeLabel && addressLines.length) {
+            html += `
+                ${escapeHTML(company.headOfficeLabel)}:
+                ${escapeHTML(addressLines[0])}
+            `;
+        } else if (addressLines.length) {
+            html += escapeHTML(addressLines[0]);
+        }
+
+        for (const address of addressLines.slice(1)) {
+            html += `<br>${escapeHTML(address)}`;
+        }
+
+        html += `</div>`;
+    }
+
+    if (showContacts) {
+
+        const contacts = [];
+
+        if (company.telephoneNumbers?.length) {
+            contacts.push(
+                `${escapeHTML(company.telephoneLabel || "Tel #")} ${
+                    company.telephoneNumbers.map(escapeHTML).join(" / ")
+                }`
+            );
+        }
+
+        if (company.mobileNumbers?.length) {
+            contacts.push(
+                `${escapeHTML(company.mobileLabel || "Mobile #")} ${
+                    company.mobileNumbers.map(escapeHTML).join(" / ")
+                }`
+            );
+        }
+
+        if (company.email) {
+            contacts.push(escapeHTML(company.email));
+        }
+
+        if (company.website) {
+            contacts.push(escapeHTML(company.website));
+        }
+
+        html += `
+            <div class="company-address">
+                ${contacts.join("<br>")}
+            </div>
+        `;
+    }
+
+    html += `
+        <div class="invoice-title">
+            ${escapeHTML(template.title || "INVOICE")}
+        </div>
+    `;
+
+    html += `</div>`;
+
+    return html;
+}
+
+
+// ============================================================
+// DYNAMIC INVOICE DETAILS
+// ============================================================
+
+function buildInvoiceDetailsHTML(invoice, template, invoiceDate) {
+
+    const fields = template.details?.fields || [];
+
+    const values = {
+        partyName: invoice.partyName || "-",
+        invoiceNo: invoice.invoiceNo ?? invoice.id ?? "-",
+        date: invoiceDate,
+        partyId: invoice.partyId ?? "-"
+    };
+
+    const visibleFields = fields.filter(field => field.visible);
+
+    let html = "";
+
+    for (let i = 0; i < visibleFields.length; i += 2) {
+
+        const first = visibleFields[i];
+        const second = visibleFields[i + 1];
+
+        html += `<tr>`;
+
+        for (const field of [first, second]) {
+
+            if (!field) {
+                html += `<td colspan="2"></td>`;
+                continue;
+            }
+
+            html += `
+                <td class="info-label">
+                    ${escapeHTML(field.label)}
+                </td>
+
+                <td class="info-value">
+                    ${escapeHTML(values[field.key] ?? "-")}
+                </td>
+            `;
+        }
+
+        html += `</tr>`;
+    }
+
+    return html;
+}
+
+
+// ============================================================
+// DYNAMIC SIGNATURES
+// ============================================================
+
+function buildInvoiceSignaturesHTML(signatures) {
+
+    if (!signatures?.enabled) {
+        return "";
+    }
+
+    return `
+        <div class="signatures">
+
+            ${(signatures.entries || []).map(entry => `
+
+                <div class="signature">
+
+                    <div class="signature-line"></div>
+
+                    <div class="signature-title">
+                        ${escapeHTML(entry.title || "")}
+                    </div>
+
+                    <div>
+                        ${escapeHTML(entry.description || "")}
+                    </div>
+
+                </div>
+
+            `).join("")}
+
+        </div>
+    `;
+}
+
+
 // ===========================================================
 // ONLINE EVENT
 //
@@ -5708,3 +5971,61 @@ window.addEventListener(
 // ===========================================================
 
 renderIssueTable();
+// ============================================================
+// TEMPORARY TEST: COMPANY PRINT HELPERS
+// ============================================================
+
+(async function testCompanyPrintHelpers() {
+
+    try {
+
+        console.log(
+            "Company header helper:",
+            typeof buildCompanyHeaderHTML
+        );
+
+        console.log(
+            "Invoice details helper:",
+            typeof buildInvoiceDetailsHTML
+        );
+
+        console.log(
+            "Signatures helper:",
+            typeof buildInvoiceSignaturesHTML
+        );
+
+
+        const settings =
+            await getCompanySettingsForPrinting();
+
+
+        const companyHTML =
+            buildCompanyHeaderHTML(
+                settings.company,
+                settings.billTemplates.issueInvoiceA4.header,
+                settings.billTemplates.issueInvoiceA4
+            );
+
+
+        console.log(
+            "Company header HTML:",
+            companyHTML
+        );
+
+
+        console.log(
+            "Company header test:",
+            companyHTML.includes("AJWA ICE CREAM")
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Print helper test failed:",
+            error
+        );
+
+    }
+
+})();

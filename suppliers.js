@@ -68,6 +68,17 @@ getLocalStorageUser = () => {
 getLocalStorageUser();
 
 
+// ========================================
+// SUPPLIER CREATE PERMISSION
+// ========================================
+
+const canCreateSuppliers =
+    FROSTYOPS_ACCESS.hasPermission("suppliers:create");
+
+if (addBtn) {
+    addBtn.hidden = !canCreateSuppliers;
+}
+
 if (adminUser) {
 
     document.getElementById("admin").textContent =
@@ -99,6 +110,19 @@ document.getElementById("datePill").textContent =
 // ===========================================================
 
 async function loadSuppliers() {
+
+
+        // ========================================
+    // SUPPLIERS PAGE ACCESS CHECK
+    // ========================================
+
+    if (
+        !FROSTYOPS_ACCESS.requirePagePermission(
+            "suppliers:read"
+        )
+    ) {
+        return;
+    }
 
     // =======================================================
     // FIRST LOAD FROM INDEXEDDB
@@ -353,6 +377,11 @@ function renderSuppliers(data) {
 
     tbody.innerHTML = "";
 
+    const canUpdateSuppliers =
+    FROSTYOPS_ACCESS.hasPermission("suppliers:update");
+    const canDeleteSuppliers =
+    FROSTYOPS_ACCESS.hasPermission("suppliers:delete");
+
 
     if (data.length === 0) {
 
@@ -411,21 +440,25 @@ function renderSuppliers(data) {
 
                 <td>
 
-                    <button
-                        class="edit-btn"
-                        data-id="${s.id}">
+                    ${canUpdateSuppliers ? `
+    <button
+        class="edit-btn"
+        data-id="${s.id}">
 
-                        Edit
+        Edit
 
-                    </button>
+    </button>
+` : ""}
 
-                    <button
-                        class="delete-btn"
-                        data-id="${s.id}">
+                    ${canDeleteSuppliers ? `
+    <button
+        class="delete-btn"
+        data-id="${s.id}">
 
-                        Delete
+        Delete
 
-                    </button>
+    </button>
+` : ""}
 
                 </td>
 
@@ -564,6 +597,13 @@ function renderSuppliers(data) {
 addBtn?.addEventListener(
     "click",
     () => {
+
+        if (
+    !FROSTYOPS_ACCESS.hasPermission("suppliers:create")
+) {
+    alert("You do not have permission to add suppliers.");
+    return;
+}
 
         supplierPanel.classList.add(
             "hidden"
@@ -804,6 +844,14 @@ function getSupplierFormData() {
 // ===========================================================
 
 async function addSupplier(e) {
+
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("suppliers:create")
+) {
+    alert("You do not have permission to create suppliers.");
+    return;
+}
 
     e.preventDefault();
 
@@ -1522,13 +1570,15 @@ async function renderSupplierDetails(s) {
                 </button>
 
 
-                <button
-                    class="btn-outline"
-                    id="editSupplierBtn">
+               ${FROSTYOPS_ACCESS.hasPermission("suppliers:update") ? `
+    <button
+        class="btn-outline"
+        id="editSupplierBtn">
 
-                    Edit Supplier
+        Edit Supplier
 
-                </button>
+    </button>
+` : ""}
 
             </div>
 
@@ -1603,6 +1653,13 @@ async function renderSupplierDetails(s) {
 // ===========================================================
 
 function editSupplier(id) {
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("suppliers:update")
+) {
+    alert("You do not have permission to edit suppliers.");
+    return;
+}
 
     const supplier =
         suppliers.find(
@@ -1758,6 +1815,13 @@ function editSupplier(id) {
 // ===========================================================
 
 async function updateSupplier(id) {
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("suppliers:update")
+) {
+    alert("You do not have permission to update suppliers.");
+    return;
+}
 
     const updateData = {
 
@@ -2112,6 +2176,14 @@ async function updateSupplier(id) {
 // ===========================================================
 
 async function deleteSupplier(id) {
+    
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("suppliers:delete")
+) {
+    alert("You do not have permission to delete suppliers.");
+    return;
+}
 
     const supplier =
         suppliers.find(

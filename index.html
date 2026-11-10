@@ -715,6 +715,263 @@
             </div>
 
 
+
+            
+<!-- ================= FINANCIAL OVERVIEW ================= -->
+
+<section
+    class="financial-overview"
+    style="
+        margin-bottom:24px;
+    "
+>
+
+    <div style="margin-bottom:14px;">
+
+        <h2 style="
+            margin:0 0 5px;
+            font-size:19px;
+            color:#252238;
+        ">
+            Financial Overview
+        </h2>
+
+        <p style="
+            margin:0;
+            color:#888;
+            font-size:13px;
+        ">
+            Expenses and outstanding balances across your business.
+        </p>
+
+    </div>
+
+
+    <div style="
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+        gap:14px;
+    ">
+
+
+        <!-- TOTAL EXPENSES -->
+
+        <div class="stat-card">
+
+            <div class="stat-icon">
+
+                <img
+                    src="assets/money 1.png"
+                    alt="Expenses"
+                >
+
+            </div>
+
+            <div style="min-width:0;width:100%;">
+
+                <div class="stat-title">
+                    Total Expenses
+                </div>
+
+                <div
+                    class="stat-num"
+                    id="dashboardTotalExpenses"
+                >
+                    PKR 0
+                </div>
+
+                <div
+                    class="stat-sub"
+                    id="dashboardExpensesPeriodLabel"
+                >
+                    This Month
+                </div>
+
+                <select
+                    id="dashboardExpensesPeriodFilter"
+                    style="
+                        margin-top:8px;
+                        width:100%;
+                        max-width:180px;
+                        padding:6px;
+                        font-size:12px;
+                        border:1px solid #ddd;
+                        border-radius:5px;
+                        background:#fff;
+                        color:#555;
+                    "
+                >
+
+                    <option value="thisMonth">
+                        This Month
+                    </option>
+
+                    <option value="today">
+                        Today
+                    </option>
+
+                    <option value="yesterday">
+                        Yesterday
+                    </option>
+
+                    <option value="7days">
+                        Last 7 Days
+                    </option>
+
+                    <option value="previousMonth">
+                        Previous Month
+                    </option>
+
+                    <option value="custom">
+                        Custom Date Range
+                    </option>
+
+                </select>
+
+
+                <div
+                    id="dashboardExpensesCustomRange"
+                    style="
+                        display:none;
+                        margin-top:8px;
+                        width:100%;
+                    "
+                >
+
+                    <label style="
+                        display:block;
+                        font-size:11px;
+                        margin-bottom:3px;
+                        color:#777;
+                    ">
+                        Start Date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="dashboardExpensesStartDate"
+                        style="
+                            width:100%;
+                            box-sizing:border-box;
+                            padding:6px;
+                            margin-bottom:7px;
+                            border:1px solid #ddd;
+                            border-radius:5px;
+                            font-size:12px;
+                        "
+                    >
+
+                    <label style="
+                        display:block;
+                        font-size:11px;
+                        margin-bottom:3px;
+                        color:#777;
+                    ">
+                        End Date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="dashboardExpensesEndDate"
+                        style="
+                            width:100%;
+                            box-sizing:border-box;
+                            padding:6px;
+                            border:1px solid #ddd;
+                            border-radius:5px;
+                            font-size:12px;
+                        "
+                    >
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- SALESMEN OUTSTANDING -->
+
+        <div class="stat-card">
+
+            <div class="stat-icon">
+
+                <img
+                    src="assets/Group (2).png"
+                    alt="Salesmen Outstanding"
+                >
+
+            </div>
+
+            <div style="min-width:0;">
+
+                <div class="stat-title">
+                    Salesmen Outstanding
+                </div>
+
+                <div
+                    class="stat-num"
+                    id="dashboardSalesmenOutstanding"
+                >
+                    PKR 0
+                </div>
+
+                <div
+                    class="stat-sub"
+                    id="dashboardSalesmenOutstandingCount"
+                >
+                    All salesmen
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- SUPPLIERS OUTSTANDING -->
+
+        <div class="stat-card">
+
+            <div class="stat-icon">
+
+                <img
+                    src="assets/money 1.png"
+                    alt="Suppliers Outstanding"
+                >
+
+            </div>
+
+            <div style="min-width:0;">
+
+                <div class="stat-title">
+                    Suppliers Outstanding
+                </div>
+
+                <div
+                    class="stat-num"
+                    id="dashboardSuppliersOutstanding"
+                >
+                    PKR 0
+                </div>
+
+                <div
+                    class="stat-sub"
+                    id="dashboardSuppliersOutstandingCount"
+                >
+                    All suppliers
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+
             <!-- ================= SALES ANALYTICS ================= -->
 
             <section class="analytics-card">
@@ -1042,33 +1299,53 @@
 
 
 <script src="config.js"></script>
+
 <script src="shared-layout.js"></script>
+
 <script src="offline-db.js"></script>
+
 <script src="index.js"></script>
 
-<script>
-(function registerFrostyOpsServiceWorker() {
-    if (!("serviceWorker" in navigator)) {
-        console.error("Service Workers are not supported.");
-        return;
-    }
+<!-- =========================================
+     FROSTYOPS SERVICE WORKER REGISTRATION
+========================================= -->
 
-    navigator.serviceWorker.register("/sw.js", {
-        scope: "/"
-    })
-    .then(registration => {
-        console.log(
-            "FrostyOps Service Worker automatically registered:",
-            registration.scope
-        );
-    })
-    .catch(error => {
-        console.error(
-            "FrostyOps Service Worker registration failed:",
-            error
-        );
+<script>
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", async () => {
+
+        try {
+
+            const registration =
+                await navigator.serviceWorker.register(
+                    "/sw.js",
+                    { scope: "/" }
+                );
+
+            console.log(
+                "FrostyOps Service Worker registered:",
+                registration.scope
+            );
+
+            await navigator.serviceWorker.ready;
+
+            console.log(
+                "FrostyOps Service Worker is ready."
+            );
+
+        } catch (error) {
+
+            console.error(
+                "FrostyOps Service Worker registration failed:",
+                error
+            );
+
+        }
+
     });
-})();
+
+}
 </script>
 
 </body>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "frostyops-v20";
+const CACHE_NAME = "frostyops-v21";
 
 const APP_FILES = [
 "/",
@@ -122,6 +122,11 @@ const APP_FILES = [
 "/salesman-details.css",
 "/suppliers-details.css",
 
+// PRODUCT DETAILS
+
+"/product-details.html",
+"/product-details.js",
+
 // ============================================================
 // EXPENSES
 // ============================================================
@@ -169,9 +174,14 @@ event => {
 
                     try {
 
-                        await cache.add(
-                            file
-                        );
+                       await cache.add(
+    new Request(
+        file,
+        {
+            cache: "reload"
+        }
+    )
+);
 
                         console.log(
                             "FrostyOps cached:",

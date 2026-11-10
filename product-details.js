@@ -116,12 +116,11 @@ else {
         );
 
 
-    if (
-        !Number.isInteger(
-            productId
-        ) ||
-        productId < 0
-    ) {
+   if (
+    !Number.isInteger(
+        productId
+    )
+) {
 
         alert(
             "Invalid Product ID."
@@ -140,6 +139,24 @@ else {
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
+
+
+        const requiredPermissions = [
+        "products:read",
+        "invoices:read"
+    ];
+
+    if (
+        !FROSTYOPS_ACCESS.hasAllPermissions(
+            requiredPermissions
+        )
+    ) {
+        FROSTYOPS_ACCESS.showAccessDenied(
+            "You do not have permission to view product details and transaction history. Please contact your administrator."
+        );
+
+        return;
+    }
 
     setupAdminDisplay();
     setupButtons();

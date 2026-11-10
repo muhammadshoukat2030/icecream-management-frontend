@@ -1909,6 +1909,12 @@ window.addEventListener(
 
 async function initializeInventory() {
 
+        if (
+        !FROSTYOPS_ACCESS.requirePagePermission("products:read")
+    ) {
+        return;
+    }
+
     // =======================================================
     // SHOW LOCAL DATA FIRST
     // =======================================================

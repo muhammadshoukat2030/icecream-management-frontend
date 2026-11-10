@@ -4,7 +4,7 @@
 
 const DB_NAME = "IceCreamManagementDB";
 
-const DB_VERSION = 11;
+const DB_VERSION = 12;
 
 
 // ============================================================
@@ -36,14 +36,80 @@ const STORES = {
 
     PAYMENT_TRANSACTIONS:
         "expensePayments",
+        
 
     SYNC_QUEUE:
         "syncQueue",
 
     SYNC_META:
-        "syncMeta"
+        "syncMeta",
+
+    companySettings:
+        "companySettings"
 
 };
+
+
+// ============================================================
+// INDEXEDDB STORE PERMISSION MAP
+// ============================================================
+
+const OFFLINE_STORE_PERMISSIONS = {
+
+    [STORES.CATEGORIES]: "categories:read",
+
+    [STORES.SUPPLIERS]: "suppliers:read",
+
+    [STORES.PRODUCTS]: "products:read",
+
+    [STORES.SALESMEN]: "salesmen:read",
+
+    [STORES.INVOICES]: "invoices:read",
+
+    [STORES.EXPENSES]: "expenses:read",
+
+    [STORES.EXPENSE_PROFILES]: "expenseProfiles:read",
+
+    [STORES.PAYMENT_TRANSACTIONS]: "expensePayments:read"
+
+};
+
+
+// ============================================================
+// CHECK OFFLINE STORE READ ACCESS
+// ============================================================
+
+function hasOfflineStoreReadAccess(storeName) {
+
+    const access = window.FROSTYOPS_ACCESS;
+
+    if (!access) {
+        return false;
+    }
+
+    const user = access.getUser();
+
+    if (!user) {
+        return false;
+    }
+
+    // Admin can access every business-data store.
+    if (user.role === "admin") {
+        return true;
+    }
+
+    const requiredPermission =
+        OFFLINE_STORE_PERMISSIONS[storeName];
+
+    // Unknown or internal stores are not exposed
+    // through ordinary business-data access.
+    if (!requiredPermission) {
+        return false;
+    }
+
+    return access.hasPermission(requiredPermission);
+
+}
 
 
 // ============================================================
@@ -258,6 +324,17 @@ function openOfflineDB() {
 
                 }
 
+
+                // ============================================================
+// COMPANY SETTINGS STORE
+// ============================================================
+
+if (!db.objectStoreNames.contains(STORES.companySettings)) {
+    db.createObjectStore(STORES.companySettings, {
+        keyPath: "id"
+    });
+}
+
             };
 
 
@@ -467,6 +544,152 @@ async function getAllFromOfflineDB(
 
 }
 
+// ============================================================
+// COMPANY SETTINGS - OFFLINE STORAGE
+// ============================================================
+
+async function saveCompanySettingsToOfflineDB(settings) {
+
+    if (!settings || typeof settings !== "object") {
+        throw new Error("Invalid company settings.");
+    }
+
+    const record = {
+        id: "default",
+        ...settings,
+        cachedAt: new Date().toISOString()
+    };
+
+    await saveToOfflineDB(
+        STORES.companySettings,
+        record
+    );
+
+    return record;
+}
+
+
+// ============================================================
+// GET COMPANY SETTINGS FROM OFFLINE DB
+// ============================================================
+
+// ============================================================
+// GET COMPANY SETTINGS FROM OFFLINE DB
+// ============================================================
+
+async function getCompanySettingsFromOfflineDB() {
+
+    const settings = await getAllFromOfflineDB(
+        STORES.companySettings
+    );
+
+    return settings.find(
+        item => item.id === "default"
+    ) || null;
+}
+
+// ============================================================
+// SYNC COMPANY SETTINGS FROM BACKEND
+// ============================================================
+
+async function syncCompanySettingsToOfflineDB() {
+
+    const API =
+        window.APP_CONFIG?.API ||
+        "https://ice-cream-management.vercel.app";
+
+    try {
+
+        const response = await fetch(
+            `${API}/company-settings`,
+            {
+                method: "GET",
+                credentials: "include"
+            }
+        );
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Company settings request failed: ${response.status}`
+            );
+
+        }
+
+        const data = await response.json();
+
+        if (
+            !data.success ||
+            !data.settings
+        ) {
+            throw new Error(
+                "Invalid company settings response."
+            );
+        }
+
+        await saveCompanySettingsToOfflineDB(
+            data.settings
+        );
+
+        console.log(
+            "Company settings synchronized successfully."
+        );
+
+        return data.settings;
+
+    } catch (error) {
+
+        console.error(
+            "Company Settings Sync Error:",
+            error
+        );
+
+        throw error;
+
+    }
+}
+
+
+
+// ============================================================
+// GET COMPANY SETTINGS FOR BILL PRINTING
+// ONLINE AND OFFLINE
+// ============================================================
+
+async function getCompanySettingsForPrinting() {
+
+    // First, use the locally cached settings.
+    let settings =
+        await getCompanySettingsFromOfflineDB();
+
+    // If no cache exists, try retrieving settings online.
+    if (
+        !settings &&
+        navigator.onLine
+    ) {
+
+        settings =
+            await syncCompanySettingsToOfflineDB();
+
+    }
+
+    // Do not silently print with incomplete company information.
+    if (
+        !settings ||
+        !settings.company ||
+        !settings.billTemplates
+    ) {
+
+        throw new Error(
+            "Company and bill settings are unavailable. Please connect to the internet and synchronize settings before printing."
+        );
+
+    }
+
+    return settings;
+}
+
+
 
 // ============================================================
 // DELETE ONE RECORD
@@ -578,73 +801,91 @@ async function clearOfflineStore(
 
 
 // ============================================================
+// CURRENT OFFLINE USER
+// ============================================================
+
+function getOfflineUserContext() {
+
+    try {
+
+        const user = JSON.parse(
+            localStorage.getItem("user") || "null"
+        );
+
+        if (
+            !user ||
+            !user._id ||
+            !["admin", "employee"].includes(user.role)
+        ) {
+            return null;
+        }
+
+        return {
+            userId: String(user._id),
+            role: user.role
+        };
+
+    }
+    catch (error) {
+
+        return null;
+
+    }
+
+}
+
+
+// ============================================================
 // SYNC QUEUE
 // ============================================================
 
-async function addToSyncQueue(
-    operation
-) {
+async function addToSyncQueue(operation) {
 
-    const db =
-        await openOfflineDB();
+    const user = getOfflineUserContext();
 
+    if (!user) {
+        throw new Error(
+            "A valid logged-in user is required to queue offline operations."
+        );
+    }
+
+    const db = await openOfflineDB();
 
     const queueItem = {
 
         ...operation,
 
-        status:
-            "pending",
+        // Identify the account that created this operation.
+        createdByUserId: user.userId,
 
-        createdAt:
-            new Date().toISOString()
+        status: "pending",
+
+        createdAt: new Date().toISOString()
 
     };
 
+    return new Promise((resolve, reject) => {
 
-    return new Promise(
-        (resolve, reject) => {
+        const transaction = db.transaction(
+            STORES.SYNC_QUEUE,
+            "readwrite"
+        );
 
-            const transaction =
-                db.transaction(
-                    STORES.SYNC_QUEUE,
-                    "readwrite"
-                );
+        const store = transaction.objectStore(
+            STORES.SYNC_QUEUE
+        );
 
+        const request = store.add(queueItem);
 
-            const store =
-                transaction.objectStore(
-                    STORES.SYNC_QUEUE
-                );
+        request.onsuccess = function () {
+            resolve(request.result);
+        };
 
+        request.onerror = function () {
+            reject(request.error);
+        };
 
-            const request =
-                store.add(
-                    queueItem
-                );
-
-
-            request.onsuccess =
-                function () {
-
-                    resolve(
-                        request.result
-                    );
-
-                };
-
-
-            request.onerror =
-                function () {
-
-                    reject(
-                        request.error
-                    );
-
-                };
-
-        }
-    );
+    });
 
 }
 
@@ -655,59 +896,62 @@ async function addToSyncQueue(
 
 async function getPendingSyncQueue() {
 
-    const db =
-        await openOfflineDB();
+    const user = getOfflineUserContext();
 
+    if (!user) {
+        return [];
+    }
 
-    return new Promise(
-        (resolve, reject) => {
+    const db = await openOfflineDB();
 
-            const transaction =
-                db.transaction(
-                    STORES.SYNC_QUEUE,
-                    "readonly"
-                );
+    return new Promise((resolve, reject) => {
 
+        const transaction = db.transaction(
+            STORES.SYNC_QUEUE,
+            "readonly"
+        );
 
-            const store =
-                transaction.objectStore(
-                    STORES.SYNC_QUEUE
-                );
+        const store = transaction.objectStore(
+            STORES.SYNC_QUEUE
+        );
 
+        const index = store.index("status");
 
-            const index =
-                store.index(
-                    "status"
-                );
+        const request = index.getAll("pending");
 
+        request.onsuccess = function () {
 
-            const request =
-                index.getAll(
-                    "pending"
-                );
+            const pendingItems =
+                request.result || [];
 
+            const userItems = pendingItems.filter(item => {
 
-            request.onsuccess =
-                function () {
+                // New operations belong to their creating account.
+                if (item.createdByUserId) {
 
-                    resolve(
-                        request.result || []
+                    return (
+                        String(item.createdByUserId) ===
+                        user.userId
                     );
 
-                };
+                }
 
+                // Preserve legacy operations created before
+                // account ownership was introduced.
+                // Previously, only the admin account existed.
+                return user.role === "admin";
 
-            request.onerror =
-                function () {
+            });
 
-                    reject(
-                        request.error
-                    );
+            resolve(userItems);
 
-                };
+        };
 
-        }
-    );
+        request.onerror = function () {
+            reject(request.error);
+        };
+
+    });
 
 }
 
@@ -1032,18 +1276,32 @@ async function initialDatabaseSync() {
             );
 
 
-        if (
-            initialSync &&
-            initialSync.value === true
-        ) {
+       if (
+    initialSync &&
+    initialSync.value === true
+) {
 
-            console.log(
-                "Initial database synchronization already completed."
-            );
+    console.log(
+        "Initial database synchronization already completed."
+    );
 
-            return true;
+    // Always refresh company settings independently.
+    try {
 
-        }
+        await syncCompanySettingsToOfflineDB();
+
+    } catch (settingsError) {
+
+        console.error(
+            "Company settings synchronization failed:",
+            settingsError
+        );
+
+    }
+
+    return true;
+
+}
 
 
         console.log(
@@ -1311,13 +1569,35 @@ suppliers:
         );
 
 
-        await saveSyncMeta(
-            "invoicesLastSyncAt",
-            new Date().toISOString()
-        );
+       await saveSyncMeta(
+    "invoicesLastSyncAt",
+    new Date().toISOString()
+);
 
 
-        return true;
+// ============================================================
+// COMPANY SETTINGS SYNCHRONIZATION
+// ============================================================
+
+try {
+
+    await syncCompanySettingsToOfflineDB();
+
+} catch (settingsError) {
+
+    console.error(
+        "Company settings synchronization failed:",
+        settingsError
+    );
+
+}
+
+
+// ============================================================
+// INITIAL SYNC COMPLETED
+// ============================================================
+
+return true;
 
     }
     catch (error) {
@@ -1339,6 +1619,26 @@ suppliers:
 // ============================================================
 
 async function syncInvoicesToOfflineDB() {
+    
+
+        // ----------------------------------------
+    // CHECK INVOICE READ PERMISSION
+    // ----------------------------------------
+
+    if (
+        !hasOfflineStoreReadAccess(
+            STORES.INVOICES
+        )
+    ) {
+
+        console.log(
+            "Invoice synchronization skipped: invoices:read permission not granted."
+        );
+
+        return null;
+
+    }
+
 
     if (
         !navigator.onLine
@@ -1674,6 +1974,37 @@ async function processSyncQueue() {
                         response.status,
                         responseData
                     );
+
+                    // =================================================
+// PERMISSION DENIED
+// Keep operation for review; do not retry automatically.
+// =================================================
+
+if (response.status === 403) {
+
+    await updateSyncQueueItem(
+        operation.queueId,
+        {
+            status: "needs_review",
+
+            lastError:
+                typeof responseData === "object"
+                    ? responseData?.message || "Permission denied."
+                    : "Permission denied.",
+
+            lastAttemptAt:
+                new Date().toISOString()
+        }
+    );
+
+    console.warn(
+        "Queued operation requires permission review:",
+        operation.endpoint
+    );
+
+    continue;
+
+}
 
 
                     // =================================================

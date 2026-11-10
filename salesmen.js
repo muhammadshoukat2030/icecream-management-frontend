@@ -99,6 +99,17 @@ getLocalStorageUser = () => {
 
 getLocalStorageUser();
 
+// ========================================
+// SALESMAN CREATE PERMISSION
+// ========================================
+
+const canCreateSalesmen =
+    FROSTYOPS_ACCESS.hasPermission("salesmen:create");
+
+if (openAddBtn) {
+    openAddBtn.hidden = !canCreateSalesmen;
+}
+
 
 if (adminUser) {
 
@@ -135,6 +146,18 @@ document.getElementById(
 // ===========================================================
 
 async function loadSalesmen() {
+
+        // ========================================
+    // SALESMEN PAGE ACCESS CHECK
+    // ========================================
+
+    if (
+        !FROSTYOPS_ACCESS.requirePagePermission(
+            "salesmen:read"
+        )
+    ) {
+        return;
+    }
 
     // =======================================================
     // LOAD CACHED SALESMEN FIRST
@@ -460,6 +483,13 @@ function renderSalesmen(
     tbody.innerHTML = "";
 
 
+    const canUpdateSalesmen =
+    FROSTYOPS_ACCESS.hasPermission("salesmen:update");
+
+    const canDeleteSalesmen =
+    FROSTYOPS_ACCESS.hasPermission("salesmen:delete");
+
+
     let activeCount = 0;
 
 
@@ -520,22 +550,26 @@ function renderSalesmen(
 
                     <div class="action-cell">
 
-                        <button
-                            class="btn btn-secondary btn-sm"
-                            onclick="editSalesman('${salesman.id}')">
+                        ${canUpdateSalesmen ? `
+    <button
+        class="btn btn-secondary btn-sm"
+        onclick="editSalesman('${salesman.id}')">
 
-                            Edit
+        Edit
 
-                        </button>
+    </button>
+` : ""}
 
 
-                        <button
-                            class="btn btn-danger btn-sm"
-                            onclick="deleteSalesman('${salesman.id}')">
+                       ${canDeleteSalesmen ? `
+    <button
+        class="btn btn-danger btn-sm"
+        onclick="deleteSalesman('${salesman.id}')">
 
-                            Delete
+        Delete
 
-                        </button>
+    </button>
+` : ""}
 
                     </div>
 
@@ -583,6 +617,14 @@ function renderSalesmen(
 // ===========================================================
 
 async function editSalesman(id) {
+
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("salesmen:update")
+) {
+    alert("You do not have permission to edit salesmen.");
+    return;
+}
 
     let salesman = null;
 
@@ -970,6 +1012,14 @@ async function editSalesman(id) {
             async (e) => {
 
                 e.preventDefault();
+
+
+                if (
+    !FROSTYOPS_ACCESS.hasPermission("salesmen:update")
+) {
+    alert("You do not have permission to update salesmen.");
+    return;
+}
 
 
                 const updatedSalesman = {
@@ -1398,6 +1448,13 @@ async function editSalesman(id) {
 // ===========================================================
 
 async function deleteSalesman(id) {
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("salesmen:delete")
+) {
+    alert("You do not have permission to delete salesmen.");
+    return;
+}
 
     const numericId =
         Number(id);
@@ -1845,20 +1902,32 @@ addPanel.innerHTML = `
 `;
 
 
+const addSalesmanSubmitButton =
+    document.querySelector(
+        "#addSalesmanForm button[type='submit']"
+    );
+
+if (addSalesmanSubmitButton) {
+    addSalesmanSubmitButton.hidden = !canCreateSalesmen;
+}
+
+
 // ===========================================================
 // OPEN ADD PANEL
 // ===========================================================
 
 openAddBtn.onclick = () => {
 
-    profilePanel.classList.add(
-        "hidden"
-    );
+    if (
+        !FROSTYOPS_ACCESS.hasPermission("salesmen:create")
+    ) {
+        alert("You do not have permission to add salesmen.");
+        return;
+    }
 
+    profilePanel.classList.add("hidden");
 
-    addPanel.classList.remove(
-        "hidden"
-    );
+    addPanel.classList.remove("hidden");
 
 };
 
@@ -1898,6 +1967,14 @@ document
         async (e) => {
 
             e.preventDefault();
+
+
+            if (
+    !FROSTYOPS_ACCESS.hasPermission("salesmen:create")
+) {
+    alert("You do not have permission to create salesmen.");
+    return;
+}
 
 
             const salesman = {

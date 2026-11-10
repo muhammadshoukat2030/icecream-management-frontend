@@ -382,6 +382,18 @@ function getLocalStorageUser() {
 }
 
 adminUser = getLocalStorageUser();
+if (saveExpenseBtn) {
+    saveExpenseBtn.hidden =
+        !FROSTYOPS_ACCESS.hasAnyPermission([
+            "expenses:create",
+            "expenses:update"
+        ]);
+}
+
+if (addExpenseProfileBtn) {
+    addExpenseProfileBtn.hidden =
+        !FROSTYOPS_ACCESS.hasPermission("expenseProfiles:create");
+}
 
 if (adminUser && adminElement) {
     adminElement.textContent = adminUser.email || "";
@@ -641,6 +653,13 @@ function applyWorkerProfileDefaults() {
 function renderExpenseProfiles() {
     if (!expenseProfilesGrid) return;
 
+
+        const canUpdateProfiles =
+        FROSTYOPS_ACCESS.hasPermission("expenseProfiles:update");
+
+    const canDeleteProfiles =
+        FROSTYOPS_ACCESS.hasPermission("expenseProfiles:delete");
+
     const search =
         String(profileSearch?.value || "")
             .trim()
@@ -718,9 +737,13 @@ function renderExpenseProfiles() {
                     <h3 class="profile-card-title">
                         ${escapeHTML(profile.name)}
                     </h3>
-                    <div class="profile-card-sub">
-                        ${escapeHTML(workerInfo || getExpenseProfileTypeLabel(profile.profileType))}
-                    </div>
+                   <div class="profile-card-sub">
+    ${escapeHTML(workerInfo || getExpenseProfileTypeLabel(profile.profileType))}
+</div>
+
+<div class="profile-card-sub">
+    Registered On: ${escapeHTML(formatDate(profile.createdAt))}
+</div>
                 </div>
                 <span class="profile-status ${profile.status === "active" ? "active" : ""}">
                     ${escapeHTML(profile.status || "active")}
@@ -747,10 +770,33 @@ function renderExpenseProfiles() {
             </div>
 
             <div class="profile-card-actions">
-                <button class="action-btn" type="button" data-profile-action="view" data-id="${escapeHTML(profile._id)}">View</button>
-                <button class="action-btn" type="button" data-profile-action="edit" data-id="${escapeHTML(profile._id)}">Edit</button>
-                <button class="action-btn danger" type="button" data-profile-action="delete" data-id="${escapeHTML(profile._id)}">Delete</button>
-            </div>
+
+    <button
+        class="action-btn"
+        type="button"
+        data-profile-action="view"
+        data-id="${escapeHTML(profile._id)}"
+    >View</button>
+
+    ${canUpdateProfiles ? `
+        <button
+            class="action-btn"
+            type="button"
+            data-profile-action="edit"
+            data-id="${escapeHTML(profile._id)}"
+        >Edit</button>
+    ` : ""}
+
+    ${canDeleteProfiles ? `
+        <button
+            class="action-btn danger"
+            type="button"
+            data-profile-action="delete"
+            data-id="${escapeHTML(profile._id)}"
+        >Delete</button>
+    ` : ""}
+
+</div>
         `;
 
         expenseProfilesGrid.appendChild(card);
@@ -805,7 +851,24 @@ function resetProfileForm() {
 }
 
 function openProfileForm(profile = null) {
+
+        const requiredPermission = profile
+        ? "expenseProfiles:update"
+        : "expenseProfiles:create";
+
+    if (
+        !FROSTYOPS_ACCESS.hasPermission(requiredPermission)
+    ) {
+        alert(
+            profile
+                ? "You do not have permission to edit expense profiles."
+                : "You do not have permission to create expense profiles."
+        );
+
+        return;
+    }
     resetProfileForm();
+
 
     if (profile) {
         profileDetailsEditingId = profile._id;
@@ -868,6 +931,25 @@ function closeProfileForm() {
 }
 
 async function saveExpenseProfile() {
+
+
+
+
+        const requiredPermission = profileDetailsEditingId
+        ? "expenseProfiles:update"
+        : "expenseProfiles:create";
+
+    if (
+        !FROSTYOPS_ACCESS.hasPermission(requiredPermission)
+    ) {
+        alert(
+            profileDetailsEditingId
+                ? "You do not have permission to update expense profiles."
+                : "You do not have permission to create expense profiles."
+        );
+
+        return;
+    }
     if (!navigator.onLine) {
         alert(
             "Expense profiles require an internet connection to create or edit. Cached profiles remain available offline."
@@ -1030,6 +1112,16 @@ async function saveExpenseProfile() {
 }
 
 async function deleteExpenseProfile(id) {
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("expenseProfiles:delete")
+    ) {
+        alert(
+            "You do not have permission to delete expense profiles."
+        );
+
+        return;
+    }
     const profile = getProfileById(id);
 
     if (!profile) return;
@@ -1714,6 +1806,12 @@ function updateStats() {
 function renderHistory() {
     if (!expenseHistoryBody) return;
 
+        const canUpdateExpenses =
+        FROSTYOPS_ACCESS.hasPermission("expenses:update");
+
+    const canDeleteExpenses =
+        FROSTYOPS_ACCESS.hasPermission("expenses:delete");
+
     const filtered =
         [...getFilteredExpenses()].sort(
             (a, b) => {
@@ -1789,18 +1887,23 @@ function renderHistory() {
             </td>
             <td>
                 <div class="action-group">
-                    <button
-                        class="action-btn"
-                        type="button"
-                        data-action="edit"
-                        data-id="${escapeHTML(expense.id)}"
-                    >Edit</button>
-                    <button
-                        class="action-btn danger"
-                        type="button"
-                        data-action="delete"
-                        data-id="${escapeHTML(expense.id)}"
-                    >Delete</button>
+                                       ${canUpdateExpenses ? `
+                        <button
+                            class="action-btn"
+                            type="button"
+                            data-action="edit"
+                            data-id="${escapeHTML(expense.id)}"
+                        >Edit</button>
+                    ` : ""}
+
+                    ${canDeleteExpenses ? `
+                        <button
+                            class="action-btn danger"
+                            type="button"
+                            data-action="delete"
+                            data-id="${escapeHTML(expense.id)}"
+                        >Delete</button>
+                    ` : ""}
                 </div>
             </td>
         `;
@@ -2001,15 +2104,7 @@ function validateExpense(expense) {
         return false;
     }
 
-    const paidAmount =
-        getExpensePaidAmount(expense);
 
-    if (paidAmount > Number(expense.amount || 0)) {
-        alert(
-            `Recorded payments of PKR ${formatMoney(paidAmount)} cannot exceed the invoice total of PKR ${formatMoney(expense.amount)}.`
-        );
-        return false;
-    }
 
     if (expense.expenseType === "salary") {
         if (expense.profileId && profile?.profileType !== "worker") {
@@ -2049,6 +2144,26 @@ function validateExpense(expense) {
 
 async function saveExpense(expense) {
     const isEditing = Boolean(editingExpenseId);
+
+
+    const includesInitialPayment =
+        !isEditing &&
+        getExpensePaymentHistory(expense).some(
+            payment => Number(payment?.amount || 0) > 0
+        );
+
+    if (
+        includesInitialPayment &&
+        !FROSTYOPS_ACCESS.hasPermission("expensePayments:create")
+    ) {
+        alert(
+            "You do not have permission to record an initial expense payment."
+        );
+
+        return false;
+    }
+
+
     const endpoint =
         isEditing
             ? `/expenses/${encodeURIComponent(expense.id)}`
@@ -2142,6 +2257,25 @@ expenseForm?.addEventListener(
     "submit",
     async event => {
         event.preventDefault();
+
+                const requiredPermission =
+            editingExpenseId
+                ? "expenses:update"
+                : "expenses:create";
+
+        if (
+            !FROSTYOPS_ACCESS.hasPermission(
+                requiredPermission
+            )
+        ) {
+            alert(
+                editingExpenseId
+                    ? "You do not have permission to edit expenses."
+                    : "You do not have permission to create expenses."
+            );
+
+            return;
+        }
 
         const expense =
             buildExpenseFromForm();
@@ -2271,6 +2405,16 @@ cancelEditBtn?.addEventListener(
 // ============================================================
 
 function editExpense(id) {
+
+    if (
+        !FROSTYOPS_ACCESS.hasPermission("expenses:update")
+    ) {
+        alert(
+            "You do not have permission to edit expenses."
+        );
+        return;
+    }
+
     const expense =
         expenses.find(item =>
             String(item.id) === String(id)
@@ -2411,6 +2555,18 @@ function editExpense(id) {
 // ============================================================
 
 async function deleteExpense(id) {
+
+    
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("expenses:delete")
+    ) {
+        alert(
+            "You do not have permission to delete expenses."
+        );
+        return;
+    }
+
+
     const expense =
         expenses.find(item =>
             String(item.id) === String(id)
@@ -2719,6 +2875,35 @@ function openExpenseInvoice(id) {
         `;
     }
 
+if (
+    !FROSTYOPS_ACCESS.hasPermission("expensePayments:read")
+) {
+    const paymentLabels = [
+        "Total Paid",
+        "Outstanding"
+    ];
+
+    expenseInvoiceContent
+        ?.querySelectorAll(".invoice-item-label")
+        .forEach(label => {
+            if (
+                paymentLabels.includes(
+                    label.textContent.trim()
+                )
+            ) {
+                label.parentElement.hidden = true;
+            }
+        });
+
+    const paymentHistoryTable =
+        expenseInvoiceContent?.querySelector(".table-wrap");
+
+    if (paymentHistoryTable?.parentElement) {
+        paymentHistoryTable.parentElement.hidden = true;
+    }
+}
+
+
     const actions =
         expenseInvoiceModal?.querySelector(".modal-actions");
 
@@ -2741,6 +2926,9 @@ function openExpenseInvoice(id) {
 
         button.textContent =
             "Record Payment";
+
+            button.hidden =
+    !FROSTYOPS_ACCESS.hasPermission("expensePayments:create");
 
         button.disabled =
             outstanding <= 0 ||
@@ -2810,6 +2998,97 @@ expenseInvoiceModal?.addEventListener(
 
 
 // ============================================================
+// EXPENSE PRINT - DYNAMIC COMPANY INFORMATION
+// ============================================================
+
+function buildExpenseCompanyInfoHTML(company) {
+
+    const lines = [];
+
+    // Address
+    const addressLines =
+        Array.isArray(company.addressLines)
+            ? company.addressLines
+            : [];
+
+    addressLines.forEach((address, index) => {
+
+        if (
+            index === 0 &&
+            company.headOfficeLabel
+        ) {
+
+            lines.push(
+                `${escapeHTML(company.headOfficeLabel)}: ${escapeHTML(address)}`
+            );
+
+        } else {
+
+            lines.push(
+                escapeHTML(address)
+            );
+
+        }
+
+    });
+
+
+    // Telephone
+    if (company.telephoneNumbers?.length) {
+
+        lines.push(
+            `${escapeHTML(company.telephoneLabel || "Tel #")} ${
+                company.telephoneNumbers
+                    .map(number => escapeHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+
+    // Mobile
+    if (company.mobileNumbers?.length) {
+
+        lines.push(
+            `${escapeHTML(company.mobileLabel || "Mobile #")} ${
+                company.mobileNumbers
+                    .map(number => escapeHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+
+    // Email and website
+    if (company.email) {
+        lines.push(escapeHTML(company.email));
+    }
+
+    if (company.website) {
+        lines.push(escapeHTML(company.website));
+    }
+
+
+    if (!lines.length) {
+        return "";
+    }
+
+
+    return `
+        <div style="
+            font-size:11px;
+            line-height:1.4;
+            margin-bottom:18px;
+        ">
+            ${lines.join("<br>")}
+        </div>
+    `;
+
+}
+
+// ============================================================
 // PRINT EXPENSE INVOICE
 // ============================================================
 
@@ -2817,7 +3096,9 @@ document
     .getElementById("printExpenseBtn")
     ?.addEventListener(
         "click",
-        () => {
+        async () => {
+
+
             if (!selectedInvoice) return;
 
             const expense = selectedInvoice;
@@ -2840,6 +3121,47 @@ document
                 );
                 return;
             }
+
+
+            // ===================================================
+// LOAD SAVED COMPANY INFORMATION
+// ===================================================
+
+let companyName = "FrostyOps";
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyName =
+        settings.company.companyName ||
+        "FrostyOps";
+
+    companyInfoHTML =
+        buildExpenseCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Expense company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -2890,8 +3212,10 @@ document
                 </head>
 
                 <body>
-                    <h1>FrostyOps</h1>
-                    <h2>Company Expense Invoice</h2>
+                   <h1>${escapeHTML(companyName)}</h1>
+<h2>Company Expense Invoice</h2>
+
+${companyInfoHTML}
 
                     <table>
                         <tr>
@@ -3606,10 +3930,9 @@ function getProfileTotalPaid(profileId) {
 }
 
 function getProfileOutstanding(profileId) {
-    return Math.max(
+    return (
         getProfileRecordedObligation(profileId) -
-        getProfileTotalPaid(profileId),
-        0
+        getProfileTotalPaid(profileId)
     );
 }
 
@@ -3740,6 +4063,11 @@ function createInitialPaymentField() {
             "#initialExpensePayment"
         );
 
+        wrapper.hidden =
+    !FROSTYOPS_ACCESS.hasPermission(
+        "expensePayments:create"
+    );
+
     const notesField =
         expenseNotes?.closest(
             ".form-field"
@@ -3780,23 +4108,14 @@ function updatePaymentValidationHint() {
 
     if (!help) return;
 
-    if (
-        paid > amount &&
-        amount > 0
-    ) {
-        help.textContent =
-            `Payment cannot exceed the invoice total of PKR ${formatMoney(amount)}.`;
-    }
-    else {
-        const outstanding =
-            Math.max(
-                amount - paid,
-                0
-            );
+    const outstanding =
+        Math.max(
+            amount - paid,
+            0
+        );
 
-        help.textContent =
-            `Paid now: PKR ${formatMoney(paid)} · Initial outstanding: PKR ${formatMoney(outstanding)}.`;
-    }
+    help.textContent =
+        `Paid now: PKR ${formatMoney(paid)} · Initial outstanding: PKR ${formatMoney(outstanding)}. Any excess payment will be reflected in the profile's overall outstanding amount.`;
 }
 
 
@@ -3874,6 +4193,9 @@ function getPaymentAwareProfileHeaderActions() {
 
     button.textContent =
         "Record Payment";
+
+        button.hidden =
+    !FROSTYOPS_ACCESS.hasPermission("expensePayments:create");
 
     button.addEventListener(
         "click",
@@ -4085,6 +4407,33 @@ function ensureProfilePaymentHistorySection() {
 }
 
 function renderProfilePaymentHistory() {
+
+        const paymentHistorySection =
+        document.getElementById(
+            "profilePaymentHistorySection"
+        );
+
+    if (
+        !FROSTYOPS_ACCESS.hasPermission("expensePayments:read")
+    ) {
+        if (paymentHistorySection) {
+            paymentHistorySection.hidden = true;
+        }
+
+        return;
+    }
+
+    if (paymentHistorySection) {
+        paymentHistorySection.hidden = false;
+    }
+
+        const canUpdatePayments =
+        FROSTYOPS_ACCESS.hasPermission("expensePayments:update");
+
+    const canDeletePayments =
+        FROSTYOPS_ACCESS.hasPermission("expensePayments:delete");
+
+
     const body =
         document.getElementById(
             "profilePaymentHistoryBody"
@@ -4189,25 +4538,31 @@ function renderProfilePaymentHistory() {
                 )}
             </td>
 
-            <td>
+                     <td>
                 <div class="action-group">
-                    <button
-                        type="button"
-                        class="action-btn"
-                        data-payment-action="edit"
-                        data-payment-id="${escapeHTML(payment.id)}"
-                    >
-                        Edit
-                    </button>
 
-                    <button
-                        type="button"
-                        class="action-btn danger"
-                        data-payment-action="delete"
-                        data-payment-id="${escapeHTML(payment.id)}"
-                    >
-                        Delete
-                    </button>
+                    ${canUpdatePayments ? `
+                        <button
+                            type="button"
+                            class="action-btn"
+                            data-payment-action="edit"
+                            data-payment-id="${escapeHTML(payment.id)}"
+                        >
+                            Edit
+                        </button>
+                    ` : ""}
+
+                    ${canDeletePayments ? `
+                        <button
+                            type="button"
+                            class="action-btn danger"
+                            data-payment-action="delete"
+                            data-payment-id="${escapeHTML(payment.id)}"
+                        >
+                            Delete
+                        </button>
+                    ` : ""}
+
                 </div>
             </td>
         `;
@@ -4312,15 +4667,25 @@ function renderPaymentAwareProfileDetails() {
         openingBalance +
         allTimeTotal;
 
-    const outstanding =
-        Math.max(
-            recordedObligation -
-            allTimePaid,
-            0
-        );
+   const outstanding =
+    recordedObligation -
+    allTimePaid;
 
     const paymentStats =
         ensureProfilePaymentStats();
+
+        const canReadPayments =
+    FROSTYOPS_ACCESS.hasPermission("expensePayments:read");
+
+if (paymentStats?.paidStat) {
+    paymentStats.paidStat.closest(".profile-detail-stat").hidden =
+        !canReadPayments;
+}
+
+if (paymentStats?.outstandingStat) {
+    paymentStats.outstandingStat.closest(".profile-detail-stat").hidden =
+        !canReadPayments;
+}
 
     if (paymentStats?.paidStat) {
         paymentStats.paidStat.textContent =
@@ -4369,10 +4734,13 @@ function renderPaymentAwareProfileDetails() {
         }
     }
 
-    if (periodPaidStat) {
-        periodPaidStat.textContent =
-            `PKR ${formatMoney(selectedPeriodPaid)}`;
-    }
+   if (periodPaidStat) {
+    periodPaidStat.textContent =
+        `PKR ${formatMoney(selectedPeriodPaid)}`;
+
+    periodPaidStat.closest(".profile-detail-stat").hidden =
+        !canReadPayments;
+}
 
     const headerActions =
         getPaymentAwareProfileHeaderActions();
@@ -4428,18 +4796,38 @@ function renderPaymentAwareProfileDetails() {
                 "profilePaymentHeaderHint"
             );
 
-        if (hint) {
-            hint.textContent =
-                paymentRecords.length > 0
-                    ? `${paymentRecords.length} payment${paymentRecords.length === 1 ? "" : "s"} recorded · Current outstanding PKR ${formatMoney(outstanding)}`
-                    : `Current outstanding PKR ${formatMoney(outstanding)}`;
-        }
+       if (hint) {
+
+    hint.hidden = !canReadPayments;
+
+    if (canReadPayments) {
+
+        hint.textContent =
+            paymentRecords.length > 0
+                ? `${paymentRecords.length} payment${paymentRecords.length === 1 ? "" : "s"} recorded · Current outstanding PKR ${formatMoney(outstanding)}`
+                : `Current outstanding PKR ${formatMoney(outstanding)}`;
+
     }
 
-    if (profileDetailSummaryLine) {
+}
+    }
+
+   if (profileDetailSummaryLine) {
+
+    if (canReadPayments) {
+
         profileDetailSummaryLine.textContent =
             `${periodExpenses.length} invoice${periodExpenses.length === 1 ? "" : "s"} in the selected period · ${paymentRecords.length} payment${paymentRecords.length === 1 ? "" : "s"} recorded all time · Selected period paid PKR ${formatMoney(selectedPeriodPaid)} · Current outstanding PKR ${formatMoney(outstanding)}.`;
+
     }
+    else {
+
+        profileDetailSummaryLine.textContent =
+            `${periodExpenses.length} invoice${periodExpenses.length === 1 ? "" : "s"} in the selected period · ${allExpenses.length} invoice${allExpenses.length === 1 ? "" : "s"} recorded all time.`;
+
+    }
+
+}
 
     ensureProfilePaymentHistorySection();
 
@@ -4468,6 +4856,18 @@ renderExpenseProfiles =
         originalRenderExpenseProfiles();
 
         if (!expenseProfilesGrid) {
+            return;
+        }
+
+                if (
+            !FROSTYOPS_ACCESS.hasPermission("expensePayments:read")
+        ) {
+            expenseProfilesGrid
+                .querySelectorAll(
+                    '[data-payment-stat="paid"], [data-payment-stat="outstanding"]'
+                )
+                .forEach(stat => stat.remove());
+
             return;
         }
 
@@ -4570,6 +4970,26 @@ renderHistory =
         originalRenderHistory();
 
         if (!expenseHistoryBody) {
+            return;
+        }
+
+                if (
+            !FROSTYOPS_ACCESS.hasPermission("expensePayments:read")
+        ) {
+            expenseHistoryBody
+                .querySelectorAll("tr")
+                .forEach(row => {
+
+                    const paymentDetails =
+                        row.children[7]
+                            ?.querySelector(".profile-details-meta");
+
+                    if (paymentDetails) {
+                        paymentDetails.hidden = true;
+                    }
+
+                });
+
             return;
         }
 
@@ -5149,6 +5569,16 @@ function openEmbeddedPaymentModal(
     profileId,
     expenseId = null
 ) {
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("expensePayments:create")
+    ) {
+        alert(
+            "You do not have permission to record expense payments."
+        );
+
+        return;
+    }
     createEmbeddedPaymentModal();
 
     resetEmbeddedPaymentForm();
@@ -5296,6 +5726,24 @@ async function sendEmbeddedPaymentRequest(
 // ============================================================
 
 async function saveEmbeddedExpensePayment() {
+
+        const requiredPermission = editingEmbeddedPaymentId
+        ? "expensePayments:update"
+        : "expensePayments:create";
+
+    if (
+        !FROSTYOPS_ACCESS.hasPermission(requiredPermission)
+    ) {
+        alert(
+            editingEmbeddedPaymentId
+                ? "You do not have permission to update expense payments."
+                : "You do not have permission to record expense payments."
+        );
+
+        return;
+    }
+
+
     const selectedExpense =
         getSelectedPaymentExpense();
 
@@ -5322,31 +5770,13 @@ async function saveEmbeddedExpensePayment() {
             embeddedPaymentNotesInput?.value || ""
         ).trim();
 
-    const currentPayment =
-        editingEmbeddedPaymentId
-            ? findEmbeddedPayment(
-                editingEmbeddedPaymentId,
-                editingEmbeddedPaymentExpenseId
-            )
-            : null;
-
-    const oldAmount =
-        Number(
-            currentPayment?.payment?.amount || 0
-        );
-
-    const availableOutstanding =
-        editingEmbeddedPaymentId
-            ? Math.max(
-                getExpenseOutstanding(
-                    selectedExpense
-                ) +
-                oldAmount,
-                0
-            )
-            : getExpenseOutstanding(
-                selectedExpense
-            );
+   const currentPayment =
+    editingEmbeddedPaymentId
+        ? findEmbeddedPayment(
+            editingEmbeddedPaymentId,
+            editingEmbeddedPaymentExpenseId
+        )
+        : null;
 
     if (
         !Number.isFinite(amount) ||
@@ -5359,16 +5789,7 @@ async function saveEmbeddedExpensePayment() {
         return;
     }
 
-    if (
-        amount >
-        availableOutstanding
-    ) {
-        alert(
-            `Payment cannot be greater than the available outstanding balance of PKR ${formatMoney(availableOutstanding)}.`
-        );
-
-        return;
-    }
+   
 
     if (!date) {
         alert(
@@ -5636,6 +6057,18 @@ async function saveEmbeddedExpensePayment() {
 function openEmbeddedPaymentEdit(
     paymentId
 ) {
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("expensePayments:update")
+    ) {
+        alert(
+            "You do not have permission to edit expense payments."
+        );
+
+        return;
+    }
+
+
     const found =
         findEmbeddedPayment(
             paymentId
@@ -5763,6 +6196,18 @@ function openEmbeddedPaymentEdit(
 async function deleteEmbeddedPayment(
     paymentId
 ) {
+
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("expensePayments:delete")
+    ) {
+        alert(
+            "You do not have permission to delete expense payments."
+        );
+
+        return;
+    }
+
     const found =
         findEmbeddedPayment(
             paymentId
@@ -5912,6 +6357,27 @@ function initializeEmbeddedExpensePayments() {
 // START
 // ============================================================
 
-initializeEmbeddedExpensePayments();
+// ============================================================
+// EXPENSES PAGE ACCESS
+// ============================================================
 
-initializeExpensesPage();
+const canAccessExpensesPage =
+    FROSTYOPS_ACCESS.hasAllPermissions([
+        "expenses:read",
+        "expenseProfiles:read"
+    ]);
+
+if (!canAccessExpensesPage) {
+
+    FROSTYOPS_ACCESS.showAccessDenied(
+        "You do not have permission to access the Expenses page. Please contact your administrator."
+    );
+
+}
+else {
+
+    initializeEmbeddedExpensePayments();
+
+    initializeExpensesPage();
+
+}

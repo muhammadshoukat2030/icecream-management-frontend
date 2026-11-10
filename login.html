@@ -263,31 +263,75 @@ loginForm.addEventListener("submit", async function(event) {
 
             return;
         }
+// ----------------------------------------
+// FETCH LOGGED-IN USER
+// ----------------------------------------
 
-        showMessage(
-            "Login successful! Redirecting...",
-            "success"
-        );
+const response2 = await fetch(
+    `${API}/getMe`,
+    {
+        credentials: "include"
+    }
+);
 
-        const response2 = await fetch(
-            `${API}/getMe`,
-            {
-                credentials: "include"
-            }
-        );
+const user = await response2.json();
 
-        const data2 = await response2.json();
 
-        localStorage.setItem(
-            "user",
-            JSON.stringify(data2)
-        );
+// ----------------------------------------
+// VALIDATE USER RESPONSE
+// ----------------------------------------
 
-        setTimeout(() => {
+if (
+    !response2.ok ||
+    !user ||
+    !user._id ||
+    !["admin", "employee"].includes(user.role)
+) {
 
-            window.location.href = "./index.html";
+    localStorage.removeItem("user");
 
-        }, 1000);
+    showMessage(
+        user.message || "Unable to load your account information.",
+        "error"
+    );
+
+    return;
+}
+
+
+// ----------------------------------------
+// ENSURE PERMISSIONS ARRAY EXISTS
+// ----------------------------------------
+
+if (!Array.isArray(user.permissions)) {
+    user.permissions = [];
+}
+
+
+// ----------------------------------------
+// SAVE USER INFORMATION
+// ----------------------------------------
+
+localStorage.setItem(
+    "user",
+    JSON.stringify(user)
+);
+
+
+// ----------------------------------------
+// REDIRECT
+// ----------------------------------------
+
+showMessage(
+    "Login successful! Redirecting...",
+    "success"
+);
+
+setTimeout(() => {
+
+    window.location.href = "./index.html";
+
+}, 1000);
 
     } catch (error) {
 

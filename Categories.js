@@ -31,6 +31,27 @@ getLocalStorageUser = () => {
 
 getLocalStorageUser();
 
+// ==========================================
+// CATEGORY CREATE PERMISSION
+// ==========================================
+
+const canCreateCategories =
+    FROSTYOPS_ACCESS.hasPermission("categories:create");
+
+[
+    "openAddBtn",
+    "addRowBtn",
+    "saveBtn"
+].forEach(id => {
+
+    const button = document.getElementById(id);
+
+    if (button) {
+        button.hidden = !canCreateCategories;
+    }
+
+});
+
 document.getElementById('admin').textContent =
     adminUser.email;
 
@@ -48,6 +69,20 @@ document.getElementById('datePill').textContent =
 
 
 async function getData() {
+
+
+        // ========================================
+    // CATEGORIES PAGE ACCESS CHECK
+    // ========================================
+
+    if (
+        !FROSTYOPS_ACCESS.requirePagePermission(
+            "categories:read"
+        )
+    ) {
+        return;
+    }
+
 
     try {
 
@@ -243,6 +278,13 @@ function renderCategoriesTable() {
     tbody.innerHTML = "";
 
 
+        const canUpdateCategories =
+    FROSTYOPS_ACCESS.hasPermission("categories:update");
+
+
+    const canDeleteCategories =
+    FROSTYOPS_ACCESS.hasPermission("categories:delete");
+
     categories.forEach((row, index) => {
 
         const tr =
@@ -264,18 +306,22 @@ function renderCategoriesTable() {
 
         <td>
 
-        <button 
+      ${canUpdateCategories ? `
+    <button
         class="btn btn-edit"
         data-index="${index}">
         ✎ Edit
-        </button>
+    </button>
+` : ""}
 
 
-        <button 
+      ${canDeleteCategories ? `
+    <button
         class="btn btn-delete"
         data-index="${index}">
         🗑 Delete
-        </button>
+    </button>
+` : ""}
 
 
         </td>
@@ -321,6 +367,13 @@ document
                 "btn-delete"
             )
         ) {
+
+            if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:delete")
+) {
+    alert("You do not have permission to delete categories.");
+    return;
+}
 
             const confirmDelete =
                 confirm(
@@ -469,6 +522,13 @@ document
                 "btn-edit"
             )
         ) {
+
+            if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:update")
+) {
+    alert("You do not have permission to edit categories.");
+    return;
+}
 
             const newName =
                 prompt(
@@ -741,6 +801,13 @@ document
     .getElementById("addRowBtn")
     .addEventListener("click", () => {
 
+        if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:create")
+) {
+    alert("You do not have permission to add categories.");
+    return;
+}
+
         manualRows.push({
 
             id: "",
@@ -798,6 +865,13 @@ document
 document
     .getElementById("saveBtn")
     .addEventListener("click", async () => {
+
+        if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:create")
+) {
+    alert("You do not have permission to create categories.");
+    return;
+}
 
         const newCategories =
             manualRows.filter(
@@ -874,6 +948,13 @@ document
     .getElementById("openAddBtn")
     .addEventListener("click", () => {
 
+        if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:create")
+) {
+    alert("You do not have permission to add categories.");
+    return;
+}
+
         manualRows.push({
 
             id: "",
@@ -899,6 +980,14 @@ renderManualTable();
 // ================= CREATE CATEGORY OFFLINE/ONLINE =================
 
 async function createCategory(category) {
+
+    if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:create")
+) {
+    throw new Error(
+        "You do not have permission to create categories."
+    );
+}
 
     // ================= OFFLINE =================
 
@@ -1103,6 +1192,15 @@ async function updateCategory(
     categoryId,
     updatedCategory
 ) {
+
+
+if (
+    !FROSTYOPS_ACCESS.hasPermission("categories:update")
+) {
+    throw new Error(
+        "You do not have permission to update categories."
+    );
+}
 
     // ================= OFFLINE =================
 

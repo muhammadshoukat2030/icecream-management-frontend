@@ -243,6 +243,26 @@ document.addEventListener(
 
 async function initializeSupplierDetails() {
 
+        const requiredPermissions = [
+        "suppliers:read",
+        "invoices:read",
+        "products:read"
+    ];
+
+    if (
+        !FROSTYOPS_ACCESS.hasAllPermissions(
+            requiredPermissions
+        )
+    ) {
+
+        FROSTYOPS_ACCESS.showAccessDenied(
+            "You do not have permission to view supplier details, purchase history and supplier products. Please contact your administrator."
+        );
+
+        return;
+
+    }
+
     try {
 
         /*
@@ -2265,21 +2285,15 @@ async function showInvoice(
          * Only the latest supplier invoice is editable.
          */
 
-        if (
-            finalInvoice &&
-            Number(
-                finalInvoice.id
-            ) ===
-            Number(
-                invoice.id
-            )
-        ) {
+    if (
+    finalInvoice &&
+    Number(finalInvoice.id) === Number(invoice.id) &&
+    FROSTYOPS_ACCESS.hasPermission("invoices:update")
+) {
 
-            openInvoiceEditPopup(
-                invoice
-            );
+    openInvoiceEditPopup(invoice);
 
-        }
+}
 
     }
     catch (error) {
@@ -3240,6 +3254,9 @@ function createEditButton() {
     button.className =
         "edit-supplier-btn";
 
+        button.hidden =
+    !FROSTYOPS_ACCESS.hasPermission("suppliers:update");
+
 
     button.addEventListener(
         "click",
@@ -3271,6 +3288,16 @@ function createEditButton() {
 // ============================================================
 
 function openEditSupplierModal() {
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("suppliers:update")
+    ) {
+        alert(
+            "You do not have permission to edit supplier information."
+        );
+
+        return;
+    }
 
     if (!supplier) {
         return;
@@ -3634,6 +3661,17 @@ async function updateSupplier(
 ) {
 
     event.preventDefault();
+
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("suppliers:update")
+    ) {
+        alert(
+            "You do not have permission to update suppliers."
+        );
+
+        return;
+    }
 
 
     if (!supplier) {
@@ -4066,6 +4104,16 @@ function closeEditSupplierModal() {
 function openInvoiceEditPopup(
     invoice
 ) {
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("invoices:update")
+    ) {
+        alert(
+            "You do not have permission to edit purchase invoices."
+        );
+
+        return;
+    }
 
     editingInvoice =
         structuredClone(
@@ -4952,6 +5000,16 @@ async function applySupplierReturnLocally(
 
 async function saveSupplierInvoiceEdit() {
 
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("invoices:update")
+    ) {
+        alert(
+            "You do not have permission to update purchase invoices."
+        );
+
+        return;
+    }
+
     if (!editingInvoice) {
         return;
     }
@@ -5543,12 +5601,138 @@ async function saveSupplierInvoiceEdit() {
 
 }
 
+// ============================================================
+// SUPPLIER DETAILS - DYNAMIC COMPANY INFORMATION
+// ============================================================
+
+function buildSupplierCompanyInfoHTML(company) {
+
+    let html = "";
+
+
+    // COMPANY NAME
+
+    if (company.companyName) {
+
+        html += `
+            <div class="company-name">
+                ${escapeHTML(company.companyName)}
+            </div>
+        `;
+
+    }
+
+
+    // ADDRESS
+
+    const addressLines =
+        Array.isArray(company.addressLines)
+            ? company.addressLines
+            : [];
+
+
+    if (addressLines.length > 0) {
+
+        html += `<div class="company-address">`;
+
+        if (company.headOfficeLabel) {
+
+            html += `
+                ${escapeHTML(company.headOfficeLabel)}:
+                ${escapeHTML(addressLines[0])}
+            `;
+
+        } else {
+
+            html += escapeHTML(addressLines[0]);
+
+        }
+
+
+        addressLines.slice(1).forEach(address => {
+
+            html += `
+                <br>
+                ${escapeHTML(address)}
+            `;
+
+        });
+
+        html += `</div>`;
+
+    }
+
+
+    // CONTACT INFORMATION
+
+    const contacts = [];
+
+
+    if (company.telephoneNumbers?.length) {
+
+        contacts.push(
+            `${escapeHTML(company.telephoneLabel || "Tel #")} ${
+                company.telephoneNumbers
+                    .map(number => escapeHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+
+    if (company.mobileNumbers?.length) {
+
+        contacts.push(
+            `${escapeHTML(company.mobileLabel || "Mobile #")} ${
+                company.mobileNumbers
+                    .map(number => escapeHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+
+    if (company.email) {
+
+        contacts.push(
+            escapeHTML(company.email)
+        );
+
+    }
+
+
+    if (company.website) {
+
+        contacts.push(
+            escapeHTML(company.website)
+        );
+
+    }
+
+
+    if (contacts.length > 0) {
+
+        html += `
+            <div class="company-address">
+                ${contacts.join("<br>")}
+            </div>
+        `;
+
+    }
+
+
+    return html;
+
+}
+
 
 // ============================================================
 // PRINT SUPPLIER SUMMARY
 // ============================================================
 
-function printSupplierSummary() {
+async function printSupplierSummary() {
 
     if (!supplier) {
 
@@ -5610,6 +5794,40 @@ function printSupplierSummary() {
         return;
 
     }
+
+    // =====================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// =====================================================
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyInfoHTML =
+        buildSupplierCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Supplier statement company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const supplierName =
@@ -6264,44 +6482,19 @@ th {
 <div class="statement">
 
 
-    <div class="header">
+ <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+    ${companyInfoHTML}
 
-
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            &nbsp;&nbsp;
-
-            Mobile # 0345-9101300 /
-            0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-
-        <div class="statement-title">
-            SUPPLIER STATEMENT / HISTORY
-        </div>
-
-
-        <div class="supplier-name">
-            ${escapeHTML(supplierName)}
-        </div>
-
+    <div class="statement-title">
+        SUPPLIER STATEMENT / HISTORY
     </div>
+
+    <div class="supplier-name">
+        ${escapeHTML(supplierName)}
+    </div>
+
+</div>
 
 
     <div class="info">
@@ -6565,67 +6758,82 @@ window.onafterprint = function() {
 
 function setupButtons() {
 
-    const purchaseButton =
-        document.getElementById(
-            "purchaseStockBtn"
-        );
+const canCreateInvoices =
+    FROSTYOPS_ACCESS.hasPermission("invoices:create");
 
+const purchaseButton =
+    document.getElementById("purchaseStockBtn");
 
-    if (purchaseButton) {
+if (purchaseButton) {
 
-        purchaseButton.addEventListener(
-            "click",
-            () => {
+    purchaseButton.hidden = !canCreateInvoices;
 
-                window.location.href =
-                    `purchase-stocks.html?supplierId=${supplierId}`;
+    purchaseButton.addEventListener(
+        "click",
+        () => {
 
+            if (!FROSTYOPS_ACCESS.hasPermission("invoices:create")) {
+                alert("You do not have permission to purchase stock.");
+                return;
             }
-        );
 
-    }
+            window.location.href =
+                `purchase-stocks.html?supplierId=${supplierId}`;
+        }
+    );
+}
 
+const addPurchaseButton =
+    document.getElementById("addPurchaseBtn");
 
-    const addPurchaseButton =
-        document.getElementById(
-            "addPurchaseBtn"
-        );
+if (addPurchaseButton) {
 
+    addPurchaseButton.hidden = !canCreateInvoices;
 
-    if (addPurchaseButton) {
+    addPurchaseButton.addEventListener(
+        "click",
+        () => {
 
-        addPurchaseButton.addEventListener(
-            "click",
-            () => {
-
-                window.location.href =
-                    `purchase-stocks.html?supplierId=${supplierId}`;
-
+            if (!FROSTYOPS_ACCESS.hasPermission("invoices:create")) {
+                alert("You do not have permission to purchase stock.");
+                return;
             }
-        );
 
-    }
-
+            window.location.href =
+                `purchase-stocks.html?supplierId=${supplierId}`;
+        }
+    );
+}
 
     const addProductButton =
-        document.getElementById(
-            "addProductBtn"
-        );
+    document.getElementById("addProductBtn");
 
+if (addProductButton) {
 
-    if (addProductButton) {
+    addProductButton.hidden =
+        !FROSTYOPS_ACCESS.hasPermission("products:create");
 
-        addProductButton.addEventListener(
-            "click",
-            () => {
+    addProductButton.addEventListener(
+        "click",
+        () => {
 
-                window.location.href =
-                    `Products.html?supplierId=${supplierId}`;
+            if (
+                !FROSTYOPS_ACCESS.hasPermission("products:create")
+            ) {
+                alert(
+                    "You do not have permission to create products."
+                );
 
+                return;
             }
-        );
 
-    }
+            window.location.href =
+                `Products.html?supplierId=${supplierId}`;
+
+        }
+    );
+
+}
 
 
     const printLink =
@@ -6720,9 +6928,9 @@ function setupButtons() {
 // REAL INVOICE PRINT
 // ============================================================
 
-function printRealInvoice(
+async function printRealInvoice(
     invoice
-) {
+) { 
 
     if (!invoice) {
 
@@ -6752,6 +6960,41 @@ function printRealInvoice(
         return;
 
     }
+
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyInfoHTML =
+        buildSupplierCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Supplier invoice company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -7278,38 +7521,15 @@ body {
 <div class="invoice">
 
 
-    <div class="header">
+  <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+    ${companyInfoHTML}
 
-
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-            &nbsp;&nbsp;
-
-            Mobile # 0345-9101300 /
-            0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-
-        <div class="invoice-title">
-            PURCHASE INVOICE
-        </div>
-
+    <div class="invoice-title">
+        PURCHASE INVOICE
     </div>
+
+</div>
 
 
     <table class="info-table">

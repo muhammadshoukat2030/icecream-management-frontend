@@ -140,6 +140,25 @@ document.addEventListener(
 
 async function initializeSalesmanDetails() {
 
+    const requiredPermissions = [
+        "salesmen:read",
+        "invoices:read"
+    ];
+
+    if (
+        !FROSTYOPS_ACCESS.hasAllPermissions(
+            requiredPermissions
+        )
+    ) {
+
+        FROSTYOPS_ACCESS.showAccessDenied(
+            "You do not have permission to view salesman details and invoice history. Please contact your administrator."
+        );
+
+        return;
+
+    }
+
     await loadSalesman();
 
 }
@@ -935,17 +954,39 @@ function renderLocalStats(
 // ISSUE STOCK BUTTON
 // =========================================================
 
-document
-    .querySelector(".btn-issue")
-    ?.addEventListener(
+// =========================================================
+// ISSUE STOCK BUTTON
+// =========================================================
+
+const issueStockButton =
+    document.querySelector(".btn-issue");
+
+if (issueStockButton) {
+
+    issueStockButton.hidden =
+        !FROSTYOPS_ACCESS.hasPermission("invoices:create");
+
+    issueStockButton.addEventListener(
         "click",
         () => {
+
+            if (
+                !FROSTYOPS_ACCESS.hasPermission("invoices:create")
+            ) {
+                alert(
+                    "You do not have permission to issue stock."
+                );
+
+                return;
+            }
 
             window.location.href =
                 `issueStocks.html?salesman=${salesmanId}`;
 
         }
     );
+
+}
 
 
 // =========================================================
@@ -1369,6 +1410,16 @@ function setText(
 function openInvoiceEditPopup(
     invoice
 ) {
+
+        if (
+        !FROSTYOPS_ACCESS.hasPermission("invoices:update")
+    ) {
+        alert(
+            "You do not have permission to edit invoices."
+        );
+
+        return;
+    }
 
     editingInvoice =
         structuredClone(
@@ -2029,21 +2080,15 @@ document
                 // ONLY LATEST EDITABLE
                 // =================================================
 
-                if (
-                    latestInvoice &&
-                    Number(
-                        invoice.id
-                    ) ===
-                    Number(
-                        latestInvoice.id
-                    )
-                ) {
+               if (
+    latestInvoice &&
+    Number(invoice.id) === Number(latestInvoice.id) &&
+    FROSTYOPS_ACCESS.hasPermission("invoices:update")
+) {
 
-                    openInvoiceEditPopup(
-                        invoice
-                    );
+    openInvoiceEditPopup(invoice);
 
-                }
+}
 
             }
             catch (error) {
@@ -2063,12 +2108,139 @@ document
         }
     );
 
+// =========================================================
+// SALESMAN DETAILS - SAFE PRINT HTML
+// =========================================================
+
+function escapeSalesmanPrintHTML(value) {
+
+    const div = document.createElement("div");
+
+    div.textContent = value ?? "";
+
+    return div.innerHTML;
+
+}
+
+
+// =========================================================
+// SALESMAN DETAILS - COMPANY INFORMATION
+// =========================================================
+
+function buildSalesmanCompanyInfoHTML(company) {
+
+    let html = "";
+
+
+    // Company name
+
+    if (company.companyName) {
+
+        html += `
+            <div class="company-name">
+                ${escapeSalesmanPrintHTML(company.companyName)}
+            </div>
+        `;
+
+    }
+
+
+    // Address
+
+    const addressLines =
+        Array.isArray(company.addressLines)
+            ? company.addressLines
+            : [];
+
+
+    if (addressLines.length > 0) {
+
+        html += `<div class="company-address">`;
+
+        if (company.headOfficeLabel) {
+
+            html += `
+                ${escapeSalesmanPrintHTML(company.headOfficeLabel)}:
+                ${escapeSalesmanPrintHTML(addressLines[0])}
+            `;
+
+        } else {
+
+            html +=
+                escapeSalesmanPrintHTML(addressLines[0]);
+
+        }
+
+        addressLines.slice(1).forEach(address => {
+
+            html += `
+                <br>
+                ${escapeSalesmanPrintHTML(address)}
+            `;
+
+        });
+
+        html += `</div>`;
+
+    }
+
+
+    // Telephone and mobile
+
+    const contacts = [];
+
+    if (company.telephoneNumbers?.length) {
+
+        contacts.push(
+            `${escapeSalesmanPrintHTML(company.telephoneLabel || "Tel #")} ${
+                company.telephoneNumbers
+                    .map(number => escapeSalesmanPrintHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+    if (company.mobileNumbers?.length) {
+
+        contacts.push(
+            `${escapeSalesmanPrintHTML(company.mobileLabel || "Mobile #")} ${
+                company.mobileNumbers
+                    .map(number => escapeSalesmanPrintHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+    if (company.email) {
+        contacts.push(escapeSalesmanPrintHTML(company.email));
+    }
+
+    if (company.website) {
+        contacts.push(escapeSalesmanPrintHTML(company.website));
+    }
+
+    if (contacts.length > 0) {
+
+        html += `
+            <div class="company-address">
+                ${contacts.join("<br>")}
+            </div>
+        `;
+
+    }
+
+    return html;
+
+}
+
 
 // =========================================================
 // PRINT REAL INVOICE
 // =========================================================
 
-function printRealInvoice(
+async function printRealInvoice(
     invoice
 ) {
 
@@ -2089,6 +2261,41 @@ function printRealInvoice(
         return;
 
     }
+
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyInfoHTML =
+        buildSalesmanCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Salesman invoice company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -2420,33 +2627,13 @@ body {
 
     <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+    ${companyInfoHTML}
 
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            &nbsp;&nbsp;
-
-            Mobile # 0345-9101300 / 0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-        <div class="invoice-title">
-            INVOICE
-        </div>
-
+    <div class="invoice-title">
+        INVOICE
     </div>
+
+</div>
 
 
     <table class="info-table">
@@ -2794,7 +2981,7 @@ document
 // PRINT THERMAL INVOICE
 // =========================================================
 
-function printThermalInvoice(
+async function printThermalInvoice(
     invoice
 ) {
 
@@ -2815,6 +3002,40 @@ function printThermalInvoice(
         return;
 
     }
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyInfoHTML =
+        buildSalesmanCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Salesman thermal company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -3259,32 +3480,15 @@ body {
 
 <div class="receipt">
 
-    <div class="header">
+   <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+    ${companyInfoHTML}
 
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            <br>
-
-            Mobile # 0345-9101300 / 0317-1234570
-
-        </div>
-
-        <div class="invoice-title">
-            SALES INVOICE
-        </div>
-
+    <div class="invoice-title">
+        SALES INVOICE
     </div>
+
+</div>
 
 
     <div class="info">
@@ -3604,7 +3808,7 @@ window.onafterprint = function() {
 // PRINT SUMMARY
 // =========================================================
 
-function printSalesmanSummary() {
+async function printSalesmanSummary() {
 
     if (!currentSalesman) {
 
@@ -3648,6 +3852,41 @@ function printSalesmanSummary() {
         return;
 
     }
+
+
+    // =====================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// =====================================================
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyInfoHTML =
+        buildSalesmanCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Salesman statement company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const salesmanName =
@@ -4216,40 +4455,19 @@ th {
 <div class="statement">
 
 
-    <div class="header">
+   <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+    ${companyInfoHTML}
 
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            &nbsp;&nbsp;
-
-            Mobile # 0345-9101300 / 0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-        <div class="statement-title">
-            SALESMAN STATEMENT / HISTORY
-        </div>
-
-        <div class="salesman-name">
-            ${salesmanName}
-        </div>
-
+    <div class="statement-title">
+        SALESMAN STATEMENT / HISTORY
     </div>
+
+    <div class="salesman-name">
+        ${salesmanName}
+    </div>
+
+</div>
 
 
     <div class="info">
@@ -5148,6 +5366,16 @@ document
     ?.addEventListener(
         "click",
         async () => {
+
+                        if (
+                !FROSTYOPS_ACCESS.hasPermission("invoices:update")
+            ) {
+                alert(
+                    "You do not have permission to update invoices."
+                );
+
+                return;
+            }
 
             if (!editingInvoice) {
 

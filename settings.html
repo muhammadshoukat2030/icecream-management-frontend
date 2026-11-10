@@ -331,7 +331,7 @@
                     <span
                         class="info-value"
                         id="displayName">
-                        Ahmed Khan
+                        
                     </span>
                 </div>
 
@@ -340,7 +340,7 @@
                     <span
                         class="info-value"
                         id="displayEmail">
-                        ahmed@example.com
+                        
                     </span>
                 </div>
 
@@ -349,7 +349,7 @@
                     <span
                         class="info-value"
                         id="displayPhone">
-                        +92 300 1234567
+                       
                     </span>
                 </div>
 
@@ -449,7 +449,7 @@
                     <span
                         class="info-value"
                         id="displayCompanyName">
-                        ABC Traders
+                        
                     </span>
                 </div>
 
@@ -459,7 +459,7 @@
                     <span
                         class="info-value"
                         id="displayCompanyPhone">
-                        +92 300 1234567
+                        
                     </span>
                 </div>
 
@@ -469,7 +469,7 @@
                     <span
                         class="info-value"
                         id="displayCompanyEmail">
-                        contact@abctraders.com
+                       
                     </span>
                 </div>
 
@@ -479,7 +479,7 @@
                     <span
                         class="info-value"
                         id="displayCompanyAddress">
-                        Lahore, Pakistan
+                        
                     </span>
                 </div>
 
@@ -494,43 +494,112 @@
             class="edit-form"
             id="companyEdit">
 
-            <div class="form-grid">
+            
+<div class="form-grid">
 
-                <div class="form-group">
-                    <label>Company Name</label>
+    <div class="form-group">
+        <label>Company Name</label>
+        <input
+            type="text"
+            id="companyNameInput"
+            placeholder="Company name">
+    </div>
 
-                    <input
-                        type="text"
-                        id="companyNameInput"
-                        value="ABC Traders">
-                </div>
+    <div class="form-group">
+        <label>Company Logo URL</label>
+        <input
+            type="url"
+            id="companyLogoUrlInput"
+            placeholder="https://example.com/logo.png">
+    </div>
 
-                <div class="form-group">
-                    <label>Company Phone</label>
+    <div class="form-group">
+        <label>Head Office Label</label>
+        <input
+            type="text"
+            id="companyHeadOfficeLabelInput"
+            placeholder="Head Office">
+    </div>
 
-                    <input
-                        type="tel"
-                        id="companyPhoneInput"
-                        value="+92 300 1234567">
-                </div>
+    <div class="form-group">
+        <label>Telephone Label</label>
+        <input
+            type="text"
+            id="companyTelephoneLabelInput"
+            placeholder="Tel #">
+    </div>
 
-                <div class="form-group">
-                    <label>Company Email</label>
+    <div class="form-group full-width">
+        <label>Address Lines</label>
+        <textarea
+            id="companyAddressInput"
+            placeholder="Enter each address line separately"></textarea>
+    </div>
 
-                    <input
-                        type="email"
-                        id="companyEmailInput"
-                        value="contact@abctraders.com">
-                </div>
+    <div class="form-group">
+        <label>Telephone Numbers</label>
+        <textarea
+            id="companyPhoneInput"
+            placeholder="Enter one telephone number per line"></textarea>
+    </div>
 
-                <div class="form-group full-width">
-                    <label>Company Address</label>
+    <div class="form-group">
+        <label>Mobile Label</label>
+        <input
+            type="text"
+            id="companyMobileLabelInput"
+            placeholder="Mobile #">
+    </div>
 
-                    <textarea
-                        id="companyAddressInput">Lahore, Pakistan</textarea>
-                </div>
+    <div class="form-group">
+        <label>Mobile Numbers</label>
+        <textarea
+            id="companyMobileNumbersInput"
+            placeholder="Enter one mobile number per line"></textarea>
+    </div>
 
-            </div>
+    <div class="form-group">
+        <label>Company Email</label>
+        <input
+            type="email"
+            id="companyEmailInput"
+            placeholder="company@example.com">
+    </div>
+
+    <div class="form-group">
+        <label>Website</label>
+        <input
+            type="url"
+            id="companyWebsiteInput"
+            placeholder="https://example.com">
+    </div>
+
+    <div class="form-group">
+        <label>City</label>
+        <input
+            type="text"
+            id="companyCityInput"
+            placeholder="City">
+    </div>
+
+    <div class="form-group">
+        <label>Country</label>
+        <input
+            type="text"
+            id="companyCountryInput"
+            placeholder="Country">
+    </div>
+
+    <div class="form-group">
+        <label>Currency Symbol</label>
+        <input
+            type="text"
+            id="companyCurrencySymbolInput"
+            placeholder="Rs.">
+    </div>
+
+</div>
+
 
             <div class="form-actions">
 
@@ -582,6 +651,169 @@
                 id="changePasswordBtn">
                 Change Password
             </button>
+
+        </div>
+
+    </div>
+
+        <!-- =================================
+         EMPLOYEE MANAGEMENT
+    ================================== -->
+
+    <div class="card" id="employeeManagementCard" hidden>
+
+        <div class="card-header">
+            <h2>Employee Management</h2>
+
+            <span class="info-label">
+                Administrator Only
+            </span>
+        </div>
+
+        <p style="color:#777; font-size:13px; margin-bottom:22px;">
+            Create employee accounts and assign access to different
+            modules of FrostyOps.
+        </p>
+
+        <!-- CREATE EMPLOYEE -->
+
+        <h3 style="font-size:16px; margin-bottom:16px;">
+            Create Employee
+        </h3>
+
+        <form id="employeeForm">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label for="employeeName">Full Name</label>
+
+                    <input
+                        type="text"
+                        id="employeeName"
+                        placeholder="Employee name"
+                        minlength="6"
+                        maxlength="40"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="employeeEmail">Email Address</label>
+
+                    <input
+                        type="email"
+                        id="employeeEmail"
+                        placeholder="employee@example.com"
+                        required
+                    >
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="employeePassword">Initial Password</label>
+
+                    <input
+                        type="password"
+                        id="employeePassword"
+                        placeholder="Minimum 8 characters"
+                        minlength="8"
+                        required
+                    >
+                </div>
+
+            </div>
+
+            <!-- PERMISSIONS -->
+
+            <div style="margin-top:25px;">
+
+                <h3 style="font-size:16px; margin-bottom:8px;">
+                    Assign Permissions
+                </h3>
+
+                <p style="color:#888; font-size:13px; margin-bottom:18px;">
+                    Select which modules and operations this employee
+                    can access.
+                </p>
+
+                <div id="employeePermissionGroups"></div>
+
+            </div>
+
+            <div id="employeeFormMessage"
+                style="margin-top:15px; font-size:13px;"
+                aria-live="polite">
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="reset"
+                    class="btn btn-cancel">
+                    Clear Form
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn btn-save"
+                    id="createEmployeeBtn">
+                    Create Employee
+                </button>
+
+            </div>
+
+        </form>
+
+        <hr style="border:none; border-top:1px solid #eee; margin:28px 0;">
+
+        <!-- EMPLOYEE LIST -->
+
+        <div class="card-header">
+            <h2>Existing Employees</h2>
+
+            <button
+                type="button"
+                class="edit-btn"
+                id="refreshEmployeesBtn">
+                Refresh
+            </button>
+        </div>
+
+        <div id="employeeListMessage"
+            style="font-size:13px; color:#777; margin-bottom:15px;"
+            aria-live="polite">
+        </div>
+
+        <div style="overflow-x:auto;">
+
+            <table style="
+                width:100%;
+                border-collapse:collapse;
+                text-align:left;
+                font-size:14px;
+            ">
+
+                <thead>
+                    <tr style="border-bottom:1px solid #eee;">
+                        <th style="padding:12px 8px;">Name</th>
+                        <th style="padding:12px 8px;">Email</th>
+                        <th style="padding:12px 8px;">Permissions</th>
+                        <th style="padding:12px 8px;">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody id="employeeTableBody">
+
+                    <tr>
+                        <td colspan="4"
+                            style="padding:20px 8px; color:#888;">
+                            Employee records will appear here.
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
 
         </div>
 
@@ -663,82 +895,809 @@
 
 </div>
 
+<script src="config.js"></script>
+<script src="offline-db.js"></script>
 
 <script>
 
-    /*
-    ==========================================
-    ACCOUNT EDITING
-    ==========================================
-    */
+    // ==========================================
+// CURRENT USER ACCESS
+// ==========================================
 
-    const accountDisplay =
-        document.getElementById("accountDisplay");
+let currentUser = null;
 
-    const accountEdit =
-        document.getElementById("accountEdit");
+try {
 
-    const accountEditBtn =
-        document.getElementById("accountEditBtn");
+    currentUser = JSON.parse(
+        localStorage.getItem("user") || "null"
+    );
 
-    const accountCancelBtn =
-        document.getElementById("accountCancelBtn");
+} catch (error) {
 
-    const accountSaveBtn =
-        document.getElementById("accountSaveBtn");
+    console.error("Unable to read logged-in user:", error);
+
+}
 
 
-    accountEditBtn.addEventListener("click", () => {
+// ==========================================
+// EMPLOYEE MANAGEMENT VISIBILITY
+// ==========================================
 
-        accountDisplay.classList.add("hidden");
+const employeeManagementCard =
+    document.getElementById("employeeManagementCard");
 
-        accountEdit.classList.add("active");
+
+
+if (employeeManagementCard) {
+
+    employeeManagementCard.hidden =
+        currentUser?.role !== "admin";
+
+}
+
+// ==========================================
+// EMPLOYEE PERMISSION DEFINITIONS
+// ==========================================
+
+const employeePermissionDefinitions = [
+
+    {
+        module: "Dashboard",
+        permissions: [
+            ["dashboard:read", "View Dashboard"]
+        ]
+    },
+
+    {
+        module: "Categories",
+        permissions: [
+            ["categories:read", "View Categories"],
+            ["categories:create", "Add Categories"],
+            ["categories:update", "Edit Categories"],
+            ["categories:delete", "Delete Categories"]
+        ]
+    },
+
+    {
+        module: "Products",
+        permissions: [
+            ["products:read", "View Products"],
+            ["products:create", "Add Products"],
+            ["products:update", "Edit Products"],
+            ["products:delete", "Delete Products"]
+        ]
+    },
+
+    {
+        module: "Salesmen",
+        permissions: [
+            ["salesmen:read", "View Salesmen"],
+            ["salesmen:create", "Add Salesmen"],
+            ["salesmen:update", "Edit Salesmen"],
+            ["salesmen:delete", "Delete Salesmen"]
+        ]
+    },
+
+    {
+        module: "Suppliers",
+        permissions: [
+            ["suppliers:read", "View Suppliers"],
+            ["suppliers:create", "Add Suppliers"],
+            ["suppliers:update", "Edit Suppliers"],
+            ["suppliers:delete", "Delete Suppliers"]
+        ]
+    },
+
+    {
+        module: "Invoices",
+        permissions: [
+            ["invoices:read", "View Invoices"],
+            ["invoices:create", "Create Invoices"],
+            ["invoices:update", "Update Invoices"]
+        ]
+    },
+
+    {
+        module: "Expenses",
+        permissions: [
+            ["expenses:read", "View Expenses"],
+            ["expenses:create", "Add Expenses"],
+            ["expenses:update", "Edit Expenses"],
+            ["expenses:delete", "Delete Expenses"]
+        ]
+    },
+
+    {
+        module: "Expense Profiles",
+        permissions: [
+            ["expenseProfiles:read", "View Expense Profiles"],
+            ["expenseProfiles:create", "Add Expense Profiles"],
+            ["expenseProfiles:update", "Edit Expense Profiles"],
+            ["expenseProfiles:delete", "Delete Expense Profiles"]
+        ]
+    },
+
+    {
+        module: "Expense Payments",
+        permissions: [
+            ["expensePayments:read", "View Payments"],
+            ["expensePayments:create", "Add Payments"],
+            ["expensePayments:update", "Edit Payments"],
+            ["expensePayments:delete", "Delete Payments"]
+        ]
+    }
+
+];
+
+
+// ==========================================
+// RENDER PERMISSION GROUPS
+// ==========================================
+
+function renderEmployeePermissionGroups(
+    selectedPermissions = []
+) {
+
+    const container =
+        document.getElementById(
+            "employeePermissionGroups"
+        );
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    employeePermissionDefinitions.forEach(group => {
+
+        const groupContainer =
+            document.createElement("div");
+
+        groupContainer.style.cssText = `
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+        `;
+
+
+        const heading =
+            document.createElement("h4");
+
+        heading.textContent = group.module;
+
+        heading.style.cssText = `
+            font-size: 14px;
+            margin-bottom: 12px;
+        `;
+
+        groupContainer.appendChild(heading);
+
+
+        const permissionGrid =
+            document.createElement("div");
+
+        permissionGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        `;
+
+
+        group.permissions.forEach(permission => {
+
+            const [permissionKey, labelText] =
+                permission;
+
+            const label =
+                document.createElement("label");
+
+            label.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                color: #444;
+                cursor: pointer;
+            `;
+
+
+            const checkbox =
+                document.createElement("input");
+
+            checkbox.type = "checkbox";
+
+            checkbox.value = permissionKey;
+
+            checkbox.dataset.permission =
+                permissionKey;
+
+            checkbox.checked =
+                selectedPermissions.includes(
+                    permissionKey
+                );
+
+
+            const text =
+                document.createElement("span");
+
+            text.textContent = labelText;
+
+
+            label.appendChild(checkbox);
+
+            label.appendChild(text);
+
+            permissionGrid.appendChild(label);
+
+        });
+
+
+        groupContainer.appendChild(permissionGrid);
+
+        container.appendChild(groupContainer);
 
     });
 
+}
 
-    accountCancelBtn.addEventListener("click", () => {
+
+// Initial permission interface
+renderEmployeePermissionGroups();
+
+
+// ==========================================
+// CREATE EMPLOYEE
+// ==========================================
+
+const SETTINGS_API = window.APP_CONFIG?.API;
+
+const employeeForm =
+    document.getElementById("employeeForm");
+
+const createEmployeeBtn =
+    document.getElementById("createEmployeeBtn");
+
+const employeeFormMessage =
+    document.getElementById("employeeFormMessage");
+
+
+// ------------------------------------------
+// DISPLAY FORM MESSAGE
+// ------------------------------------------
+
+function showEmployeeFormMessage(message, type) {
+
+    employeeFormMessage.textContent = message;
+
+    employeeFormMessage.style.color =
+        type === "success" ? "#18864b" : "#c62828";
+
+}
+
+
+// ------------------------------------------
+// SUBMIT EMPLOYEE FORM
+// ------------------------------------------
+
+employeeForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    if (currentUser?.role !== "admin") {
+        showEmployeeFormMessage(
+            "Administrator access is required.",
+            "error"
+        );
+        return;
+    }
+
+    if (!SETTINGS_API) {
+        showEmployeeFormMessage(
+            "API configuration is unavailable.",
+            "error"
+        );
+        return;
+    }
+
+    const name =
+        document.getElementById("employeeName").value.trim();
+
+    const email =
+        document.getElementById("employeeEmail")
+            .value.trim().toLowerCase();
+
+    const password =
+        document.getElementById("employeePassword").value;
+
+
+    // Collect selected permissions.
+    const permissions = Array.from(
+        document.querySelectorAll(
+            "#employeePermissionGroups input[data-permission]:checked"
+        )
+    ).map(checkbox => checkbox.dataset.permission);
+
+
+    createEmployeeBtn.disabled = true;
+    createEmployeeBtn.textContent = "Creating...";
+
+    try {
+
+        const response = await fetch(
+            `${SETTINGS_API}/employees`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                credentials: "include",
+
+                body: JSON.stringify({
+                    name,
+                    email,
+                    password,
+                    permissions
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showEmployeeFormMessage(
+                data.message || "Unable to create employee.",
+                "error"
+            );
+            return;
+        }
+
+
+        // Clear the form after successful creation.
+        employeeForm.reset();
+
+        renderEmployeePermissionGroups();
+        await loadEmployees();
+
+        showEmployeeFormMessage(
+            data.message || "Employee created successfully.",
+            "success"
+        );
+
+    }
+    catch (error) {
+
+        console.error("Create Employee Error:", error);
+
+        showEmployeeFormMessage(
+            "Unable to connect to the server.",
+            "error"
+        );
+
+    }
+    finally {
+
+        createEmployeeBtn.disabled = false;
+        createEmployeeBtn.textContent = "Create Employee";
+
+    }
+
+});
+
+
+// ==========================================
+// LOAD EMPLOYEES
+// ==========================================
+
+async function loadEmployees() {
+
+    const tableBody =
+        document.getElementById("employeeTableBody");
+
+    const listMessage =
+        document.getElementById("employeeListMessage");
+
+    if (currentUser?.role !== "admin") return;
+
+    tableBody.innerHTML = "";
+
+    listMessage.textContent = "Loading employees...";
+
+    try {
+
+        const response = await fetch(
+            `${SETTINGS_API}/employees`,
+            {
+                credentials: "include"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to load employees."
+            );
+        }
+
+        const employees =
+            Array.isArray(data.employees)
+                ? data.employees
+                : [];
+
+        if (employees.length === 0) {
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 4;
+            cell.textContent = "No employees found.";
+            cell.style.padding = "20px 8px";
+            cell.style.color = "#888";
+
+            row.appendChild(cell);
+            tableBody.appendChild(row);
+
+            listMessage.textContent =
+                "No employee accounts created yet.";
+
+            return;
+        }
+
+        employees.forEach(employee => {
+
+            const row = document.createElement("tr");
+
+            row.style.borderBottom = "1px solid #eee";
+
+            const nameCell = document.createElement("td");
+            nameCell.textContent = employee.name || "-";
+
+            const emailCell = document.createElement("td");
+            emailCell.textContent = employee.email || "-";
+
+            const permissionsCell =
+                document.createElement("td");
+
+            permissionsCell.textContent =
+                `${Array.isArray(employee.permissions)
+                    ? employee.permissions.length
+                    : 0} permissions`;
+
+            const actionCell = document.createElement("td");
+            actionCell.textContent = "—";
+
+            [nameCell, emailCell, permissionsCell, actionCell]
+                .forEach(cell => {
+                    cell.style.padding = "12px 8px";
+                    row.appendChild(cell);
+                });
+
+            tableBody.appendChild(row);
+
+        });
+
+        listMessage.textContent =
+            `${employees.length} employee account(s) found.`;
+
+    }
+    catch (error) {
+
+        console.error("Load Employees Error:", error);
+
+        listMessage.textContent =
+            error.message || "Unable to load employees.";
+
+    }
+
+}
+
+
+// ==========================================
+// REFRESH EMPLOYEE LIST
+// ==========================================
+
+document
+    .getElementById("refreshEmployeesBtn")
+    .addEventListener("click", loadEmployees);
+
+
+// ==========================================
+// INITIAL EMPLOYEE LOAD
+// ==========================================
+
+if (currentUser?.role === "admin") {
+    loadEmployees();
+}
+
+
+   
+/*
+==========================================
+ACCOUNT EDITING
+==========================================
+*/
+
+const accountDisplay =
+    document.getElementById("accountDisplay");
+
+const accountEdit =
+    document.getElementById("accountEdit");
+
+const accountEditBtn =
+    document.getElementById("accountEditBtn");
+
+const accountCancelBtn =
+    document.getElementById("accountCancelBtn");
+
+const accountSaveBtn =
+    document.getElementById("accountSaveBtn");
+
+
+let currentAccountUser = null;
+
+
+// ==========================================
+// POPULATE ACCOUNT INFORMATION
+// ==========================================
+
+function populateAccountInformation(user) {
+
+    document.getElementById("displayName").textContent =
+        user.name || "Not set";
+
+    document.getElementById("displayEmail").textContent =
+        user.email || "Not set";
+
+    document.getElementById("displayPhone").textContent =
+        user.phone || "Not set";
+
+
+    document.getElementById("nameInput").value =
+        user.name || "";
+
+    document.getElementById("emailInput").value =
+        user.email || "";
+
+    document.getElementById("phoneInput").value =
+        user.phone || "";
+
+}
+
+
+// ==========================================
+// LOAD ACCOUNT INFORMATION
+// ==========================================
+
+async function loadAccountInformation() {
+
+    if (!SETTINGS_API) {
+        console.error("Account API configuration is unavailable.");
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            `${SETTINGS_API}/getMe`,
+            {
+                method: "GET",
+                credentials: "include"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to load account information."
+            );
+        }
+
+        currentAccountUser = data;
+
+        populateAccountInformation(currentAccountUser);
+
+        // Keep the non-sensitive local user information updated.
+        currentUser = {
+            ...(currentUser || {}),
+            name: data.name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            role: data.role,
+            permissions: data.permissions || []
+        };
+
+        localStorage.setItem(
+            "user",
+            JSON.stringify(currentUser)
+        );
+
+        console.log(
+            "Account information loaded:",
+            currentAccountUser
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Account Information Load Error:",
+            error
+        );
+
+    }
+
+}
+
+
+// ==========================================
+// OPEN ACCOUNT EDIT MODE
+// ==========================================
+
+accountEditBtn.addEventListener("click", async () => {
+
+    if (!currentAccountUser) {
+        await loadAccountInformation();
+    }
+
+    if (!currentAccountUser) {
+        alert("Unable to load your account information.");
+        return;
+    }
+
+    populateAccountInformation(currentAccountUser);
+
+    accountDisplay.classList.add("hidden");
+    accountEdit.classList.add("active");
+
+});
+
+
+// ==========================================
+// CANCEL ACCOUNT EDITING
+// ==========================================
+
+accountCancelBtn.addEventListener("click", () => {
+
+    if (currentAccountUser) {
+        populateAccountInformation(currentAccountUser);
+    }
+
+    accountEdit.classList.remove("active");
+    accountDisplay.classList.remove("hidden");
+
+});
+
+
+// ==========================================
+// SAVE ACCOUNT INFORMATION
+// ==========================================
+
+accountSaveBtn.addEventListener("click", async () => {
+
+    const name =
+        document.getElementById("nameInput").value.trim();
+
+    const emailInput =
+        document.getElementById("emailInput");
+
+    const email =
+        emailInput.value.trim().toLowerCase();
+
+    const phone =
+        document.getElementById("phoneInput").value.trim();
+
+
+    // Validate name.
+    if (name.length < 6 || name.length > 40) {
+        alert("Name must contain between 6 and 40 characters.");
+        return;
+    }
+
+    // Validate email.
+    if (!emailInput.checkValidity()) {
+        alert("Please enter a valid email address.");
+        return;
+    }
+
+    // Validate phone length.
+    if (phone.length > 30) {
+        alert("Phone number cannot exceed 30 characters.");
+        return;
+    }
+
+    if (!SETTINGS_API) {
+        alert("API configuration is unavailable.");
+        return;
+    }
+
+
+    accountSaveBtn.disabled = true;
+    accountSaveBtn.textContent = "Saving...";
+
+
+    try {
+
+        const response = await fetch(
+            `${SETTINGS_API}/getMe`,
+            {
+                method: "PATCH",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                credentials: "include",
+
+                body: JSON.stringify({
+                    name,
+                    email,
+                    phone
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || data.status !== "success") {
+            throw new Error(
+                data.message || "Unable to update account information."
+            );
+        }
+
+
+        // Store the updated authenticated user.
+        currentAccountUser = data.user;
+
+        populateAccountInformation(currentAccountUser);
+
+
+        // Update cached non-sensitive user information.
+        currentUser = {
+            ...(currentUser || {}),
+            name: data.user.name,
+            email: data.user.email,
+            phone: data.user.phone || "",
+            role: data.user.role,
+            permissions: data.user.permissions || []
+        };
+
+        localStorage.setItem(
+            "user",
+            JSON.stringify(currentUser)
+        );
+
 
         accountEdit.classList.remove("active");
-
         accountDisplay.classList.remove("hidden");
 
-    });
+        alert("Account information updated successfully.");
 
 
-    accountSaveBtn.addEventListener("click", () => {
+    }
+    catch (error) {
 
-        const name =
-            document.getElementById("nameInput").value;
+        console.error(
+            "Account Information Save Error:",
+            error
+        );
 
-        const email =
-            document.getElementById("emailInput").value;
+        alert(
+            error.message || "Unable to update account information."
+        );
 
-        const phone =
-            document.getElementById("phoneInput").value;
+    }
+    finally {
 
+        accountSaveBtn.disabled = false;
+        accountSaveBtn.textContent = "Save Changes";
 
-        document.getElementById("displayName").textContent =
-            name;
+    }
 
-        document.getElementById("displayEmail").textContent =
-            email;
+});
 
-        document.getElementById("displayPhone").textContent =
-            phone;
-
-
-        accountEdit.classList.remove("active");
-
-        accountDisplay.classList.remove("hidden");
-
-        // TODO:
-        // Send these values to your backend API.
-
-
-        alert("Account information updated.");
-
-    });
 
 
     /*
@@ -762,6 +1721,225 @@
     const companySaveBtn =
         document.getElementById("companySaveBtn");
 
+        
+// ==========================================
+// COMPANY SETTINGS - LOAD SAVED INFORMATION
+// ==========================================
+
+let currentCompanySettings = null;
+
+
+function populateCompanySettingsForm(settings) {
+
+    const company = settings?.company || {};
+
+    const addresses = Array.isArray(company.addressLines)
+        ? company.addressLines
+        : [];
+
+    const telephoneNumbers = Array.isArray(company.telephoneNumbers)
+        ? company.telephoneNumbers
+        : [];
+
+    const mobileNumbers = Array.isArray(company.mobileNumbers)
+        ? company.mobileNumbers
+        : [];
+
+
+    // Populate edit form.
+
+    document.getElementById("companyNameInput").value =
+        company.companyName || "";
+
+    document.getElementById("companyLogoUrlInput").value =
+        company.logoUrl || "";
+
+    document.getElementById("companyHeadOfficeLabelInput").value =
+        company.headOfficeLabel || "";
+
+    document.getElementById("companyAddressInput").value =
+        addresses.join("\n");
+
+    document.getElementById("companyTelephoneLabelInput").value =
+        company.telephoneLabel || "";
+
+    document.getElementById("companyPhoneInput").value =
+        telephoneNumbers.join("\n");
+
+    document.getElementById("companyMobileLabelInput").value =
+        company.mobileLabel || "";
+
+    document.getElementById("companyMobileNumbersInput").value =
+        mobileNumbers.join("\n");
+
+    document.getElementById("companyEmailInput").value =
+        company.email || "";
+
+    document.getElementById("companyWebsiteInput").value =
+        company.website || "";
+
+    document.getElementById("companyCityInput").value =
+        company.city || "";
+
+    document.getElementById("companyCountryInput").value =
+        company.country || "";
+
+    document.getElementById("companyCurrencySymbolInput").value =
+        company.currencySymbol || "";
+
+
+    // Populate display mode.
+
+    document.getElementById("displayCompanyName").textContent =
+        company.companyName || "Not set";
+
+    document.getElementById("displayCompanyPhone").textContent = [
+        ...telephoneNumbers,
+        ...mobileNumbers
+    ].join(" / ") || "Not set";
+
+    document.getElementById("displayCompanyEmail").textContent =
+        company.email || "Not set";
+
+    document.getElementById("displayCompanyAddress").textContent =
+        [
+            company.headOfficeLabel,
+            ...addresses
+        ].filter(Boolean).join(", ") || "Not set";
+
+}
+
+
+// ==========================================
+// LOAD SETTINGS FROM INDEXEDDB / SERVER
+// ==========================================
+
+async function loadCompanySettingsIntoPage() {
+
+    try {
+
+        const settings =
+            await getCompanySettingsForPrinting();
+
+        currentCompanySettings = settings;
+
+        populateCompanySettingsForm(settings);
+
+        console.log(
+            "Company settings loaded successfully:",
+            settings.company
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Unable to load company settings:",
+            error
+        );
+
+        document.getElementById(
+            "displayCompanyName"
+        ).textContent = "Unable to load company settings.";
+
+    }
+
+}
+
+
+// ==========================================
+// COMPANY SETTINGS - COLLECT FORM DATA
+// ==========================================
+
+
+function collectCompanySettingsFromForm() {
+
+    // Read existing settings without copying database metadata.
+    const existingSettings =
+        currentCompanySettings || {};
+
+    const existingCompany =
+        existingSettings.company || {};
+
+    function getLines(elementId) {
+
+        return document
+            .getElementById(elementId)
+            .value
+            .split(/\r?\n/)
+            .map(value => value.trim())
+            .filter(Boolean);
+
+    }
+
+    return {
+
+        // Section 1: Company information.
+        company: {
+
+            ...existingCompany,
+
+            companyName:
+                document.getElementById("companyNameInput")
+                    .value.trim(),
+
+            logoUrl:
+                document.getElementById("companyLogoUrlInput")
+                    .value.trim(),
+
+            headOfficeLabel:
+                document.getElementById("companyHeadOfficeLabelInput")
+                    .value.trim(),
+
+            addressLines:
+                getLines("companyAddressInput"),
+
+            telephoneLabel:
+                document.getElementById("companyTelephoneLabelInput")
+                    .value.trim(),
+
+            telephoneNumbers:
+                getLines("companyPhoneInput"),
+
+            mobileLabel:
+                document.getElementById("companyMobileLabelInput")
+                    .value.trim(),
+
+            mobileNumbers:
+                getLines("companyMobileNumbersInput"),
+
+            email:
+                document.getElementById("companyEmailInput")
+                    .value.trim(),
+
+            website:
+                document.getElementById("companyWebsiteInput")
+                    .value.trim(),
+
+            city:
+                document.getElementById("companyCityInput")
+                    .value.trim(),
+
+            country:
+                document.getElementById("companyCountryInput")
+                    .value.trim(),
+
+            currencySymbol:
+                document.getElementById("companyCurrencySymbolInput")
+                    .value.trim()
+
+        },
+
+        // Section 2: Preserve all six existing bill templates.
+        billTemplates:
+            existingSettings.billTemplates || {}
+
+    };
+
+}
+
+
+
 
     companyEditBtn.addEventListener("click", () => {
 
@@ -781,137 +1959,278 @@
     });
 
 
-    companySaveBtn.addEventListener("click", () => {
+    
+companySaveBtn.addEventListener("click", async () => {
 
-        const name =
-            document.getElementById("companyNameInput").value;
+    const settings = collectCompanySettingsFromForm();
 
-        const phone =
-            document.getElementById("companyPhoneInput").value;
+    // Basic validation.
+    if (!settings.company.companyName) {
+        alert("Please enter a company name.");
+        return;
+    }
 
-        const email =
-            document.getElementById("companyEmailInput").value;
+    if (!SETTINGS_API) {
+        alert("API configuration is unavailable.");
+        return;
+    }
 
-        const address =
-            document.getElementById("companyAddressInput").value;
+    companySaveBtn.disabled = true;
+    companySaveBtn.textContent = "Saving...";
 
+    try {
 
-        document.getElementById("displayCompanyName").textContent =
-            name;
+        // Save the complete settings object to MongoDB.
+        const response = await fetch(
+            `${SETTINGS_API}/company-settings`,
+            {
+                method: "PUT",
 
-        document.getElementById("displayCompanyPhone").textContent =
-            phone;
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-        document.getElementById("displayCompanyEmail").textContent =
-            email;
+                credentials: "include",
 
-        document.getElementById("displayCompanyAddress").textContent =
-            address;
+                body: JSON.stringify(settings)
+            }
+        );
 
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to save company settings."
+            );
+        }
+
+        // Update local settings after successful server save.
+        currentCompanySettings = settings;
+
+        // Update IndexedDB cache.
+        try {
+
+            await saveCompanySettingsToOfflineDB(settings);
+
+        } catch (cacheError) {
+
+            console.error(
+                "Company settings cache error:",
+                cacheError
+            );
+
+            alert(
+                "Company settings were saved on the server, " +
+                "but the local cache could not be updated."
+            );
+
+        }
+
+        // Refresh the display and form.
+        populateCompanySettingsForm(settings);
 
         companyEdit.classList.remove("active");
-
         companyDisplay.classList.remove("hidden");
 
+        console.log(
+            "Company settings saved successfully:",
+            data
+        );
 
-        // TODO:
-        // Send these values to your backend API.
+        alert("Company information saved successfully.");
 
+    }
+    catch (error) {
 
-        alert("Company information updated.");
+        console.error(
+            "Company Settings Save Error:",
+            error
+        );
 
-    });
+        alert(
+            error.message || "Unable to save company information."
+        );
 
+    }
+    finally {
 
-    /*
-    ==========================================
-    CHANGE PASSWORD
-    ==========================================
-    */
+        companySaveBtn.disabled = false;
+        companySaveBtn.textContent = "Save Changes";
 
-    const passwordModal =
-        document.getElementById("passwordModal");
+    }
 
-    const changePasswordBtn =
-        document.getElementById("changePasswordBtn");
-
-    const passwordCancelBtn =
-        document.getElementById("passwordCancelBtn");
-
-    const passwordSaveBtn =
-        document.getElementById("passwordSaveBtn");
-
-
-    changePasswordBtn.addEventListener("click", () => {
-
-        passwordModal.classList.add("active");
-
-    });
+});
 
 
-    passwordCancelBtn.addEventListener("click", () => {
 
-        passwordModal.classList.remove("active");
+   
+/*
+==========================================
+CHANGE PASSWORD
+==========================================
+*/
 
-    });
+const passwordModal =
+    document.getElementById("passwordModal");
+
+const changePasswordBtn =
+    document.getElementById("changePasswordBtn");
+
+const passwordCancelBtn =
+    document.getElementById("passwordCancelBtn");
+
+const passwordSaveBtn =
+    document.getElementById("passwordSaveBtn");
 
 
-    passwordModal.addEventListener("click", (event) => {
+// ==========================================
+// OPEN PASSWORD MODAL
+// ==========================================
 
-        if (event.target === passwordModal) {
+changePasswordBtn.addEventListener("click", () => {
 
-            passwordModal.classList.remove("active");
+    passwordModal.classList.add("active");
 
+});
+
+
+// ==========================================
+// CLOSE PASSWORD MODAL
+// ==========================================
+
+function closePasswordModal() {
+
+    passwordModal.classList.remove("active");
+
+    document.getElementById("currentPassword").value = "";
+    document.getElementById("newPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+
+}
+
+passwordCancelBtn.addEventListener(
+    "click",
+    closePasswordModal
+);
+
+
+passwordModal.addEventListener("click", (event) => {
+
+    if (event.target === passwordModal) {
+        closePasswordModal();
+    }
+
+});
+
+
+// ==========================================
+// SAVE NEW PASSWORD
+// ==========================================
+
+passwordSaveBtn.addEventListener("click", async () => {
+
+    const currentPassword =
+        document.getElementById("currentPassword").value;
+
+    const newPassword =
+        document.getElementById("newPassword").value;
+
+    const confirmPassword =
+        document.getElementById("confirmPassword").value;
+
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        alert("Please fill in all password fields.");
+        return;
+    }
+
+
+    if (newPassword.length < 8) {
+        alert("New password must contain at least 8 characters.");
+        return;
+    }
+
+
+    if (newPassword !== confirmPassword) {
+        alert("New passwords do not match.");
+        return;
+    }
+
+
+    if (!SETTINGS_API) {
+        alert("API configuration is unavailable.");
+        return;
+    }
+
+
+    passwordSaveBtn.disabled = true;
+    passwordSaveBtn.textContent = "Updating...";
+
+
+    try {
+
+        const response = await fetch(
+            `${SETTINGS_API}/change-password`,
+            {
+                method: "PATCH",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                credentials: "include",
+
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok || data.status !== "success") {
+            throw new Error(
+                data.message || "Unable to change password."
+            );
         }
 
-    });
+
+        closePasswordModal();
+
+        alert("Password changed successfully.");
+
+        console.log("Password updated successfully.");
+
+    }
+    catch (error) {
+
+        console.error(
+            "Change Password Error:",
+            error
+        );
+
+        alert(
+            error.message || "Unable to change password."
+        );
+
+    }
+    finally {
+
+        passwordSaveBtn.disabled = false;
+        passwordSaveBtn.textContent = "Update Password";
+
+    }
+
+});
 
 
-    passwordSaveBtn.addEventListener("click", () => {
-
-        const currentPassword =
-            document.getElementById("currentPassword").value;
-
-        const newPassword =
-            document.getElementById("newPassword").value;
-
-        const confirmPassword =
-            document.getElementById("confirmPassword").value;
-
-
-        if (
-            !currentPassword ||
-            !newPassword ||
-            !confirmPassword
-        ) {
-            alert("Please fill in all fields.");
-            return;
-        }
-
-
-        if (newPassword !== confirmPassword) {
-
-            alert("New passwords do not match.");
-            return;
-
-        }
-
-
-        // TODO:
-        // Send password change request to backend.
-
-
-        alert("Password updated successfully.");
-
-
-        document.getElementById("currentPassword").value = "";
-        document.getElementById("newPassword").value = "";
-        document.getElementById("confirmPassword").value = "";
-
-        passwordModal.classList.remove("active");
-
-    });
-
+// Load saved company information when Settings opens.
+loadCompanySettingsIntoPage();
+// Load the authenticated user's account information.
+loadAccountInformation();
 </script>
 
 </body>

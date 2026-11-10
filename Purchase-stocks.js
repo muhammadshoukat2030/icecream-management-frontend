@@ -1012,12 +1012,33 @@ async function fetchProducts() {
 
 async function initializePurchaseStockPage() {
 
+    const requiredPermissions = [
+        "invoices:create",
+        "invoices:read",
+        "products:read",
+        "suppliers:read",
+        "categories:read"
+    ];
+
+    if (
+        !FROSTYOPS_ACCESS.hasAllPermissions(
+            requiredPermissions
+        )
+    ) {
+
+        FROSTYOPS_ACCESS.showAccessDenied(
+            "You do not have all the required permissions to purchase stock and create supplier invoices. Please contact your administrator."
+        );
+
+        return;
+
+    }
+
     await Promise.all([
         fetchSuppliers(),
         fetchCategories(),
         fetchProducts()
     ]);
-
 
     await syncInvoicesToOfflineDB();
 
@@ -2736,6 +2757,159 @@ async function getNextPurchaseInvoiceNumber() {
 
 }
 
+// ============================================================
+// PURCHASE STOCK - SAFE HTML ESCAPE
+// ============================================================
+
+function escapePurchasePrintHTML(value) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        value ?? "";
+
+    return div.innerHTML;
+
+}
+
+
+// ============================================================
+// PURCHASE STOCK - DYNAMIC COMPANY INFORMATION
+// ============================================================
+
+function buildPurchaseCompanyInfoHTML(company) {
+
+    let html = "";
+
+
+    // ========================================================
+    // COMPANY NAME
+    // ========================================================
+
+    if (company.companyName) {
+
+        html += `
+            <div class="company-name">
+                ${escapePurchasePrintHTML(company.companyName)}
+            </div>
+        `;
+
+    }
+
+
+    // ========================================================
+    // COMPANY ADDRESS
+    // ========================================================
+
+    const addressLines =
+        Array.isArray(company.addressLines)
+            ? company.addressLines
+            : [];
+
+
+    if (addressLines.length > 0) {
+
+        html += `<div class="company-address">`;
+
+
+        if (company.headOfficeLabel) {
+
+            html += `
+                ${escapePurchasePrintHTML(company.headOfficeLabel)}:
+                ${escapePurchasePrintHTML(addressLines[0])}
+            `;
+
+        } else {
+
+            html +=
+                escapePurchasePrintHTML(addressLines[0]);
+
+        }
+
+
+        addressLines.slice(1).forEach(
+            address => {
+
+                html += `
+                    <br>
+                    ${escapePurchasePrintHTML(address)}
+                `;
+
+            }
+        );
+
+
+        html += `</div>`;
+
+    }
+
+
+    // ========================================================
+    // COMPANY CONTACT INFORMATION
+    // ========================================================
+
+    const contacts = [];
+
+
+    if (company.telephoneNumbers?.length) {
+
+        contacts.push(
+            `${escapePurchasePrintHTML(company.telephoneLabel || "Tel #")} ${
+                company.telephoneNumbers
+                    .map(number => escapePurchasePrintHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+
+    if (company.mobileNumbers?.length) {
+
+        contacts.push(
+            `${escapePurchasePrintHTML(company.mobileLabel || "Mobile #")} ${
+                company.mobileNumbers
+                    .map(number => escapePurchasePrintHTML(number))
+                    .join(" / ")
+            }`
+        );
+
+    }
+
+
+    if (company.email) {
+
+        contacts.push(
+            escapePurchasePrintHTML(company.email)
+        );
+
+    }
+
+
+    if (company.website) {
+
+        contacts.push(
+            escapePurchasePrintHTML(company.website)
+        );
+
+    }
+
+
+    if (contacts.length > 0) {
+
+        html += `
+            <div class="company-address">
+                ${contacts.join("<br>")}
+            </div>
+        `;
+
+    }
+
+
+    return html;
+
+}
 
 // ===========================================================
 // PURCHASE INVOICE PRINTING
@@ -2748,7 +2922,7 @@ let invoiceWaitingForPrint = null;
 // PRINT PURCHASE A4 INVOICE
 // ===========================================================
 
-function printPurchaseRealInvoice(
+async function printPurchaseRealInvoice(
     invoice
 ) {
 
@@ -2769,6 +2943,40 @@ function printPurchaseRealInvoice(
         return;
 
     }
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let companyInfoHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    companyInfoHTML =
+        buildPurchaseCompanyInfoHTML(
+            settings.company
+        );
+
+} catch (error) {
+
+    console.error(
+        "Purchase company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -3080,34 +3288,13 @@ body {
 
     <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+    ${companyInfoHTML}
 
-        <div class="company-address">
-
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            &nbsp;&nbsp;
-
-            Mobile # 0345-9101300 / 0317-1234570
-
-            <br>
-
-            Peshawar Pakistan
-
-        </div>
-
-        <div class="invoice-title">
-            PURCHASE INVOICE
-        </div>
-
+    <div class="invoice-title">
+        PURCHASE INVOICE
     </div>
+
+</div>
 
 
     <table class="info-table">
@@ -3382,7 +3569,7 @@ window.onafterprint = function() {
 // PRINT PURCHASE THERMAL INVOICE
 // ===========================================================
 
-function printPurchaseThermalInvoice(
+async function printPurchaseThermalInvoice(
     invoice
 ) {
 
@@ -3403,6 +3590,53 @@ function printPurchaseThermalInvoice(
         return;
 
     }
+
+
+    // ===================================================
+// LOAD DYNAMIC COMPANY INFORMATION
+// ===================================================
+
+let company = null;
+
+let companyInfoHTML = "";
+
+let companyNameHTML = "";
+
+try {
+
+    const settings =
+        await getCompanySettingsForPrinting();
+
+    company =
+        settings.company;
+
+    companyInfoHTML =
+        buildPurchaseCompanyInfoHTML(
+            company
+        );
+
+    companyNameHTML =
+        escapePurchasePrintHTML(
+            company.companyName || ""
+        );
+
+} catch (error) {
+
+    console.error(
+        "Purchase thermal company settings error:",
+        error
+    );
+
+    printWindow.close();
+
+    alert(
+        error.message ||
+        "Unable to load company information."
+    );
+
+    return;
+
+}
 
 
     const invoiceDate =
@@ -3732,32 +3966,15 @@ body {
 
     <div class="header">
 
-        <div class="company-name">
-            AJWA ICE CREAM
-        </div>
+     <div class="header">
 
-        <div class="company-address">
+    ${companyInfoHTML}
 
-            Head Office: New Ring Road Near Madni Colony
-            Back side Zantara Town Peshawar
-
-            <br>
-
-            Tel # 091-2601784
-
-            <br>
-
-            Mobile # 0345-9101300 / 0317-1234570
-
-        </div>
-
-
-        <div class="invoice-title">
-            PURCHASE INVOICE
-        </div>
-
+    <div class="invoice-title">
+        PURCHASE INVOICE
     </div>
 
+</div>
 
     <div class="info">
 
@@ -4032,7 +4249,7 @@ body {
             Thank You
         </div>
 
-        AJWA ICE CREAM
+        ${companyNameHTML}
 
         <br>
 
@@ -4247,6 +4464,18 @@ if (createInvoiceBtn) {
     createInvoiceBtn.addEventListener(
         "click",
         async () => {
+
+                        if (
+                !FROSTYOPS_ACCESS.hasPermission("invoices:create")
+            ) {
+
+                alert(
+                    "You do not have permission to create purchase invoices. Please contact your administrator."
+                );
+
+                return;
+
+            }
 
             if (
                 purchasedItems.length ===
@@ -4991,3 +5220,38 @@ document
 
         }
     );
+
+    // TEMPORARY PURCHASE COMPANY SETTINGS TEST
+
+(async function testPurchaseCompanyInfo() {
+
+    try {
+
+        const settings =
+            await getCompanySettingsForPrinting();
+
+        const html =
+            buildPurchaseCompanyInfoHTML(
+                settings.company
+            );
+
+        console.log(
+            "Purchase company information:",
+            html
+        );
+
+        console.log(
+            "Purchase company helper:",
+            html.includes("AJWA ICE CREAM")
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Purchase company helper test failed:",
+            error
+        );
+
+    }
+
+})();
